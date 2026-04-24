@@ -40,7 +40,12 @@ const upload = multer({ dest: 'uploads/' });
 
 // Sending Logic Helper
 const sendEmail = async (recipient) => {
-  if (recipient.status === 'replied') return; // Double check safety
+  // SAFETY LOCK: Prevent double-sending
+  if (recipient.status === 'replied' || recipient.status === 'stopped' || recipient.status === 'sending') return;
+
+  const oldStatus = recipient.status;
+  recipient.status = 'sending';
+  await recipient.save();
 
   const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -78,45 +83,28 @@ const sendEmail = async (recipient) => {
     console.log(`Email Step ${sentStep} sent to ${recipient.email}`);
   } catch (err) {
     console.error(`Send Failed for ${recipient.email}:`, err);
+    recipient.status = oldStatus; // Reset status on failure
+    await recipient.save();
   }
 };
 
 // STOP ON REPLY LOGIC (IMAP)
 const checkReplies = async () => {
-  console.log("Scanning Inbox for replies...");
-  // Pick a sender account to scan (Usually the main one)
-  const sample = await Recipient.findOne({ status: { $ne: 'finished' } });
+  const sample = await Recipient.findOne({ status: { $nin: ['finished', 'stopped', 'replied'] } });
   if (!sample) return;
-
-  const client = new ImapFlow({
-    host: 'imap.gmail.com',
-    port: 993,
-    secure: true,
-    auth: { user: sample.emailUser, pass: sample.emailPass }
-  });
-
+  const client = new ImapFlow({ host: 'imap.gmail.com', port: 993, secure: true, auth: { user: sample.emailUser, pass: sample.emailPass } });
   try {
     await client.connect();
     let lock = await client.getMailboxLock('INBOX');
     try {
-      // Search for emails sent in the last 2 days
       for await (let msg of client.listMessages('INBOX', { seen: false })) {
         const senderEmail = msg.envelope.from[0].address;
-        const exists = await Recipient.findOne({ email: senderEmail, status: { $ne: 'finished' } });
-        
-        if (exists) {
-          console.log(`Found reply from ${senderEmail}. Stopping sequence.`);
-          exists.status = 'replied';
-          await exists.save();
-        }
+        const exists = await Recipient.findOne({ email: senderEmail, status: { $nin: ['finished', 'stopped', 'replied'] } });
+        if (exists) { exists.status = 'replied'; await exists.save(); }
       }
-    } finally {
-      lock.release();
-    }
+    } finally { lock.release(); }
     await client.logout();
-  } catch (err) {
-    console.error("IMAP Error:", err.message);
-  }
+  } catch (err) { console.error("IMAP Error:", err.message); }
 };
 
 // API ROUTES
@@ -130,16 +118,14 @@ app.post('/api/start-campaign', upload.single('file'), async (req, res) => {
     campaignId, emailUser, emailPass, subject, body1, body2, body3, data: contact, nextSendAt: new Date() 
   }));
   await Recipient.insertMany(recipients);
-  res.json({ message: "Campaign created!", total: data.length });
+  res.json({ message: "Campaign created!" });
 });
 
 app.post('/api/add-recipient', async (req, res) => {
   const { email, subject, body1, body2, body3, emailUser, emailPass, data } = req.body;
-  const newRecipient = new Recipient({
-    email, campaignId: 'MANUAL_' + Date.now(), emailUser, emailPass, subject, body1, body2, body3, data, nextSendAt: new Date()
-  });
-  await newRecipient.save();
-  res.json({ message: "Lead added manually!" });
+  const nr = new Recipient({ email, campaignId: 'MANUAL_' + Date.now(), emailUser, emailPass, subject, body1, body2, body3, data, nextSendAt: new Date() });
+  await nr.save();
+  res.json({ message: "Lead added!" });
 });
 
 app.get('/api/stats', async (req, res) => {
@@ -155,40 +141,45 @@ app.get('/api/recipients', async (req, res) => {
 app.post('/api/send-now/:id', async (req, res) => {
   try {
     const rec = await Recipient.findById(req.params.id);
-    if (rec.status === 'finished' || rec.status === 'replied' || rec.status === 'stopped') return res.status(400).json({ error: "Done" });
+    if (rec.status === 'finished' || rec.status === 'replied' || rec.status === 'stopped' || rec.status === 'sending') return res.status(400).json({ error: "Sending or Done" });
     await sendEmail(rec);
     res.json({ message: "Sent!" });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/stop/:id', async (req, res) => {
-  try {
-    await Recipient.findByIdAndUpdate(req.params.id, { status: 'stopped' });
-    res.json({ message: "Sequence stopped!" });
+  try { await Recipient.findByIdAndUpdate(req.params.id, { status: 'stopped' }); res.json({ message: "Stopped!" }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/restart/:id', async (req, res) => {
+  try { 
+    await Recipient.findByIdAndUpdate(req.params.id, { step: 1, status: 'pending', nextSendAt: new Date() }); 
+    res.json({ message: "Sequence restarted from Step 1!" }); 
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// SERVE FRONTEND
+app.post('/api/continue/:id', async (req, res) => {
+  try { 
+    await Recipient.findByIdAndUpdate(req.params.id, { status: 'pending', nextSendAt: new Date() }); 
+    res.json({ message: "Sequence resumed!" }); 
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 const distPath = path.join(__dirname, '../frontend/dist');
 app.use(express.static(distPath));
 app.use((req, res, next) => { if (!req.path.startsWith('/api')) res.sendFile(path.join(distPath, 'index.html')); else next(); });
 
-// CRON JOBS
-// 1. Send Due Emails (Every 1 minute)
 cron.schedule('*/1 * * * *', async () => {
   const now = new Date();
-  const pending = await Recipient.find({ status: { $nin: ['finished', 'replied', 'stopped'] }, nextSendAt: { $lte: now } }).limit(5);
-  for (const rec of pending) {
-    await sendEmail(rec);
-    await new Promise(r => setTimeout(r, 10000)); 
-  }
+  const pending = await Recipient.find({ status: { $nin: ['finished', 'replied', 'stopped', 'sending'] }, nextSendAt: { $lte: now } }).limit(5);
+  for (const rec of pending) { await sendEmail(rec); await new Promise(r => setTimeout(r, 10000)); }
 });
 
-// 2. Check for Replies (Every 10 minutes)
 cron.schedule('*/10 * * * *', async () => {
   const sample = await Recipient.findOne({ status: { $nin: ['finished', 'replied', 'stopped'] } });
   if (sample) await checkReplies();
 });
 
 const PORT = 5001;
-app.listen(PORT, () => console.log(`Smart Server with Stop-on-Reply active on ${PORT}`));
+app.listen(PORT, () => console.log(`Locked & Safe Server on ${PORT}`));

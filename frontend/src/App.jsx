@@ -282,6 +282,38 @@ function App() {
                             </button>
                           </div>
                         )}
+
+                        {r.status === 'stopped' && (
+                          <div style={{display: 'flex', gap: '8px'}}>
+                            <button 
+                              className="send-now-btn" 
+                              style={{borderColor: '#10b981', color: '#10b981'}}
+                              onClick={async () => {
+                                try {
+                                  await axios.post(`/api/continue/${r._id}`);
+                                  fetchRecipients();
+                                  fetchStats();
+                                  alert("Resumed!");
+                                } catch(e) { alert("Failed"); }
+                              }}
+                            >
+                              Continue
+                            </button>
+                            <button 
+                              className="send-now-btn" 
+                              onClick={async () => {
+                                try {
+                                  await axios.post(`/api/restart/${r._id}`);
+                                  fetchRecipients();
+                                  fetchStats();
+                                  alert("Restarted from Step 1!");
+                                } catch(e) { alert("Failed"); }
+                              }}
+                            >
+                              Restart
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
