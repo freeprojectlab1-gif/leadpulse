@@ -133,6 +133,15 @@ app.post('/api/start-campaign', upload.single('file'), async (req, res) => {
   res.json({ message: "Campaign created!", total: data.length });
 });
 
+app.post('/api/add-recipient', async (req, res) => {
+  const { email, subject, body1, body2, body3, emailUser, emailPass, data } = req.body;
+  const newRecipient = new Recipient({
+    email, campaignId: 'MANUAL_' + Date.now(), emailUser, emailPass, subject, body1, body2, body3, data, nextSendAt: new Date()
+  });
+  await newRecipient.save();
+  res.json({ message: "Lead added manually!" });
+});
+
 app.get('/api/stats', async (req, res) => {
   const stats = await Recipient.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
   res.json(stats);

@@ -187,16 +187,54 @@ function App() {
           )}
 
           {activeTab === 'campaign' && (
-            <div className="config-card full-width">
-               <h3>Launch New Sequence</h3>
-               <p style={{marginBottom: '1rem', color: '#64748b'}}>Wait for the first batch to send after clicking launch.</p>
-               <div className="upload-box" onClick={() => document.getElementById('f').click()}>
-                  <p>{file ? `Ready: ${file.name} (${totalContacts} contacts)` : 'Upload Excel/CSV'}</p>
-                  <input id="f" type="file" hidden onChange={handleFileChange} />
+            <div className="campaign-grid">
+               <div className="config-card">
+                  <h3>1. Bulk Outreach (Excel)</h3>
+                  <p style={{marginBottom: '1rem', color: '#64748b'}}>Upload Excel/CSV to start many sequences at once.</p>
+                  <div className="upload-box" onClick={() => document.getElementById('f').click()}>
+                    <p>{file ? `Ready: ${file.name} (${totalContacts})` : 'Click to Upload Excel/CSV'}</p>
+                    <input id="f" type="file" hidden onChange={handleFileChange} />
+                  </div>
+                  <button className="launch-btn" onClick={handleStartCampaign} disabled={sending}>
+                    {sending ? 'Deploying...' : 'Start Bulk Sequence'}
+                  </button>
                </div>
-               <button className="launch-btn" onClick={handleStartCampaign} disabled={sending}>
-                 {sending ? 'Processing...' : 'Start 3-Step Campaign'}
-               </button>
+
+               <div className="config-card">
+                  <h3>2. Quick Add Single Lead</h3>
+                  <p style={{marginBottom: '1rem', color: '#64748b'}}>Add one direct lead manually to your active sequence.</p>
+                  <div className="field">
+                    <label>Lead's Email</label>
+                    <input type="email" id="manual_email" placeholder="client@example.com" />
+                  </div>
+                  <div className="field">
+                    <label>First Name (Optional)</label>
+                    <input type="text" id="manual_name" placeholder="John" />
+                  </div>
+                  <div className="field">
+                    <label>Website (Optional)</label>
+                    <input type="text" id="manual_website" placeholder="www.google.com" />
+                  </div>
+                  <button className="launch-btn" style={{background: '#64748b'}} onClick={async () => {
+                    const e = document.getElementById('manual_email').value;
+                    const n = document.getElementById('manual_name').value;
+                    const w = document.getElementById('manual_website').value;
+                    if(!e) return alert("Email is required");
+                    try {
+                      await axios.post('/api/add-recipient', {
+                        email: e, subject, body1, body2, body3, emailUser, emailPass,
+                        data: { 'First Name': n, 'Website': w }
+                      });
+                      alert("Lead added to sequence!");
+                      document.getElementById('manual_email').value = '';
+                      document.getElementById('manual_name').value = '';
+                      document.getElementById('manual_website').value = '';
+                      fetchStats();
+                    } catch(err) { alert("Failed to add lead"); }
+                  }}>
+                    Add to Sequence
+                  </button>
+               </div>
             </div>
           )}
 
