@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # bulkemail-sender
 
 
@@ -91,3 +92,38 @@ For open source projects, say how it is licensed.
 
 ## Project status
 If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+=======
+# Pro Emailer SaaS
+
+A professional 3-step automated email outreach platform built with the MERN stack. Designed for cold outreach with tracking and manual triggers.
+
+## ✨ Features
+- **3-Step Sequence:** Fully customizable automated follow-ups.
+- **Smart Placeholders:** Dynamic Excel/CSV column mapping (e.g., `{{Name}}`, `{{Website}}`).
+- **Dashboard:** Real-time stats and delivery logs.
+- **Manual Trigger:** "Send Now" button to skip wait times.
+- **Secure Access:** Passcode-protected admin portal.
+- **Automation:** Background cron jobs for staggered sending (Spam protection).
+
+## 🚀 Setup & Deployment
+1. **Env Setup:** Create a `.env` file in `backend/` with `MONGO_URI`.
+2. **Installation:**
+   ```bash
+   cd backend && npm install
+   cd ../frontend && npm install
+   ```
+3. **Build:**
+   ```bash
+   cd frontend && npm run build
+   ```
+4. **Start:**
+   ```bash
+   cd backend && npm start
+   ```
+
+## 🛠 Tech Stack
+- **Frontend:** React, Vite, Axios, XLSX.
+- **Backend:** Node.js, Express, Nodemailer, MongoDB, node-cron.
+
+Developed by Muntazir Pro.
+>>>>>>> 957c8ea (Initial Production Release - Muntazir Pro Emailer)
