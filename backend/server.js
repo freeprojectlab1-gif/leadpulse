@@ -146,9 +146,16 @@ app.get('/api/recipients', async (req, res) => {
 app.post('/api/send-now/:id', async (req, res) => {
   try {
     const rec = await Recipient.findById(req.params.id);
-    if (rec.status === 'finished' || rec.status === 'replied') return res.status(400).json({ error: "Done" });
+    if (rec.status === 'finished' || rec.status === 'replied' || rec.status === 'stopped') return res.status(400).json({ error: "Done" });
     await sendEmail(rec);
     res.json({ message: "Sent!" });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/stop/:id', async (req, res) => {
+  try {
+    await Recipient.findByIdAndUpdate(req.params.id, { status: 'stopped' });
+    res.json({ message: "Sequence stopped!" });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -161,7 +168,7 @@ app.use((req, res, next) => { if (!req.path.startsWith('/api')) res.sendFile(pat
 // 1. Send Due Emails (Every 1 minute)
 cron.schedule('*/1 * * * *', async () => {
   const now = new Date();
-  const pending = await Recipient.find({ status: { $nin: ['finished', 'replied'] }, nextSendAt: { $lte: now } }).limit(5);
+  const pending = await Recipient.find({ status: { $nin: ['finished', 'replied', 'stopped'] }, nextSendAt: { $lte: now } }).limit(5);
   for (const rec of pending) {
     await sendEmail(rec);
     await new Promise(r => setTimeout(r, 10000)); 
@@ -170,7 +177,8 @@ cron.schedule('*/1 * * * *', async () => {
 
 // 2. Check for Replies (Every 10 minutes)
 cron.schedule('*/10 * * * *', async () => {
-  await checkReplies();
+  const sample = await Recipient.findOne({ status: { $nin: ['finished', 'replied', 'stopped'] } });
+  if (sample) await checkReplies();
 });
 
 const PORT = 5001;

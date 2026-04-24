@@ -214,20 +214,35 @@ function App() {
                       <td><span className={`status-${r.status.replace(/ /g, '-').toLowerCase()}`}>{r.status}</span></td>
                       <td>{r.lastSentAt ? new Date(r.lastSentAt).toLocaleString() : 'Queued'}</td>
                       <td>
-                        {r.status !== 'finished' && (
-                          <button 
-                            className="send-now-btn" 
-                            onClick={async () => {
-                              try {
-                                await axios.post(`/api/send-now/${r._id}`);
-                                fetchRecipients();
-                                fetchStats();
-                                alert("Sent!");
-                              } catch(e) { alert("Failed"); }
-                            }}
-                          >
-                            Send Next
-                          </button>
+                        {r.status !== 'finished' && r.status !== 'replied' && r.status !== 'stopped' && (
+                          <div style={{display: 'flex', gap: '8px'}}>
+                            <button 
+                              className="send-now-btn" 
+                              onClick={async () => {
+                                try {
+                                  await axios.post(`/api/send-now/${r._id}`);
+                                  fetchRecipients();
+                                  fetchStats();
+                                  alert("Sent!");
+                                } catch(e) { alert("Failed"); }
+                              }}
+                            >
+                              Send Next
+                            </button>
+                            <button 
+                              className="stop-btn" 
+                              onClick={async () => {
+                                try {
+                                  await axios.post(`/api/stop/${r._id}`);
+                                  fetchRecipients();
+                                  fetchStats();
+                                  alert("Stopped!");
+                                } catch(e) { alert("Failed"); }
+                              }}
+                            >
+                              Stop
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
