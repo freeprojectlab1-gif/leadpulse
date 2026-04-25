@@ -42,9 +42,20 @@ const recipientSchema = new mongoose.Schema({
   body1: String,
   body2: String,
   body3: String,
-  data: mongoose.Schema.Types.Mixed 
+  data: mongoose.Schema.Types.Mixed,
+  history: [{ sentAt: Date, event: String, subject: String }]
 });
-const Recipient = mongoose.model('Recipient', recipientSchema);
+const Recipient = mongoose.models.Recipient || mongoose.model('Recipient', recipientSchema);
+
+// Custom Email Templates Schema
+const emailTemplateSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  subject: { type: String, required: true },
+  body: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+const EmailTemplate = mongoose.models.EmailTemplate || mongoose.model('EmailTemplate', emailTemplateSchema);
+
 const upload = multer({ dest: 'uploads/' });
 
 // SPINTAX
@@ -54,6 +65,38 @@ const applySpintax = (text) => {
     const arr = choices.split('|');
     return arr[Math.floor(Math.random() * arr.length)];
   });
+};
+
+// HTML WRAPPER FOR DESIGN & TRUST
+const wrapHtml = (body) => {
+  const formattedBody = body.replace(/\n/g, '<br/>');
+  return `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #f1f5f9; border-radius: 16px; color: #1e293b; background-color: #ffffff;">
+      <div style="font-size: 16px; line-height: 1.6;">
+        ${formattedBody}
+      </div>
+      <div style="margin-top: 40px; padding-top: 25px; border-top: 1px solid #f1f5f9; font-size: 13px; color: #64748b;">
+        <p style="margin: 0 0 10px 0; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em;">Let's Connect Directly:</p>
+        <table style="width: 100%;">
+          <tr>
+            <td style="padding: 5px 0;">
+              <span style="background: #f8fafc; padding: 5px 10px; border-radius: 6px; display: inline-block;">
+                📧 <a href="mailto:muntazir.site@gmail.com" style="color: #4f46e5; text-decoration: none; font-weight: 600;">muntazir.site@gmail.com</a>
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 5px 0;">
+              <span style="background: #f0fdf4; padding: 5px 10px; border-radius: 6px; display: inline-block;">
+                💬 <a href="https://wa.me/918511868872" style="color: #10b981; text-decoration: none; font-weight: 600;">WhatsApp: +91 8511868872</a>
+              </span>
+            </td>
+          </tr>
+        </table>
+        <p style="margin-top: 20px; font-size: 11px; color: #94a3b8;">Sent via Muntazir Pro Emailer</p>
+      </div>
+    </div>
+  `;
 };
 
 // GLOBAL LOCK VARIABLE (Memory Level Protection)
@@ -105,13 +148,21 @@ const sendEmail = async (recipientId) => {
 
     // STEP 2: Apply Spintax AFTER placeholders are filled
     pBody = applySpintax(pBody);
+    let pSubject = applySpintax(recipient.subject || "Outreach");
+
+    // VALIDATION: Check for missing variables
+    const remainingVars = [...pBody.matchAll(/\{\{([^}]*)\}\}/g), ...pSubject.matchAll(/\{\{([^}]*)\}\}/g)];
+    if (remainingVars.length > 0) {
+      const missing = [...new Set(remainingVars.map(v => v[0]))].join(', ');
+      throw new Error(`Missing template variables: ${missing}. Please add these columns to your data.`);
+    }
 
     console.log(`[SMTP] Delivering to ${recipient.email}...`);
     await transporter.sendMail({ 
         from: recipient.emailUser, 
         to: recipient.email, 
-        subject: applySpintax(recipient.subject || "Outreach"), 
-        text: pBody 
+        subject: pSubject, 
+        html: wrapHtml(pBody)
     });
 
     
@@ -125,12 +176,14 @@ const sendEmail = async (recipientId) => {
       status: nextStatus,
       step: sentStep + 1,
       lastSentAt: new Date(),
-      nextSendAt: nextStatus === 'finished' ? null : nextDate
+      nextSendAt: nextStatus === 'finished' ? null : nextDate,
+      $push: { history: { sentAt: new Date(), event: `Sent ${nextStatus}`, subject: pSubject } }
     });
     console.log(`[SUCCESS] Sent to ${recipient.email}`);
   } catch (err) {
-    console.error(`[FAILED] ${recipient.email}:`, err.message);
-    await Recipient.findByIdAndUpdate(recipientId, { status: 'pending' });
+    const errorMsg = recipient ? `[FAILED] ${recipient.email}` : `[FAILED] Lead ID ${recipientId}`;
+    console.error(errorMsg, ":", err.message);
+    if (recipientId) await Recipient.findByIdAndUpdate(recipientId, { status: 'pending' });
   } finally {
     activeSending.delete(recipientId.toString());
   }
@@ -155,16 +208,19 @@ app.post('/api/start-campaign', upload.single('file'), async (req, res) => {
 });
 
 app.post('/api/add-recipient', async (req, res) => {
-  const { email, subject, body1, body2, body3, emailUser, emailPass, data } = req.body;
+  const { email, subject, body1, body2, body3, emailUser, emailPass, data, status: initialStatus } = req.body;
   try {
     const nr = new Recipient({ 
-        email, campaignId: 'MANUAL_' + Date.now(), emailUser, emailPass, subject, body1, body2, body3, data, 
-        nextSendAt: new Date(Date.now() + 5000) 
+        email, 
+        status: initialStatus || 'pending',
+        campaignId: 'MANUAL_' + Date.now(), 
+        emailUser, emailPass, subject, body1, body2, body3, data, 
+        nextSendAt: initialStatus === 'archived' ? null : new Date(Date.now() + 5000) 
     });
     await nr.save();
-    // INSTANT DISPATCH
-    sendEmail(nr._id); 
-    res.json({ message: "Lead Added & Email Dispatched! 🚀" });
+    // INSTANT DISPATCH only if not archived
+    if (initialStatus !== 'archived') sendEmail(nr._id); 
+    res.json({ message: initialStatus === 'archived' ? "Lead Archived! ✅" : "Lead Added & Email Dispatched! 🚀" });
   } catch(e) {
     res.status(400).json({ error: "Lead already exists in database! Target blocked for safety." });
   }
@@ -190,6 +246,96 @@ app.post('/api/restart/:id', async (req, res) => { await Recipient.findByIdAndUp
 app.post('/api/continue/:id', async (req, res) => { await Recipient.findByIdAndUpdate(req.params.id, { status: 'pending', nextSendAt: new Date() }); res.json({ message: "Resumed!" }); });
 app.post('/api/archive/:id', async (req, res) => { await Recipient.findByIdAndUpdate(req.params.id, { status: 'archived' }); res.json({ message: "Archived!" }); });
 app.delete('/api/delete-recipient/:id', async (req, res) => { await Recipient.findByIdAndDelete(req.params.id); res.json({ message: "Deleted!" }); });
+
+// ─── CUSTOM TEMPLATE ROUTES ───────────────────────────────────────────────
+// Get all templates
+app.get('/api/email-templates', async (req, res) => {
+  const templates = await EmailTemplate.find().sort({ createdAt: -1 });
+  res.json(templates);
+});
+
+// Create template
+app.post('/api/email-templates', async (req, res) => {
+  try {
+    const { name, subject, body } = req.body;
+    if (!name || !subject || !body) return res.status(400).json({ error: 'All fields required!' });
+    const t = await EmailTemplate.create({ name, subject, body });
+    res.json({ message: 'Template saved!', template: t });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Delete template
+app.delete('/api/email-templates/:id', async (req, res) => {
+  await EmailTemplate.findByIdAndDelete(req.params.id);
+  res.json({ message: 'Template deleted!' });
+});
+
+// Update template
+app.put('/api/email-templates/:id', async (req, res) => {
+  try {
+    const { name, subject, body } = req.body;
+    await EmailTemplate.findByIdAndUpdate(req.params.id, { name, subject, body });
+    res.json({ message: 'Template updated!' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Send custom template to a specific lead
+app.post('/api/send-custom/:leadId/:templateId', async (req, res) => {
+  try {
+    const lead = await Recipient.findById(req.params.leadId);
+    const template = await EmailTemplate.findById(req.params.templateId);
+    if (!lead || !template) return res.status(404).json({ error: 'Lead or Template not found!' });
+
+    const cleanPass = lead.emailPass.replace(/\s+/g, '');
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com', port: 465, secure: true,
+      auth: { user: lead.emailUser.trim(), pass: cleanPass }
+    });
+
+    // Merge original data with user-provided customData
+    const customData = req.body.customData || {};
+    const mergedData = { ...(lead.data || {}), ...customData };
+    
+    // Save updated data back to lead for future use
+    lead.data = mergedData;
+    await lead.save();
+
+    // Replace placeholders in template
+    let body = template.body;
+    let subject = template.subject;
+    
+    Object.keys(mergedData).forEach(key => {
+      const ph = `{{${key}}}`;
+      const rx = new RegExp(ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      body = body.replace(rx, mergedData[key] || '');
+      subject = subject.replace(rx, mergedData[key] || '');
+    });
+
+    // VALIDATION: Check for missing variables
+    const finalBody = applySpintax(body);
+    const finalSubject = applySpintax(subject);
+    const remainingVars = [...finalBody.matchAll(/\{\{([^}]*)\}\}/g), ...finalSubject.matchAll(/\{\{([^}]*)\}\}/g)];
+    if (remainingVars.length > 0) {
+      const missing = [...new Set(remainingVars.map(v => v[0]))].join(', ');
+      return res.status(400).json({ error: `Missing variables for this lead: ${missing}` });
+    }
+
+    await transporter.sendMail({
+      from: lead.emailUser,
+      to: lead.email,
+      subject: finalSubject,
+      html: wrapHtml(finalBody)
+    });
+
+    // Log to history
+    lead.history.push({ sentAt: new Date(), event: 'Custom Template Sent', subject: finalSubject });
+    await lead.save();
+
+    res.json({ message: `Custom email sent to ${lead.email}! ✅` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 const distPath = path.join(__dirname, '../frontend/dist');
 app.use(express.static(distPath));
