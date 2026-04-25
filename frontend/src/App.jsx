@@ -39,6 +39,7 @@ function App() {
   const [modalData, setModalData] = useState({});
   const [intelLead, setIntelLead] = useState(null);
   const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // FORCE SYNC ALL TEMPLATES (Override old localStorage)
   useEffect(() => {
@@ -236,36 +237,41 @@ function App() {
 
   return (
     <div className="dashboard-container">
-      <aside className="sidebar">
+      <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="brand">
           <img src="/logo.png" alt="logo" style={{height: '35px', borderRadius: '8px'}} />
           PRO EMAILER
         </div>
         <nav>
-          <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => switchTab('dashboard')}>
+          <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => { switchTab('dashboard'); setIsMobileMenuOpen(false); }}>
             <DashIcon /> Dashboard
           </div>
-          <div className={`nav-item ${activeTab === 'campaign' ? 'active' : ''}`} onClick={() => switchTab('campaign')}>
+          <div className={`nav-item ${activeTab === 'campaign' ? 'active' : ''}`} onClick={() => { switchTab('campaign'); setIsMobileMenuOpen(false); }}>
             <SendIcon /> New Campaign
           </div>
-          <div className={`nav-item ${activeTab === 'template' ? 'active' : ''}`} onClick={() => switchTab('template')}>
+          <div className={`nav-item ${activeTab === 'template' ? 'active' : ''}`} onClick={() => { switchTab('template'); setIsMobileMenuOpen(false); }}>
             <TemplateIcon /> Email Templates
           </div>
-          <div className={`nav-item ${activeTab === 'custom_templates' ? 'active' : ''}`} onClick={() => switchTab('custom_templates')}>
+          <div className={`nav-item ${activeTab === 'custom_templates' ? 'active' : ''}`} onClick={() => { switchTab('custom_templates'); setIsMobileMenuOpen(false); }}>
             <TemplateIcon /> Custom Templates
           </div>
-          <div className={`nav-item ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => switchTab('logs')}>
+          <div className={`nav-item ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => { switchTab('logs'); setIsMobileMenuOpen(false); }}>
             <HistoryIcon /> Delivery Logs
           </div>
-          <div className={`nav-item ${activeTab === 'archive' ? 'active' : ''}`} onClick={() => switchTab('archive')}>
+          <div className={`nav-item ${activeTab === 'archive' ? 'active' : ''}`} onClick={() => { switchTab('archive'); setIsMobileMenuOpen(false); }}>
             <ArchiveIcon /> Archive
           </div>
         </nav>
       </aside>
 
+      {isMobileMenuOpen && <div className="sidebar-overlay" onClick={() => setIsMobileMenuOpen(false)}></div>}
+
       <main className="main-content">
         <header className="top-bar">
-          <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'logs' ? 'Delivery Logs' : 'Archive'}</h2>
+          <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
+            <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)}>☰</button>
+            <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'logs' ? 'Delivery Logs' : 'Archive'}</h2>
+          </div>
           <div style={{display:'flex', gap: '1rem', alignItems:'center'}}>
              <span style={{color: 'var(--text-muted)', fontSize: '0.8rem'}}>Live Connection Active ✅</span>
              <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="btn-icon btn-stop" style={{padding:'4px 10px'}}>Logout</button>

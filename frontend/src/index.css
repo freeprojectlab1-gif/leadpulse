@@ -569,6 +569,91 @@ body {
   }
 }
 
+/* MOBILE RESPONSIVENESS */
+.mobile-toggle {
+  display: none;
+  background: white;
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--bg-dark);
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .mobile-toggle { display: block; }
+
+  .sidebar {
+    transform: translateX(-100%);
+    z-index: 10001;
+    width: 280px;
+    box-shadow: none;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding: 1.5rem;
+    width: 100%;
+  }
+
+  .top-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+
+  .stats-grid, .campaign-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .log-card, .config-card {
+    padding: 1.5rem;
+    overflow-x: auto;
+  }
+
+  .pro-table {
+    display: block;
+    min-width: 600px; /* Force scrollable table on mobile */
+  }
+
+  .login-form {
+    width: 90%;
+    padding: 2rem;
+  }
+
+  /* Intelligence Modal on Mobile */
+  .modal-content {
+    width: 95% !important;
+    padding: 1.5rem;
+    overflow-y: auto;
+  }
+
+  .modal-body > div {
+    grid-template-columns: 1fr !important;
+    gap: 2rem !important;
+  }
+}
+
 /* INTEL MODAL & TIMELINE */
 .intel-info-box {
   background: #f8fafc;
