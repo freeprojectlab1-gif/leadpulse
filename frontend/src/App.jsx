@@ -42,6 +42,7 @@ function App() {
   const switchTab = (tab) => {
     setActiveTab(tab);
     localStorage.setItem('activeTab', tab);
+    setSelectedIds([]); // Clear selection on tab switch
   };
 
   const [file, setFile] = useState(null);
@@ -71,6 +72,12 @@ function App() {
   const [notification, setNotification] = useState(null);
   const [dynamicValues, setDynamicValues] = useState({});
   const [confirmModal, setConfirmModal] = useState({ open: false, title: '', onConfirm: null });
+  const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('pro_theme') || 'theme-dark');
+
+  useEffect(() => {
+    document.body.className = currentTheme;
+    localStorage.setItem('pro_theme', currentTheme);
+  }, [currentTheme]);
 
   // HEART-TOUCHING TEMPLATES FOR NO-WEBSITE CLIENTS
   useEffect(() => {
@@ -315,16 +322,41 @@ function App() {
 
   if (!isLoggedIn) {
     return (
-      <div className="login-vibe">
-        <form className="login-form" onSubmit={handleLogin}>
-          <div className="brand">
-            <img src="/logo.png" alt="logo" style={{ height: '35px', borderRadius: '8px' }} />
+      <div className="hero-vibe">
+        {/* PREMIUM THEME SWITCHER - LANDING PAGE */}
+        <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 100 }}>
+          <select 
+            value={currentTheme} 
+            onChange={(e) => setCurrentTheme(e.target.value)}
+            className="pro-select"
+            style={{ padding: '8px 16px', fontSize: '0.85rem', background: 'var(--glass-bg)', color: 'var(--hero-text)', border: '1px solid var(--glass-border)', borderRadius: '12px', backdropFilter: 'blur(20px)', cursor: 'pointer', outline: 'none' }}
+          >
+            <option value="theme-dark" style={{ color: '#000' }}>Dark Premium</option>
+            <option value="theme-light" style={{ color: '#000' }}>Light Minimal</option>
+            <option value="theme-cyber" style={{ color: '#000' }}>Neon Cyber</option>
+            <option value="theme-abstract" style={{ color: '#000' }}>Creative Abstract</option>
+            <option value="theme-glass-neon" style={{ color: '#000' }}>Dark Glass Neon</option>
+            <option value="theme-light-gradient" style={{ color: '#000' }}>Light Soft Gradient</option>
+          </select>
+        </div>
+
+        <div className="hero-blobs">
+          <div className="blob blob-1"></div>
+          <div className="blob blob-2"></div>
+          <div className="blob blob-3"></div>
+        </div>
+        <div className="hero-content">
+          <div className="brand" style={{ justifyContent: 'center', marginBottom: '2rem', fontSize: '1.5rem', color: '#fff' }}>
+            <img src="/logo.png" alt="logo" style={{ height: '40px', borderRadius: '10px' }} />
             PRO EMAILER
           </div>
-          <h1>Admin Portal</h1>
-          <input type="password" placeholder="Passcode" value={passcode} onChange={e => setPasscode(e.target.value)} />
-          <button type="submit">Access System</button>
-        </form>
+          <h1 className="hero-title">Automate Cold Outreach.</h1>
+          <p className="hero-subtitle">Scale your conversions with the most powerful, dynamic, and intelligent bulk-email infrastructure built for modern enterprises.</p>
+          <form className="glass-card" onSubmit={handleLogin}>
+            <input type="password" placeholder="Enter Secure Passcode" value={passcode} onChange={e => setPasscode(e.target.value)} />
+            <button type="submit" className="glass-btn">Deploy Dashboard →</button>
+          </form>
+        </div>
       </div>
     );
   }
@@ -372,6 +404,19 @@ function App() {
             <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'variables' ? 'Variable Manager' : activeTab === 'logs' ? 'Delivery Logs' : 'Archive'}</h2>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <select 
+              value={currentTheme} 
+              onChange={(e) => setCurrentTheme(e.target.value)}
+              className="pro-select"
+              style={{ padding: '4px 8px', fontSize: '0.8rem', width: 'auto', background: 'var(--card-bg)', color: 'var(--text-main)', border: '1px solid var(--border)' }}
+            >
+              <option value="theme-dark">Dark Premium</option>
+              <option value="theme-light">Light Minimal</option>
+              <option value="theme-cyber">Neon Cyber</option>
+              <option value="theme-abstract">Creative Abstract</option>
+              <option value="theme-glass-neon">Dark Glass Neon</option>
+              <option value="theme-light-gradient">Light Soft Gradient</option>
+            </select>
             <span style={{ color: 'var(--success)', fontSize: '0.8rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}><SuccessIcon /> System Live</span>
             <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="btn-icon btn-stop" style={{ padding: '4px 10px' }}>Logout</button>
           </div>
@@ -651,15 +696,15 @@ function App() {
                       className="pro-select"
                       style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
                       onChange={async (e) => {
-                        if (!e.target.value) return;
                         const tplId = e.target.value;
+                        if (!tplId) return;
                         setConfirmModal({
                           open: true,
                           title: `Send this template to ${selectedIds.length} leads?`,
                           onConfirm: async () => {
                             try {
                               await axios.post('/api/bulk-send', { ids: selectedIds, templateId: tplId });
-                              showToast("Bulk send finished!", "success");
+                              showToast("Bulk Dispatch Started!", "success");
                               setSelectedIds([]);
                               fetchRecipients();
                             } catch (e) { showToast("Bulk send failed", "error"); }
@@ -670,9 +715,9 @@ function App() {
                     >
                       <option value="" style={{ color: 'var(--bg-dark)' }}>Bulk Send Template...</option>
                       <optgroup label="Auto Sequence" style={{ color: 'var(--bg-dark)' }}>
-                        <option value="step1">Step 1 (Intro)</option>
-                        <option value="step2">Step 2 (Follow-up)</option>
-                        <option value="step3">Step 3 (Final)</option>
+                        <option value="step1">Sequence: Step 1 (Intro)</option>
+                        <option value="step2">Sequence: Step 2 (Follow-up)</option>
+                        <option value="step3">Sequence: Step 3 (Final)</option>
                       </optgroup>
                       <optgroup label="Custom Templates" style={{ color: 'var(--bg-dark)' }}>
                         {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
@@ -836,9 +881,80 @@ function App() {
           {activeTab === 'archive' && (
             <div className="log-card">
               <div style={{ padding: '1.5rem', background: '#f8fafc', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Records moved here are hidden from Delivery Logs but kept in database.</div>
+              
+              {selectedIds.length > 0 && (
+                <div className="bulk-bar" style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '10px 20px', background: 'var(--primary)', color: 'white', borderRadius: '8px', margin: '1rem', animation: 'slideIn 0.3s ease-out' }}>
+                   <span style={{fontWeight:'600'}}>{selectedIds.length} Selected</span>
+                   <select 
+                     className="pro-select" 
+                     style={{background:'rgba(255,255,255,0.1)', color:'white', border:'1px solid rgba(255,255,255,0.2)', padding:'5px 10px'}}
+                     onChange={(e) => {
+                        const tplId = e.target.value;
+                        if (!tplId) return;
+                        setConfirmModal({
+                           open: true,
+                           title: `Send this template to ${selectedIds.length} archived leads?`,
+                           onConfirm: async () => {
+                              for (const id of selectedIds) {
+                                 try { await axios.post(`/api/send-custom/${id}/${tplId}`); } catch(e) {}
+                              }
+                              showToast("Bulk Dispatch Started!", "success");
+                              setSelectedIds([]);
+                              fetchRecipients();
+                           }
+                        });
+                     }}
+                   >
+                     <option value="" style={{color:'black'}}>Bulk Send Template...</option>
+                     <optgroup label="Auto Sequence" style={{color:'black'}}>
+                        <option value="step1" style={{color:'black'}}>Sequence: Step 1 (Intro)</option>
+                        <option value="step2" style={{color:'black'}}>Sequence: Step 2 (Follow-up)</option>
+                        <option value="step3" style={{color:'black'}}>Sequence: Step 3 (Final)</option>
+                     </optgroup>
+                     <optgroup label="Custom Templates" style={{color:'black'}}>
+                        {customTemplates.map(t => <option key={t._id} value={t._id} style={{color:'black'}}>{t.name}</option>)}
+                     </optgroup>
+                   </select>
+                   <button 
+                     className="btn-icon" 
+                     style={{background:'rgba(255,255,255,0.1)', color:'white', border:'1px solid rgba(255,255,255,0.2)'}}
+                     onClick={() => {
+                        setConfirmModal({
+                           open: true,
+                           title: `Delete ${selectedIds.length} leads forever?`,
+                           onConfirm: async () => {
+                              await axios.post('/api/bulk-delete', { ids: selectedIds });
+                              showToast("Selected Leads Deleted!", "success");
+                              setSelectedIds([]);
+                              fetchRecipients(); fetchStats();
+                           }
+                        });
+                     }}
+                   >Delete Selected</button>
+                   <button 
+                     className="btn-icon" 
+                     style={{background:'rgba(255,255,255,0.1)', color:'white', border:'1px solid rgba(255,255,255,0.2)'}}
+                     onClick={() => setSelectedIds([])}
+                   >Cancel</button>
+                </div>
+              )}
+
               <table className="pro-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '40px' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedIds.length > 0 && recipients.filter(r => r.isArchived).length === selectedIds.length}
+                        onChange={(e) => {
+                           if (e.target.checked) {
+                              setSelectedIds(recipients.filter(r => r.isArchived).map(r => r._id));
+                           } else {
+                              setSelectedIds([]);
+                           }
+                        }}
+                      />
+                    </th>
                     <th>RECIPIENT</th>
                     <th>LAST STATUS</th>
                     <th>ACTIONS</th>
@@ -849,16 +965,28 @@ function App() {
                     .filter(r => r.isArchived)
                     .sort((a, b) => {
                       const priority = (s) => {
-                        if (s.includes('Step')) return 1;
-                        if (s === 'pending') return 2;
-                        if (s === 'finished') return 3;
-                        if (s === 'stopped') return 4;
-                        return 5;
+                        const low = s.toLowerCase();
+                        if (low.includes('step')) return 1;
+                        if (low === 'pending') return 2;
+                        if (low === 'finished') return 3;
+                        if (low === 'replied') return 4;
+                        if (low === 'stopped') return 100; // Force to absolute bottom
+                        return 50;
                       };
                       return priority(a.status) - priority(b.status);
                     })
                     .map((r, i) => (
-                      <tr key={i}>
+                      <tr key={i} className={selectedIds.includes(r._id) ? 'row-selected' : ''}>
+                        <td>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedIds.includes(r._id)}
+                            onChange={(e) => {
+                               if (e.target.checked) setSelectedIds(prev => [...prev, r._id]);
+                               else setSelectedIds(prev => prev.filter(id => id !== r._id));
+                            }}
+                          />
+                        </td>
                         <td style={{ fontWeight: '500', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setIntelLead(r)}>
                           {r.email}
                         </td>

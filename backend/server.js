@@ -19,20 +19,20 @@ mongoose.connect(process.env.MONGO_URI)
     console.log("Connected to MongoDB");
     const db = mongoose.connection.db;
     try {
-        await db.collection('recipients').createIndex({ email: 1 }, { unique: true });
-        console.log("Unique Lock Active! 🔒");
-    } catch(e) {
-        console.log("Database Ready.");
+      await db.collection('recipients').createIndex({ email: 1 }, { unique: true });
+      console.log("Unique Lock Active! 🔒");
+    } catch (e) {
+      console.log("Database Ready.");
     }
 
     // --- STARTUP SYNC & INIT ---
     console.log("Initializing System...");
     // First: Reset any stuck 'sending' leads
     await Recipient.updateMany({ status: 'sending' }, { $set: { status: 'pending' } });
-    
+
     // Then: Sync all leads with latest credentials
     await Recipient.updateMany(
-      { isArchived: { $ne: true }, status: { $nin: ['finished'] } }, 
+      { isArchived: { $ne: true }, status: { $nin: ['finished'] } },
       { $set: { emailUser: 'muntazir.site@gmail.com', emailPass: 'bbad zuak ztni mnbr' } }
     );
 
@@ -44,7 +44,7 @@ mongoose.connect(process.env.MONGO_URI)
     }
 
     console.log("Credentials Synced & Core Variables Initialized! ✅");
-    
+
     app.listen(5001, () => {
       console.log(`Bulletproof Server running on port 5001`);
     });
@@ -58,8 +58,8 @@ mongoose.connect(process.env.MONGO_URI)
 const recipientSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, index: true },
   campaignId: String,
-  step: { type: Number, default: 1 }, 
-  status: { type: String, default: 'pending' }, 
+  step: { type: Number, default: 1 },
+  status: { type: String, default: 'pending' },
   lastSentAt: Date,
   nextSendAt: Date,
   emailUser: String,
@@ -173,16 +173,16 @@ const sendEmail = async (recipientId) => {
     // STEP 1: Replace placeholders (Support both {{var}} and {var})
     let pBody = rawBody;
     let pSubject = recipient.subject || "Outreach";
-    
+
     if (recipient.data) {
       Object.keys(recipient.data).forEach(key => {
         const doubleTag = `{{${key}}}`;
         const singleTag = `{${key}}`;
         const val = recipient.data[key] || "";
-        
+
         const dRegex = new RegExp(doubleTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
         const sRegex = new RegExp(singleTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-        
+
         pBody = pBody.replace(dRegex, val).replace(sRegex, val);
         pSubject = pSubject.replace(dRegex, val).replace(sRegex, val);
       });
@@ -203,18 +203,18 @@ const sendEmail = async (recipientId) => {
     }
 
     console.log(`[SMTP] Delivering to ${recipient.email}...`);
-    await transporter.sendMail({ 
-        from: recipient.emailUser, 
-        to: recipient.email, 
-        subject: pSubject, 
-        html: wrapHtml(pBody)
+    await transporter.sendMail({
+      from: recipient.emailUser,
+      to: recipient.email,
+      subject: pSubject,
+      html: wrapHtml(pBody)
     });
 
-    
+
     const sentStep = recipient.step;
     let nextStatus = `Step ${sentStep} Sent`;
     let nextDate = new Date();
-    nextDate.setDate(nextDate.getDate() + 3); 
+    nextDate.setDate(nextDate.getDate() + 3);
     if (sentStep >= 3) { nextStatus = 'finished'; nextDate = null; }
 
     await Recipient.findByIdAndUpdate(recipientId, {
@@ -238,16 +238,16 @@ app.post('/api/start-campaign', upload.single('file'), async (req, res) => {
   const { subject, body1, body2, body3, emailUser, emailPass } = req.body;
   const workbook = xlsx.readFile(req.file.path);
   const data = xlsx.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-  
+
   for (const contact of data) {
-      const email = contact.Email || contact.email || contact['Email Address'];
-      if (!email) continue;
-      try {
-          await Recipient.create({
-            email, campaignId: 'CAMP_' + Date.now(), emailUser, emailPass, subject, body1, body2, body3, data: contact, 
-            nextSendAt: new Date(Date.now() + 5000) // 5 sec automation start
-          });
-      } catch(e) { /* Skip duplicates */ }
+    const email = contact.Email || contact.email || contact['Email Address'];
+    if (!email) continue;
+    try {
+      await Recipient.create({
+        email, campaignId: 'CAMP_' + Date.now(), emailUser, emailPass, subject, body1, body2, body3, data: contact,
+        nextSendAt: new Date(Date.now() + 5000) // 5 sec automation start
+      });
+    } catch (e) { /* Skip duplicates */ }
   }
   res.json({ message: "Campaign Processed!" });
 });
@@ -255,18 +255,18 @@ app.post('/api/start-campaign', upload.single('file'), async (req, res) => {
 app.post('/api/add-recipient', async (req, res) => {
   const { email, subject, body1, body2, body3, emailUser, emailPass, data, status: initialStatus } = req.body;
   try {
-    const nr = new Recipient({ 
-        email, 
-        status: initialStatus || 'pending',
-        campaignId: 'MANUAL_' + Date.now(), 
-        emailUser, emailPass, subject, body1, body2, body3, data, 
-        nextSendAt: initialStatus === 'archived' ? null : new Date(Date.now() + 5000) 
+    const nr = new Recipient({
+      email,
+      status: initialStatus || 'pending',
+      campaignId: 'MANUAL_' + Date.now(),
+      emailUser, emailPass, subject, body1, body2, body3, data,
+      nextSendAt: initialStatus === 'archived' ? null : new Date(Date.now() + 5000)
     });
     await nr.save();
     // INSTANT DISPATCH only if not archived
-    if (initialStatus !== 'archived') sendEmail(nr._id); 
+    if (initialStatus !== 'archived') sendEmail(nr._id);
     res.json({ message: initialStatus === 'archived' ? "Lead Archived! ✅" : "Lead Added & Email Dispatched! " });
-  } catch(e) {
+  } catch (e) {
     res.status(400).json({ error: "Lead already exists in database! Target blocked for safety." });
   }
 });
@@ -303,38 +303,44 @@ app.post('/api/bulk-send', async (req, res) => {
   const { ids, templateId } = req.body;
   try {
     for (const id of ids) {
-      // We simulate the custom send logic for each
-      const lead = await Recipient.findById(id);
-      let template = null;
-      if (templateId === 'step1') template = { subject: lead.subject, body: lead.body1 };
-      else if (templateId === 'step2') template = { subject: lead.subject, body: lead.body2 };
-      else if (templateId === 'step3') template = { subject: lead.subject, body: lead.body3 };
-      else template = await EmailTemplate.findById(templateId);
+      try {
+        const lead = await Recipient.findById(id);
+        let template = null;
+        if (templateId === 'step1') template = { subject: lead.subject, body: lead.body1 };
+        else if (templateId === 'step2') template = { subject: lead.subject, body: lead.body2 };
+        else if (templateId === 'step3') template = { subject: lead.subject, body: lead.body3 };
+        else template = await EmailTemplate.findById(templateId);
 
-      if (lead && template) {
-        const cleanPass = lead.emailPass.replace(/\s+/g, '');
-        const transporter = nodemailer.createTransport({
-          host: 'smtp.gmail.com', port: 465, secure: true,
-          auth: { user: lead.emailUser.trim(), pass: cleanPass }
-        });
-
-        let body = applySpintax(template.body);
-        let subject = applySpintax(template.subject);
-        
-        // Smart merge
-        if (lead.data) {
-          Object.keys(lead.data).forEach(key => {
-            const ph = `{{${key}}}`;
-            const rx = new RegExp(ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-            body = body.replace(rx, lead.data[key] || '');
-            subject = subject.replace(rx, lead.data[key] || '');
+        if (lead && template) {
+          const cleanPass = lead.emailPass.replace(/\s+/g, '');
+          const transporter = nodemailer.createTransport({
+            host: 'smtp.gmail.com', port: 465, secure: true,
+            auth: { user: lead.emailUser.trim(), pass: cleanPass }
           });
-        }
 
-        await transporter.sendMail({ from: lead.emailUser, to: lead.email, subject, html: wrapHtml(body) });
-        lead.history.push({ sentAt: new Date(), event: `Bulk: ${templateId}`, subject });
-        await lead.save();
-      }
+          let body = template.body;
+          let subject = template.subject;
+
+          if (lead.data) {
+            Object.keys(lead.data).forEach(key => {
+              const doubleTag = `{{${key}}}`;
+              const singleTag = `{${key}}`;
+              const val = lead.data[key] || "";
+              const dRegex = new RegExp(doubleTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+              const sRegex = new RegExp(singleTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+              body = body.replace(dRegex, val).replace(sRegex, val);
+              subject = subject.replace(dRegex, val).replace(sRegex, val);
+            });
+          }
+
+          const finalBody = applySpintax(body);
+          const finalSubject = applySpintax(subject);
+
+          await transporter.sendMail({ from: lead.emailUser, to: lead.email, subject: finalSubject, html: wrapHtml(finalBody) });
+          lead.history.push({ sentAt: new Date(), event: `Bulk: ${templateId}`, subject: finalSubject });
+          await lead.save();
+        }
+      } catch (e) { console.error(`Bulk send error: ${e.message}`); }
     }
     res.json({ message: `Bulk email processing finished for ${ids.length} leads!` });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -421,7 +427,7 @@ app.post('/api/send-custom/:leadId/:templateId', async (req, res) => {
     // Merge original data with user-provided customData
     const customData = req.body.customData || {};
     const mergedData = { ...(lead.data || {}), ...customData };
-    
+
     // Save updated data back to lead for future use
     lead.data = mergedData;
     await lead.save();
@@ -429,15 +435,15 @@ app.post('/api/send-custom/:leadId/:templateId', async (req, res) => {
     // Replace placeholders (Support both {{var}} and {var})
     let body = template.body;
     let subject = template.subject;
-    
+
     Object.keys(mergedData).forEach(key => {
       const doubleTag = `{{${key}}}`;
       const singleTag = `{${key}}`;
       const val = mergedData[key] || "";
-      
+
       const dRegex = new RegExp(doubleTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
       const sRegex = new RegExp(singleTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-      
+
       body = body.replace(dRegex, val).replace(sRegex, val);
       subject = subject.replace(dRegex, val).replace(sRegex, val);
     });
@@ -449,7 +455,7 @@ app.post('/api/send-custom/:leadId/:templateId', async (req, res) => {
       ...finalBody.matchAll(/\{\{([^}]*)\}\}/g), ...finalBody.matchAll(/\{([^}]*)\}/g),
       ...finalSubject.matchAll(/\{\{([^}]*)\}\}/g), ...finalSubject.matchAll(/\{([^}]*)\}/g)
     ];
-    
+
     if (remainingVars.length > 0) {
       const missing = [...new Set(remainingVars.map(v => v[0]))].join(', ');
       return res.status(400).json({ error: `Missing variables for this lead: ${missing}` });
@@ -477,36 +483,36 @@ app.use(express.static(distPath));
 app.use((req, res, next) => { if (!req.path.startsWith('/api')) res.sendFile(path.join(distPath, 'index.html')); else next(); });
 
 cron.schedule('*/1 * * * *', async () => {
-  const pending = await Recipient.find({ 
+  const pending = await Recipient.find({
     isArchived: { $ne: true },
-    status: { $nin: ['finished', 'replied', 'stopped', 'sending'] }, 
-    nextSendAt: { $lte: new Date() } 
+    status: { $nin: ['finished', 'replied', 'stopped', 'sending'] },
+    nextSendAt: { $lte: new Date() }
   }).limit(5);
-  
-  for (const rec of pending) { 
-    await sendEmail(rec._id); 
+
+  for (const rec of pending) {
+    await sendEmail(rec._id);
     // TURBO MODE (10-20 sec gap)
-    await new Promise(r => setTimeout(r, Math.floor(Math.random() * 10000) + 10000)); 
+    await new Promise(r => setTimeout(r, Math.floor(Math.random() * 10000) + 10000));
   }
 });
 
 cron.schedule('*/10 * * * *', async () => {
   const sample = await Recipient.findOne({ status: { $nin: ['finished', 'replied', 'stopped', 'archived'] } });
   if (sample) {
-      const cleanPass = sample.emailPass.replace(/\s+/g, '');
-      const client = new ImapFlow({ host: 'imap.gmail.com', port: 993, secure: true, auth: { user: sample.emailUser.trim(), pass: cleanPass }, logger: false });
+    const cleanPass = sample.emailPass.replace(/\s+/g, '');
+    const client = new ImapFlow({ host: 'imap.gmail.com', port: 993, secure: true, auth: { user: sample.emailUser.trim(), pass: cleanPass }, logger: false });
+    try {
+      await client.connect();
+      let lock = await client.getMailboxLock('INBOX');
       try {
-        await client.connect();
-        let lock = await client.getMailboxLock('INBOX');
-        try {
-          for await (let msg of client.listMessages('INBOX', { seen: false })) {
-            const senderEmail = msg.envelope.from[0].address;
-            const exists = await Recipient.findOne({ email: senderEmail, isArchived: { $ne: true }, status: { $nin: ['finished', 'stopped', 'replied'] } });
-            if (exists) { exists.status = 'replied'; await exists.save(); }
-          }
-        } finally { lock.release(); }
-        await client.logout();
-      } catch (err) { console.error("IMAP Error:", err.message); }
+        for await (let msg of client.listMessages('INBOX', { seen: false })) {
+          const senderEmail = msg.envelope.from[0].address;
+          const exists = await Recipient.findOne({ email: senderEmail, isArchived: { $ne: true }, status: { $nin: ['finished', 'stopped', 'replied'] } });
+          if (exists) { exists.status = 'replied'; await exists.save(); }
+        }
+      } finally { lock.release(); }
+      await client.logout();
+    } catch (err) { console.error("IMAP Error:", err.message); }
   }
 });
 
