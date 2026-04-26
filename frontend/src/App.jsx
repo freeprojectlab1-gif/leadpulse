@@ -58,15 +58,18 @@ function App() {
   const fetchCustomFields = async () => {
     try {
       const res = await axios.get('/api/custom-fields');
-      setCustomFields(res.data);
-    } catch (e) { console.error("API Error (Fields):", e.message); }
+      setCustomFields(Array.isArray(res.data) ? res.data : []);
+    } catch (e) { 
+      console.error("API Error (Fields):", e.message); 
+      setCustomFields([]);
+    }
   };
 
   const fetchCustomTemplates = async () => {
     try {
       const res = await axios.get('/api/email-templates');
-      setCustomTemplates(res.data);
-    } catch (e) { }
+      setCustomTemplates(Array.isArray(res.data) ? res.data : []);
+    } catch (e) { setCustomTemplates([]); }
   };
 
   const fetchStats = async () => {
@@ -86,8 +89,8 @@ function App() {
   const fetchRecipients = async () => {
     try {
       const res = await axios.get('/api/recipients');
-      setRecipients(res.data);
-    } catch (e) { }
+      setRecipients(Array.isArray(res.data) ? res.data : []);
+    } catch (e) { setRecipients([]); }
   };
 
   const handleLogin = (e) => {
@@ -233,7 +236,7 @@ function App() {
                  <table className="pro-table">
                    <thead><tr><th>EMAIL</th><th>STATUS</th><th>TIME</th></tr></thead>
                    <tbody>
-                     {recipients.slice(0, 5).map(r => (
+                     {(Array.isArray(recipients) ? recipients : []).slice(0, 5).map(r => (
                        <tr key={r._id}><td>{r.email}</td><td><span className={`status-badge status-${r.status.toLowerCase().replace(/ /g, '-')}`}>{r.status}</span></td><td>{r.lastSentAt ? new Date(r.lastSentAt).toLocaleTimeString() : 'Pending'}</td></tr>
                      ))}
                    </tbody>
@@ -257,7 +260,7 @@ function App() {
                 }}>Add Field</button>
               </div>
               <div className="field-list" style={{display:'flex', flexDirection:'column', gap:'10px'}}>
-                {customFields.map(f => (
+                {(Array.isArray(customFields) ? customFields : []).map(f => (
                   <div key={f._id} className="stat-card" style={{ flexDirection: 'row', justifyContent: 'space-between', padding: '15px', background:'#f8fafc' }}>
                     <span style={{fontWeight:'600'}}>{f.name}</span>
                     <button onClick={async () => { if(window.confirm('Delete field?')) { await axios.delete(`/api/custom-fields/${f._id}`); fetchCustomFields(); } }} style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight:'600' }}>Delete</button>
@@ -282,7 +285,7 @@ function App() {
                 <h3>Direct Lead Entry 📝</h3>
                 <p style={{color:'var(--text-muted)', marginBottom:'15px'}}>Manually add one lead to the active sequence.</p>
                 <div className="field"><label>Email Address</label><input type="email" id="man_em" placeholder="client@example.com" /></div>
-                {customFields.map(f => (
+                {(Array.isArray(customFields) ? customFields : []).map(f => (
                   <div className="field" key={f._id}><label>{f.name}</label><input type="text" className="dyn-field" data-name={f.name} placeholder={`Enter ${f.name}...`} /></div>
                 ))}
                 <button className="launch-btn" style={{background:'#0f172a'}} onClick={async () => {
@@ -355,7 +358,7 @@ function App() {
               <div className="log-card full-width">
                  <div style={{padding:'20px', borderBottom:'1px solid #f1f5f9', fontWeight:'600'}}>Saved Templates</div>
                  <div style={{padding:'20px'}}>
-                  {customTemplates.map(t => (
+                  {(Array.isArray(customTemplates) ? customTemplates : []).map(t => (
                     <div key={t._id} className="stat-card" style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: '15px', background:'#f8fafc' }}>
                       <div><div style={{fontWeight:'700'}}>{t.name}</div><div style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>{t.subject}</div></div>
                       <div style={{ display: 'flex', gap: '10px' }}>
@@ -374,7 +377,7 @@ function App() {
               <table className="pro-table">
                 <thead><tr><th>RECIPIENT</th><th>STEP</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
                 <tbody>
-                  {recipients.filter(r => r.status !== 'archived').map(r => (
+                  {(Array.isArray(recipients) ? recipients : []).filter(r => r.status !== 'archived').map(r => (
                     <tr key={r._id}>
                       <td onClick={() => setIntelLead(r)} style={{ cursor: 'pointer', color: 'var(--primary)', fontWeight:'600' }}>{r.email}</td>
                       <td>{r.step > 3 ? 'Done' : `Step ${r.step}`}</td>
@@ -385,7 +388,7 @@ function App() {
                           {selectedLeadForTpl === r._id && (
                             <select style={{padding:'5px', borderRadius:'5px'}} onChange={(e) => handleSendCustomTemplate(r._id, e.target.value)}>
                               <option value="">Select...</option>
-                              {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                              {(Array.isArray(customTemplates) ? customTemplates : []).map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
                             </select>
                           )}
                           <button className="btn-icon btn-stop" onClick={async () => { if(window.confirm('Delete?')) { await axios.delete(`/api/delete-recipient/${r._id}`); fetchRecipients(); fetchStats(); } }}>Del</button>
@@ -403,7 +406,7 @@ function App() {
               <table className="pro-table">
                 <thead><tr><th>RECIPIENT</th><th>LAST ACTIVITY</th><th>ACTIONS</th></tr></thead>
                 <tbody>
-                  {recipients.filter(r => r.status === 'archived').map(r => (
+                  {(Array.isArray(recipients) ? recipients : []).filter(r => r.status === 'archived').map(r => (
                     <tr key={r._id}>
                       <td onClick={() => setIntelLead(r)} style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>{r.email}</td>
                       <td>{r.lastSentAt ? new Date(r.lastSentAt).toLocaleDateString() : 'Never'}</td>
