@@ -718,3 +718,135 @@ body {
   color: var(--text-muted);
   margin-top: 2px;
 }
+
+/* BULK ACTION BAR */
+.bulk-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-dark);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  margin: 1rem;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bulk-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.bulk-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.bulk-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,255,255,0.1);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.bulk-btn:hover {
+  background: white;
+  color: var(--bg-dark);
+}
+
+.row-selected {
+  background: #f0f7ff !important;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* TOAST NOTIFICATIONS */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 1rem 1.5rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+  z-index: 10000;
+  font-weight: 600;
+  font-size: 0.9rem;
+  animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid var(--border);
+}
+
+.toast-success { border-left: 4px solid var(--success); color: var(--success); }
+.toast-error { border-left: 4px solid var(--danger); color: var(--danger); }
+.toast-info { border-left: 4px solid var(--primary); color: var(--primary); }
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(50px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* VARIABLE MANAGER */
+.var-input-group {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 2rem;
+}
+
+.var-input-group input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  outline: none;
+}
+
+.var-add-btn {
+  background: var(--bg-dark);
+  color: white;
+  padding: 0 20px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.variable-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.variable-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.pro-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}

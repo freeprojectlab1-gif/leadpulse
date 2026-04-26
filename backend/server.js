@@ -7,7 +7,7 @@ const cors = require('cors');
 const cron = require('node-cron');
 const path = require('path');
 const { ImapFlow } = require('imapflow');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 app.use(cors());
@@ -19,14 +19,40 @@ mongoose.connect(process.env.MONGO_URI)
     console.log("Connected to MongoDB");
     const db = mongoose.connection.db;
     try {
-        // Step 1: Ensure unique index without wiping data
         await db.collection('recipients').createIndex({ email: 1 }, { unique: true });
         console.log("Unique Lock Active! 🔒");
     } catch(e) {
         console.log("Database Ready.");
     }
+
+    // --- STARTUP SYNC & INIT ---
+    console.log("Initializing System...");
+    // First: Reset any stuck 'sending' leads
+    await Recipient.updateMany({ status: 'sending' }, { $set: { status: 'pending' } });
+    
+    // Then: Sync all leads with latest credentials
+    await Recipient.updateMany(
+      { isArchived: { $ne: true }, status: { $nin: ['finished'] } }, 
+      { $set: { emailUser: 'muntazir.site@gmail.com', emailPass: 'bbad zuak ztni mnbr' } }
+    );
+
+    // Initialize Core Variables if missing
+    const coreVars = ['First Name', 'Website', 'Business'];
+    for (const v of coreVars) {
+      const exists = await CustomField.findOne({ name: v });
+      if (!exists) await CustomField.create({ name: v, active: true });
+    }
+
+    console.log("Credentials Synced & Core Variables Initialized! ✅");
+    
+    app.listen(5001, () => {
+      console.log(`Bulletproof Server running on port 5001`);
+    });
   })
-  .catch(err => console.error("MongoDB Connection Error:", err));
+  .catch(err => {
+    console.error("MongoDB Connection Error:", err);
+    process.exit(1);
+  });
 
 // Schema
 const recipientSchema = new mongoose.Schema({
@@ -43,7 +69,8 @@ const recipientSchema = new mongoose.Schema({
   body2: String,
   body3: String,
   data: mongoose.Schema.Types.Mixed,
-  history: [{ sentAt: Date, event: String, subject: String }]
+  history: [{ sentAt: Date, event: String, subject: String }],
+  isArchived: { type: Boolean, default: false }
 });
 const Recipient = mongoose.models.Recipient || mongoose.model('Recipient', recipientSchema);
 
@@ -59,6 +86,7 @@ const EmailTemplate = mongoose.models.EmailTemplate || mongoose.model('EmailTemp
 // Custom Fields Schema
 const customFieldSchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true },
+  active: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
 const CustomField = mongoose.models.CustomField || mongoose.model('CustomField', customFieldSchema);
@@ -100,7 +128,6 @@ const wrapHtml = (body) => {
             </td>
           </tr>
         </table>
-        <p style="margin-top: 20px; font-size: 11px; color: #94a3b8;">Sent via Muntazir Pro Emailer</p>
       </div>
     </div>
   `;
@@ -249,10 +276,86 @@ app.post('/api/send-now/:id', async (req, res) => {
 });
 
 app.post('/api/stop/:id', async (req, res) => { await Recipient.findByIdAndUpdate(req.params.id, { status: 'stopped' }); res.json({ message: "Stopped!" }); });
-app.post('/api/restart/:id', async (req, res) => { await Recipient.findByIdAndUpdate(req.params.id, { step: 1, status: 'pending', nextSendAt: new Date() }); res.json({ message: "Restarted!" }); });
-app.post('/api/continue/:id', async (req, res) => { await Recipient.findByIdAndUpdate(req.params.id, { status: 'pending', nextSendAt: new Date() }); res.json({ message: "Resumed!" }); });
-app.post('/api/archive/:id', async (req, res) => { await Recipient.findByIdAndUpdate(req.params.id, { status: 'archived' }); res.json({ message: "Archived!" }); });
+app.post('/api/restart/:id', async (req, res) => { await Recipient.findByIdAndUpdate(req.params.id, { step: 1, status: 'pending', isArchived: false, nextSendAt: new Date() }); res.json({ message: "Restarted!" }); });
+app.post('/api/continue/:id', async (req, res) => { await Recipient.findByIdAndUpdate(req.params.id, { status: 'pending', isArchived: false, nextSendAt: new Date() }); res.json({ message: "Resumed!" }); });
+app.post('/api/archive/:id', async (req, res) => { await Recipient.findByIdAndUpdate(req.params.id, { isArchived: true }); res.json({ message: "Archived!" }); });
 app.delete('/api/delete-recipient/:id', async (req, res) => { await Recipient.findByIdAndDelete(req.params.id); res.json({ message: "Deleted!" }); });
+
+// ─── BULK ACTIONS ───────────────────────────────────────────────────────
+app.post('/api/bulk-archive', async (req, res) => {
+  const { ids } = req.body;
+  await Recipient.updateMany({ _id: { $in: ids } }, { $set: { isArchived: true } });
+  res.json({ message: `${ids.length} leads archived!` });
+});
+
+app.post('/api/bulk-send', async (req, res) => {
+  const { ids, templateId } = req.body;
+  try {
+    for (const id of ids) {
+      // We simulate the custom send logic for each
+      const lead = await Recipient.findById(id);
+      let template = null;
+      if (templateId === 'step1') template = { subject: lead.subject, body: lead.body1 };
+      else if (templateId === 'step2') template = { subject: lead.subject, body: lead.body2 };
+      else if (templateId === 'step3') template = { subject: lead.subject, body: lead.body3 };
+      else template = await EmailTemplate.findById(templateId);
+
+      if (lead && template) {
+        const cleanPass = lead.emailPass.replace(/\s+/g, '');
+        const transporter = nodemailer.createTransport({
+          host: 'smtp.gmail.com', port: 465, secure: true,
+          auth: { user: lead.emailUser.trim(), pass: cleanPass }
+        });
+
+        let body = applySpintax(template.body);
+        let subject = applySpintax(template.subject);
+        
+        // Smart merge
+        if (lead.data) {
+          Object.keys(lead.data).forEach(key => {
+            const ph = `{{${key}}}`;
+            const rx = new RegExp(ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            body = body.replace(rx, lead.data[key] || '');
+            subject = subject.replace(rx, lead.data[key] || '');
+          });
+        }
+
+        await transporter.sendMail({ from: lead.emailUser, to: lead.email, subject, html: wrapHtml(body) });
+        lead.history.push({ sentAt: new Date(), event: `Bulk: ${templateId}`, subject });
+        await lead.save();
+      }
+    }
+    res.json({ message: `Bulk email processing finished for ${ids.length} leads!` });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── CUSTOM FIELD ROUTES ────────────────────────────────────────────────
+app.get('/api/custom-fields', async (req, res) => {
+  console.log(`[API] GET /api/custom-fields triggered at ${new Date().toISOString()}`);
+  try {
+    const fields = await CustomField.find().sort({ createdAt: 1 });
+    console.log(`[API] Found ${fields.length} fields.`);
+    res.json(fields);
+  } catch (e) {
+    console.error("[API] Error fetching fields:", e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+app.post('/api/custom-fields', async (req, res) => {
+  try {
+    const { name } = req.body;
+    const f = await CustomField.create({ name });
+    res.json(f);
+  } catch (e) { res.status(400).json({ error: 'Field already exists' }); }
+});
+app.put('/api/custom-fields/:id', async (req, res) => {
+  await CustomField.findByIdAndUpdate(req.params.id, req.body);
+  res.json({ message: 'Updated' });
+});
+app.delete('/api/custom-fields/:id', async (req, res) => {
+  await CustomField.findByIdAndDelete(req.params.id);
+  res.json({ message: 'Deleted' });
+});
 
 // ─── CUSTOM TEMPLATE ROUTES ───────────────────────────────────────────────
 // Get all templates
@@ -286,35 +389,16 @@ app.put('/api/email-templates/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── CUSTOM VARIABLE ROUTES ─────────────────────────────────────────────
-app.get('/api/custom-fields', async (req, res) => {
-  try {
-    const fields = await CustomField.find().sort({ createdAt: 1 });
-    res.json(fields);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-app.post('/api/custom-fields', async (req, res) => {
-  try {
-    const { name } = req.body;
-    if (!name) return res.status(400).json({ error: 'Name required' });
-    const f = await CustomField.create({ name });
-    res.json(f);
-  } catch (e) { res.status(500).json({ error: 'Field already exists or server error' }); }
-});
-
-app.delete('/api/custom-fields/:id', async (req, res) => {
-  try {
-    await CustomField.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Field deleted' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
 // Send custom template to a specific lead
 app.post('/api/send-custom/:leadId/:templateId', async (req, res) => {
   try {
     const lead = await Recipient.findById(req.params.leadId);
-    const template = await EmailTemplate.findById(req.params.templateId);
+    let template = null;
+    if (req.params.templateId === 'step1') template = { subject: lead.subject, body: lead.body1 };
+    else if (req.params.templateId === 'step2') template = { subject: lead.subject, body: lead.body2 };
+    else if (req.params.templateId === 'step3') template = { subject: lead.subject, body: lead.body3 };
+    else template = await EmailTemplate.findById(req.params.templateId);
+
     if (!lead || !template) return res.status(404).json({ error: 'Lead or Template not found!' });
 
     const cleanPass = lead.emailPass.replace(/\s+/g, '');
@@ -374,7 +458,8 @@ app.use((req, res, next) => { if (!req.path.startsWith('/api')) res.sendFile(pat
 
 cron.schedule('*/1 * * * *', async () => {
   const pending = await Recipient.find({ 
-    status: { $nin: ['finished', 'replied', 'stopped', 'sending', 'archived'] }, 
+    isArchived: { $ne: true },
+    status: { $nin: ['finished', 'replied', 'stopped', 'sending'] }, 
     nextSendAt: { $lte: new Date() } 
   }).limit(5);
   
@@ -396,7 +481,7 @@ cron.schedule('*/10 * * * *', async () => {
         try {
           for await (let msg of client.listMessages('INBOX', { seen: false })) {
             const senderEmail = msg.envelope.from[0].address;
-            const exists = await Recipient.findOne({ email: senderEmail, status: { $nin: ['finished', 'stopped', 'replied', 'archived'] } });
+            const exists = await Recipient.findOne({ email: senderEmail, isArchived: { $ne: true }, status: { $nin: ['finished', 'stopped', 'replied'] } });
             if (exists) { exists.status = 'replied'; await exists.save(); }
           }
         } finally { lock.release(); }
@@ -405,19 +490,3 @@ cron.schedule('*/10 * * * *', async () => {
   }
 });
 
-app.listen(5001, async () => {
-  console.log(`Bulletproof Server running on port 5001`);
-  // First: Reset any stuck 'sending' leads
-  await Recipient.updateMany({ status: 'sending' }, { $set: { status: 'pending' } });
-  // Then: Sync all leads with latest credentials
-  await Recipient.updateMany(
-    { status: { $nin: ['finished', 'archived'] } }, 
-    { $set: { emailUser: 'muntazir.site@gmail.com', emailPass: 'bbad zuak ztni mnbr' } }
-  );
-  // Ensure default fields exist
-  const defaults = ['First Name', 'Website'];
-  for (const name of defaults) {
-    try { await CustomField.create({ name }); } catch(e) {}
-  }
-  console.log("Credentials Synced & Default Variables Ready! ✅");
-});
