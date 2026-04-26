@@ -72,8 +72,15 @@ function App() {
   const fetchStats = async () => {
     try {
       const res = await axios.get('/api/stats');
-      setStats(res.data);
-    } catch (e) { }
+      if (Array.isArray(res.data)) {
+        setStats(res.data);
+      } else {
+        setStats([]);
+      }
+    } catch (e) { 
+      console.error("Stats Fetch Error:", e);
+      setStats([]); 
+    }
   };
 
   const fetchRecipients = async () => {
@@ -170,7 +177,10 @@ function App() {
     } catch (e) { alert(e.response?.data?.error || "Error"); }
   };
 
-  const getStatCount = (id) => stats.find(s => s._id === id)?.count || 0;
+  const getStatCount = (id) => {
+    if (!Array.isArray(stats)) return 0;
+    return stats.find(s => s._id === id)?.count || 0;
+  };
 
   if (!isLoggedIn) {
     return (
