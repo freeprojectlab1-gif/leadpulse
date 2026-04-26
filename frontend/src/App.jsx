@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-// --- ICONS (SVG) ---
+// --- PREMIUM SVG ICONS ---
 const DashIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>;
 const SendIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>;
 const TemplateIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>;
 const HistoryIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
 const ArchiveIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>;
+const VarIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>;
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
@@ -111,6 +112,14 @@ function App() {
     finally { setSending(false); }
   };
 
+  const handleSaveSettings = () => {
+    localStorage.setItem('saved_subject', subject);
+    localStorage.setItem('saved_body1', body1);
+    localStorage.setItem('saved_body2', body2);
+    localStorage.setItem('saved_body3', body3);
+    alert("Sequence Settings Saved! ✅");
+  };
+
   const handleSaveCustomTemplate = async () => {
     const name = document.getElementById('tplName').value;
     const sub = document.getElementById('tplSub').value;
@@ -167,25 +176,25 @@ function App() {
     return (
       <div className="login-vibe">
         <form className="login-form" onSubmit={handleLogin}>
-          <div className="brand">PRO EMAILER</div>
-          <h1>Admin Portal</h1>
-          <input type="password" placeholder="Passcode" value={passcode} onChange={e => setPasscode(e.target.value)} />
-          <button type="submit">Access System</button>
+          <div className="brand" style={{justifyContent:'center', fontSize:'1.5rem'}}>PRO EMAILER</div>
+          <h1 style={{marginTop:'10px'}}>Admin Access</h1>
+          <input type="password" placeholder="Enter Secure Passcode" value={passcode} onChange={e => setPasscode(e.target.value)} />
+          <button type="submit">Authenticate</button>
         </form>
       </div>
     );
   }
 
   return (
-    <div className="dashboard-container">
-      <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
+    <div className="dashboard-container" style={{background:'#f1f5f9'}}>
+      <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`} style={{background:'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)'}}>
         <div className="brand">PRO EMAILER</div>
         <nav>
           <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => switchTab('dashboard')}><DashIcon /> Dashboard</div>
           <div className={`nav-item ${activeTab === 'campaign' ? 'active' : ''}`} onClick={() => switchTab('campaign')}><SendIcon /> New Campaign</div>
           <div className={`nav-item ${activeTab === 'template' ? 'active' : ''}`} onClick={() => switchTab('template')}><TemplateIcon /> Settings</div>
           <div className={`nav-item ${activeTab === 'custom_templates' ? 'active' : ''}`} onClick={() => switchTab('custom_templates')}><TemplateIcon /> Custom Templates</div>
-          <div className={`nav-item ${activeTab === 'variables' ? 'active' : ''}`} onClick={() => switchTab('variables')}><DashIcon /> Variable Manager</div>
+          <div className={`nav-item ${activeTab === 'variables' ? 'active' : ''}`} onClick={() => switchTab('variables')}><VarIcon /> Variable Manager</div>
           <div className={`nav-item ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => switchTab('logs')}><HistoryIcon /> Delivery Logs</div>
           <div className={`nav-item ${activeTab === 'archive' ? 'active' : ''}`} onClick={() => switchTab('archive')}><ArchiveIcon /> Archive</div>
         </nav>
@@ -195,72 +204,131 @@ function App() {
         <header className="top-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)}>☰</button>
-            <h2>{activeTab.toUpperCase()}</h2>
+            <h2 style={{textTransform:'uppercase', letterSpacing:'1px', color:'#0f172a'}}>{activeTab.replace('_', ' ')}</h2>
           </div>
-          <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="btn-icon btn-stop">Logout</button>
+          <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="btn-icon btn-stop" style={{borderRadius:'50px', padding:'8px 20px'}}>Logout</button>
         </header>
 
         <section className="content-area">
           {activeTab === 'dashboard' && (
             <>
               <div className="stats-grid">
-                <div className="stat-card"><span className="stat-label">Total Leads</span><span className="stat-value">{recipients.length}</span></div>
-                <div className="stat-card"><span className="stat-label">Active</span><span className="stat-value" style={{ color: 'var(--primary)' }}>{getStatCount('pending') + getStatCount('Step 1 Sent') + getStatCount('Step 2 Sent')}</span></div>
-                <div className="stat-card"><span className="stat-label">Replied</span><span className="stat-value" style={{ color: 'var(--success)' }}>{getStatCount('replied')}</span></div>
-                <div className="stat-card"><span className="stat-label">Finished</span><span className="stat-value" style={{ color: 'var(--text-muted)' }}>{getStatCount('finished')}</span></div>
+                <div className="stat-card" style={{borderLeft:'4px solid #4f46e5'}}><span className="stat-label">Total Leads</span><span className="stat-value">{recipients.length}</span></div>
+                <div className="stat-card" style={{borderLeft:'4px solid #4f46e5'}}><span className="stat-label">Active Sequence</span><span className="stat-value" style={{ color: 'var(--primary)' }}>{getStatCount('pending') + getStatCount('Step 1 Sent') + getStatCount('Step 2 Sent')}</span></div>
+                <div className="stat-card" style={{borderLeft:'4px solid #10b981'}}><span className="stat-label">Replied</span><span className="stat-value" style={{ color: 'var(--success)' }}>{getStatCount('replied')}</span></div>
+                <div className="stat-card" style={{borderLeft:'4px solid #64748b'}}><span className="stat-label">Finished</span><span className="stat-value" style={{ color: 'var(--text-muted)' }}>{getStatCount('finished')}</span></div>
+              </div>
+              <div className="log-card">
+                 <div style={{padding:'20px', borderBottom:'1px solid #f1f5f9', fontWeight:'600'}}>Recent Activity</div>
+                 <table className="pro-table">
+                   <thead><tr><th>EMAIL</th><th>STATUS</th><th>TIME</th></tr></thead>
+                   <tbody>
+                     {recipients.slice(0, 5).map(r => (
+                       <tr key={r._id}><td>{r.email}</td><td><span className={`status-badge status-${r.status.toLowerCase().replace(/ /g, '-')}`}>{r.status}</span></td><td>{r.lastSentAt ? new Date(r.lastSentAt).toLocaleTimeString() : 'Pending'}</td></tr>
+                     ))}
+                   </tbody>
+                 </table>
               </div>
             </>
           )}
 
           {activeTab === 'variables' && (
-            <div className="config-card" style={{ maxWidth: '600px' }}>
+            <div className="config-card" style={{ maxWidth: '700px', margin:'auto' }}>
               <h3>Variable Manager 📊</h3>
-              <p>Add/Remove fields for manual entry.</p>
-              <div style={{ display: 'flex', gap: '10px', margin: '20px 0' }}>
-                <input type="text" id="newVar" placeholder="New variable (e.g. City)" style={{ flex: 1 }} />
-                <button className="launch-btn" style={{ width: 'auto' }} onClick={async () => {
+              <p style={{color:'var(--text-muted)', marginBottom:'20px'}}>Add or remove custom fields for your outreach forms.</p>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '25px' }}>
+                <input type="text" id="newVar" placeholder="New variable (e.g. Industry, City)" style={{ flex: 1, padding:'12px' }} />
+                <button className="launch-btn" style={{ width: 'auto', padding:'0 25px' }} onClick={async () => {
                   const val = document.getElementById('newVar').value;
                   if (!val) return;
                   await axios.post('/api/custom-fields', { name: val });
                   document.getElementById('newVar').value = '';
                   fetchCustomFields();
-                }}>Add</button>
+                }}>Add Field</button>
               </div>
-              {customFields.map(f => (
-                <div key={f._id} className="stat-card" style={{ flexDirection: 'row', justifyContent: 'space-between', padding: '10px', marginBottom: '10px' }}>
-                  <span>{f.name}</span>
-                  <button onClick={async () => { await axios.delete(`/api/custom-fields/${f._id}`); fetchCustomFields(); }} style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}>Delete</button>
-                </div>
-              ))}
+              <div className="field-list" style={{display:'flex', flexDirection:'column', gap:'10px'}}>
+                {customFields.map(f => (
+                  <div key={f._id} className="stat-card" style={{ flexDirection: 'row', justifyContent: 'space-between', padding: '15px', background:'#f8fafc' }}>
+                    <span style={{fontWeight:'600'}}>{f.name}</span>
+                    <button onClick={async () => { if(window.confirm('Delete field?')) { await axios.delete(`/api/custom-fields/${f._id}`); fetchCustomFields(); } }} style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight:'600' }}>Delete</button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
           {activeTab === 'campaign' && (
             <div className="campaign-grid">
               <div className="config-card">
-                <h3>Bulk Upload 🚀</h3>
-                <input type="file" onChange={handleFileChange} />
-                <button className="launch-btn" onClick={handleStartCampaign} disabled={sending}>{sending ? 'Starting...' : 'Start Bulk Sequence'}</button>
+                <h3>Bulk Outreach 🚀</h3>
+                <p style={{color:'var(--text-muted)', marginBottom:'15px'}}>Upload Excel/CSV to start automation.</p>
+                <div className="upload-box" onClick={() => document.getElementById('f-bulk').click()}>
+                  <p>{file ? `Attached: ${file.name}` : 'Click to Upload Excel/CSV'}</p>
+                  <input id="f-bulk" type="file" hidden onChange={handleFileChange} />
+                </div>
+                <button className="launch-btn" onClick={handleStartCampaign} disabled={sending}>{sending ? 'Processing...' : 'Launch Bulk Sequence'}</button>
               </div>
               <div className="config-card">
-                <h3>Quick Add Lead 📝</h3>
-                <div className="field"><label>Email</label><input type="email" id="man_em" placeholder="client@example.com" /></div>
+                <h3>Direct Lead Entry 📝</h3>
+                <p style={{color:'var(--text-muted)', marginBottom:'15px'}}>Manually add one lead to the active sequence.</p>
+                <div className="field"><label>Email Address</label><input type="email" id="man_em" placeholder="client@example.com" /></div>
                 {customFields.map(f => (
-                  <div className="field" key={f._id}><label>{f.name}</label><input type="text" className="dyn-field" data-name={f.name} placeholder={`Enter ${f.name}`} /></div>
+                  <div className="field" key={f._id}><label>{f.name}</label><input type="text" className="dyn-field" data-name={f.name} placeholder={`Enter ${f.name}...`} /></div>
                 ))}
-                <button className="launch-btn" onClick={async () => {
+                <button className="launch-btn" style={{background:'#0f172a'}} onClick={async () => {
                   const email = document.getElementById('man_em').value;
                   if (!email) return alert("Email required");
                   const data = {};
                   document.querySelectorAll('.dyn-field').forEach(el => data[el.getAttribute('data-name')] = el.value);
                   try {
                     await axios.post('/api/add-recipient', { email, subject, body1, body2, body3, emailUser, emailPass, data });
-                    alert("Added! 🚀");
+                    alert("Lead Added & Dispatching! 🚀");
                     document.getElementById('man_em').value = '';
                     document.querySelectorAll('.dyn-field').forEach(el => el.value = '');
                     fetchRecipients(); fetchStats();
-                  } catch (e) { alert("Error"); }
-                }}>Add to Sequence</button>
+                  } catch (e) { alert("Duplicate lead or Error"); }
+                }}>Dispatch Now</button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'template' && (
+            <div className="campaign-grid">
+              <div className="config-card full-width">
+                <h3>1. SMTP Configuration</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop:'15px' }}>
+                  <div className="field">
+                    <label>Gmail User</label>
+                    <input type="text" value={emailUser} onChange={e => setEmailUser(e.target.value)} placeholder="name@gmail.com" />
+                  </div>
+                  <div className="field">
+                    <label>App Password</label>
+                    <input type="password" value={emailPass} onChange={e => setEmailPass(e.target.value)} placeholder="xxxx xxxx xxxx xxxx" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="config-card full-width">
+                <h3>2. Sequence Design</h3>
+                <div className="field" style={{marginTop:'15px'}}>
+                  <label>Global Subject Line</label>
+                  <input type="text" value={subject} onChange={e => setSubject(e.target.value)} style={{fontWeight:'600'}} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px' }}>
+                  <div className="field">
+                    <label>Step 1 (Day 0)</label>
+                    <textarea value={body1} onChange={e => setBody1(e.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label>Step 2 (Day 3)</label>
+                    <textarea value={body2} onChange={e => setBody2(e.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label>Step 3 (Day 6)</label>
+                    <textarea value={body3} onChange={e => setBody3(e.target.value)} />
+                  </div>
+                </div>
+                <button className="launch-btn" onClick={handleSaveSettings}>Save Settings & Templates</button>
               </div>
             </div>
           )}
@@ -268,22 +336,25 @@ function App() {
           {activeTab === 'custom_templates' && (
             <div className="campaign-grid">
               <div className="config-card">
-                <h3>{editingTemplateId ? 'Edit ✏️' : 'New Template 📝'}</h3>
-                <input id="tplName" placeholder="Name" />
-                <input id="tplSub" placeholder="Subject" />
-                <textarea id="tplBody" placeholder="Body..."></textarea>
-                <button className="launch-btn" onClick={handleSaveCustomTemplate}>{editingTemplateId ? 'Update' : 'Save'}</button>
+                <h3>{editingTemplateId ? 'Edit Template ✏️' : 'Create Custom Template 📝'}</h3>
+                <div className="field"><label>Template Name</label><input id="tplName" placeholder="e.g. Website Offer" /></div>
+                <div className="field"><label>Subject</label><input id="tplSub" placeholder="Question about {{Business}}" /></div>
+                <div className="field"><label>Body</label><textarea id="tplBody" placeholder="Hi {{First Name}}, I saw your site..."></textarea></div>
+                <button className="launch-btn" onClick={handleSaveCustomTemplate}>{editingTemplateId ? 'Update Template' : 'Save Template'}</button>
               </div>
               <div className="log-card full-width">
-                {customTemplates.map(t => (
-                  <div key={t._id} className="stat-card" style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <div><b>{t.name}</b><br />{t.subject}</div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button className="btn-icon" onClick={() => { setEditingTemplateId(t._id); document.getElementById('tplName').value = t.name; document.getElementById('tplSub').value = t.subject; document.getElementById('tplBody').value = t.body; }}>Edit</button>
-                      <button className="btn-icon" style={{ borderColor: 'red' }} onClick={async () => { await axios.delete(`/api/email-templates/${t._id}`); fetchCustomTemplates(); }}>Del</button>
+                 <div style={{padding:'20px', borderBottom:'1px solid #f1f5f9', fontWeight:'600'}}>Saved Templates</div>
+                 <div style={{padding:'20px'}}>
+                  {customTemplates.map(t => (
+                    <div key={t._id} className="stat-card" style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: '15px', background:'#f8fafc' }}>
+                      <div><div style={{fontWeight:'700'}}>{t.name}</div><div style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>{t.subject}</div></div>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button className="btn-icon" onClick={() => { setEditingTemplateId(t._id); document.getElementById('tplName').value = t.name; document.getElementById('tplSub').value = t.subject; document.getElementById('tplBody').value = t.body; window.scrollTo(0,0); }}>Edit</button>
+                        <button className="btn-icon btn-stop" onClick={async () => { if(window.confirm('Delete?')) { await axios.delete(`/api/email-templates/${t._id}`); fetchCustomTemplates(); } }}>Del</button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -291,22 +362,24 @@ function App() {
           {activeTab === 'logs' && (
             <div className="log-card">
               <table className="pro-table">
-                <thead><tr><th>EMAIL</th><th>STEP</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
+                <thead><tr><th>RECIPIENT</th><th>STEP</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
                 <tbody>
                   {recipients.filter(r => r.status !== 'archived').map(r => (
                     <tr key={r._id}>
-                      <td onClick={() => setIntelLead(r)} style={{ cursor: 'pointer', color: 'blue' }}>{r.email}</td>
-                      <td>{r.step}</td>
-                      <td>{r.status}</td>
+                      <td onClick={() => setIntelLead(r)} style={{ cursor: 'pointer', color: 'var(--primary)', fontWeight:'600' }}>{r.email}</td>
+                      <td>{r.step > 3 ? 'Done' : `Step ${r.step}`}</td>
+                      <td><span className={`status-badge status-${r.status.toLowerCase().replace(/ /g, '-')}`}>{r.status}</span></td>
                       <td>
-                        <button className="btn-icon" onClick={() => setSelectedLeadForTpl(r._id)}>Send Custom</button>
-                        {selectedLeadForTpl === r._id && (
-                          <select onChange={(e) => handleSendCustomTemplate(r._id, e.target.value)}>
-                            <option value="">Select Template</option>
-                            {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
-                          </select>
-                        )}
-                        <button className="btn-icon" style={{ borderColor: 'red' }} onClick={async () => { await axios.delete(`/api/delete-recipient/${r._id}`); fetchRecipients(); }}>Del</button>
+                        <div className="action-btn-group">
+                          <button className="btn-icon" onClick={() => setSelectedLeadForTpl(r._id)}>Send Custom</button>
+                          {selectedLeadForTpl === r._id && (
+                            <select style={{padding:'5px', borderRadius:'5px'}} onChange={(e) => handleSendCustomTemplate(r._id, e.target.value)}>
+                              <option value="">Select...</option>
+                              {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                            </select>
+                          )}
+                          <button className="btn-icon btn-stop" onClick={async () => { if(window.confirm('Delete?')) { await axios.delete(`/api/delete-recipient/${r._id}`); fetchRecipients(); fetchStats(); } }}>Del</button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -318,13 +391,14 @@ function App() {
           {activeTab === 'archive' && (
             <div className="log-card">
               <table className="pro-table">
-                <thead><tr><th>EMAIL</th><th>ACTIONS</th></tr></thead>
+                <thead><tr><th>RECIPIENT</th><th>LAST ACTIVITY</th><th>ACTIONS</th></tr></thead>
                 <tbody>
                   {recipients.filter(r => r.status === 'archived').map(r => (
                     <tr key={r._id}>
-                      <td>{r.email}</td>
+                      <td onClick={() => setIntelLead(r)} style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>{r.email}</td>
+                      <td>{r.lastSentAt ? new Date(r.lastSentAt).toLocaleDateString() : 'Never'}</td>
                       <td>
-                        <button className="btn-icon" onClick={async () => { await axios.post(`/api/restart/${r._id}`); fetchRecipients(); }}>Restore</button>
+                        <button className="btn-icon btn-continue" onClick={async () => { await axios.post(`/api/restart/${r._id}`); fetchRecipients(); fetchStats(); }}>Restore</button>
                       </td>
                     </tr>
                   ))}
@@ -338,29 +412,38 @@ function App() {
       {/* INTELLIGENCE MODAL */}
       {intelLead && (
         <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header"><h3>Intel: {intelLead.email}</h3><button onClick={() => setIntelLead(null)}>×</button></div>
+          <div className="modal-content" style={{width:'600px'}}>
+            <div className="modal-header"><h3>Lead Intelligence 🕵️‍♂️</h3><button className="btn-close" onClick={() => setIntelLead(null)}>×</button></div>
             <div className="modal-body">
-              {intelLead.data && Object.keys(intelLead.data).map(k => <div key={k}><b>{k}:</b> {intelLead.data[k]}</div>)}
-              <hr />
-              <h4>History</h4>
-              {intelLead.history?.map((h, idx) => <div key={idx}>{new Date(h.sentAt).toLocaleString()} - {h.event}</div>)}
+              <p style={{fontSize:'0.8rem', color:'var(--text-muted)', marginBottom:'10px'}}>Email: <b>{intelLead.email}</b></p>
+              <div style={{background:'#f8fafc', padding:'15px', borderRadius:'10px', marginBottom:'20px'}}>
+                {intelLead.data && Object.keys(intelLead.data).map(k => <div key={k} style={{marginBottom:'5px'}}><b>{k}:</b> {intelLead.data[k]}</div>)}
+              </div>
+              <h4 style={{marginBottom:'10px'}}>Communication History</h4>
+              <div className="timeline">
+                {intelLead.history?.slice().reverse().map((h, idx) => (
+                  <div key={idx} className="timeline-item">
+                    <div className="timeline-date">{new Date(h.sentAt).toLocaleString()}</div>
+                    <div className="timeline-event">{h.event}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* VAR MODAL */}
+      {/* VARIABLE INPUT MODAL */}
       {isVarModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <div className="modal-header"><h3>Variables</h3><button onClick={() => setIsVarModalOpen(false)}>×</button></div>
+            <div className="modal-header"><h3>Input Missing Variables</h3><button className="btn-close" onClick={() => setIsVarModalOpen(false)}>×</button></div>
             <div className="modal-body">
               {Object.keys(modalData).map(k => (
-                <div className="field" key={k}><label>{k}</label><input value={modalData[k]} onChange={e => setModalData({ ...modalData, [k]: e.target.value })} /></div>
+                <div className="field" key={k}><label>{k}</label><input value={modalData[k]} onChange={e => setModalData({ ...modalData, [k]: e.target.value })} placeholder={`Enter ${k}...`} /></div>
               ))}
             </div>
-            <button className="launch-btn" onClick={confirmAndSendCustom}>Send 🚀</button>
+            <button className="launch-btn" style={{marginTop:'20px'}} onClick={confirmAndSendCustom}>Send Outreach Email 🚀</button>
           </div>
         </div>
       )}
