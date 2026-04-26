@@ -56,6 +56,13 @@ const emailTemplateSchema = new mongoose.Schema({
 });
 const EmailTemplate = mongoose.models.EmailTemplate || mongoose.model('EmailTemplate', emailTemplateSchema);
 
+// Custom Fields Schema
+const customFieldSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  createdAt: { type: Date, default: Date.now }
+});
+const CustomField = mongoose.models.CustomField || mongoose.model('CustomField', customFieldSchema);
+
 const upload = multer({ dest: 'uploads/' });
 
 // SPINTAX
@@ -279,6 +286,30 @@ app.put('/api/email-templates/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── CUSTOM VARIABLE ROUTES ─────────────────────────────────────────────
+app.get('/api/custom-fields', async (req, res) => {
+  try {
+    const fields = await CustomField.find().sort({ createdAt: 1 });
+    res.json(fields);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/custom-fields', async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: 'Name required' });
+    const f = await CustomField.create({ name });
+    res.json(f);
+  } catch (e) { res.status(500).json({ error: 'Field already exists or server error' }); }
+});
+
+app.delete('/api/custom-fields/:id', async (req, res) => {
+  try {
+    await CustomField.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Field deleted' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Send custom template to a specific lead
 app.post('/api/send-custom/:leadId/:templateId', async (req, res) => {
   try {
@@ -383,5 +414,10 @@ app.listen(5001, async () => {
     { status: { $nin: ['finished', 'archived'] } }, 
     { $set: { emailUser: 'muntazir.site@gmail.com', emailPass: 'bbad zuak ztni mnbr' } }
   );
-  console.log("Credentials Synced & Stuck Leads Reset! ✅");
+  // Ensure default fields exist
+  const defaults = ['First Name', 'Website'];
+  for (const name of defaults) {
+    try { await CustomField.create({ name }); } catch(e) {}
+  }
+  console.log("Credentials Synced & Default Variables Ready! ✅");
 });
