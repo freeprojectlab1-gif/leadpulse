@@ -93,10 +93,10 @@ const CustomField = mongoose.models.CustomField || mongoose.model('CustomField',
 
 const upload = multer({ dest: 'uploads/' });
 
-// SPINTAX
+// SPINTAX ENGINE (Support {Hi|Hello|Hey} format - MUST contain a pipe |)
 const applySpintax = (text) => {
   if (!text) return "";
-  return text.replace(/\{([^{}]*)\}/g, (match, choices) => {
+  return text.replace(/\{([^{}|]+\|[^{}]*)\}/g, (match, choices) => {
     const arr = choices.split('|');
     return arr[Math.floor(Math.random() * arr.length)];
   });
@@ -170,22 +170,33 @@ const sendEmail = async (recipientId) => {
     if (recipient.step === 2) rawBody = recipient.body2 || "Hi {{First Name}}, Follow up.";
     if (recipient.step === 3) rawBody = recipient.body3 || "Hi {{First Name}}, Final touch.";
 
-    // STEP 1: Replace placeholders FIRST (before spintax destroys double brackets)
+    // STEP 1: Replace placeholders (Support both {{var}} and {var})
     let pBody = rawBody;
+    let pSubject = recipient.subject || "Outreach";
+    
     if (recipient.data) {
       Object.keys(recipient.data).forEach(key => {
-        const placeholder = `{{${key}}}`;
-        const regex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-        pBody = pBody.replace(regex, recipient.data[key] || "");
+        const doubleTag = `{{${key}}}`;
+        const singleTag = `{${key}}`;
+        const val = recipient.data[key] || "";
+        
+        const dRegex = new RegExp(doubleTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        const sRegex = new RegExp(singleTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        
+        pBody = pBody.replace(dRegex, val).replace(sRegex, val);
+        pSubject = pSubject.replace(dRegex, val).replace(sRegex, val);
       });
     }
 
     // STEP 2: Apply Spintax AFTER placeholders are filled
     pBody = applySpintax(pBody);
-    let pSubject = applySpintax(recipient.subject || "Outreach");
+    pSubject = applySpintax(pSubject);
 
-    // VALIDATION: Check for missing variables
-    const remainingVars = [...pBody.matchAll(/\{\{([^}]*)\}\}/g), ...pSubject.matchAll(/\{\{([^}]*)\}\}/g)];
+    // VALIDATION: Check for missing variables (both formats)
+    const remainingVars = [
+      ...pBody.matchAll(/\{\{([^}]*)\}\}/g), ...pBody.matchAll(/\{([^}]*)\}/g),
+      ...pSubject.matchAll(/\{\{([^}]*)\}\}/g), ...pSubject.matchAll(/\{([^}]*)\}/g)
+    ];
     if (remainingVars.length > 0) {
       const missing = [...new Set(remainingVars.map(v => v[0]))].join(', ');
       throw new Error(`Missing template variables: ${missing}. Please add these columns to your data.`);
@@ -254,7 +265,7 @@ app.post('/api/add-recipient', async (req, res) => {
     await nr.save();
     // INSTANT DISPATCH only if not archived
     if (initialStatus !== 'archived') sendEmail(nr._id); 
-    res.json({ message: initialStatus === 'archived' ? "Lead Archived! ✅" : "Lead Added & Email Dispatched! 🚀" });
+    res.json({ message: initialStatus === 'archived' ? "Lead Archived! ✅" : "Lead Added & Email Dispatched! " });
   } catch(e) {
     res.status(400).json({ error: "Lead already exists in database! Target blocked for safety." });
   }
@@ -415,21 +426,30 @@ app.post('/api/send-custom/:leadId/:templateId', async (req, res) => {
     lead.data = mergedData;
     await lead.save();
 
-    // Replace placeholders in template
+    // Replace placeholders (Support both {{var}} and {var})
     let body = template.body;
     let subject = template.subject;
     
     Object.keys(mergedData).forEach(key => {
-      const ph = `{{${key}}}`;
-      const rx = new RegExp(ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-      body = body.replace(rx, mergedData[key] || '');
-      subject = subject.replace(rx, mergedData[key] || '');
+      const doubleTag = `{{${key}}}`;
+      const singleTag = `{${key}}`;
+      const val = mergedData[key] || "";
+      
+      const dRegex = new RegExp(doubleTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      const sRegex = new RegExp(singleTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      
+      body = body.replace(dRegex, val).replace(sRegex, val);
+      subject = subject.replace(dRegex, val).replace(sRegex, val);
     });
 
-    // VALIDATION: Check for missing variables
+    // VALIDATION: Check for missing variables (both formats)
     const finalBody = applySpintax(body);
     const finalSubject = applySpintax(subject);
-    const remainingVars = [...finalBody.matchAll(/\{\{([^}]*)\}\}/g), ...finalSubject.matchAll(/\{\{([^}]*)\}\}/g)];
+    const remainingVars = [
+      ...finalBody.matchAll(/\{\{([^}]*)\}\}/g), ...finalBody.matchAll(/\{([^}]*)\}/g),
+      ...finalSubject.matchAll(/\{\{([^}]*)\}\}/g), ...finalSubject.matchAll(/\{([^}]*)\}/g)
+    ];
+    
     if (remainingVars.length > 0) {
       const missing = [...new Set(remainingVars.map(v => v[0]))].join(', ');
       return res.status(400).json({ error: `Missing variables for this lead: ${missing}` });

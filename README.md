@@ -105,7 +105,7 @@ A professional 3-step automated email outreach platform built with the MERN stac
 - **Secure Access:** Passcode-protected admin portal.
 - **Automation:** Background cron jobs for staggered sending (Spam protection).
 
-## 🚀 Setup & Deployment
+##  Setup & Deployment
 1. **Env Setup:** Create a `.env` file in `backend/` with `MONGO_URI`.
 2. **Installation:**
    ```bash

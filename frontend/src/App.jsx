@@ -18,6 +18,10 @@ const InfoIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="non
 const CloseIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>;
 const MailIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>;
 const MenuIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>;
+const LockIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>;
+const DesignIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.5 1.5"></path></svg>;
+const AlertIcon = () => <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>;
+const CheckIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
 
 const StatusBadge = ({ status }) => {
   const s = status.toLowerCase();
@@ -32,7 +36,7 @@ const StatusBadge = ({ status }) => {
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [passcode, setPasscode] = useState('');
-  const [activeTab, setActiveTab] = useState(localStorage.getItem('activeTab') || 'dashboard'); 
+  const [activeTab, setActiveTab] = useState(localStorage.getItem('activeTab') || 'dashboard');
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const switchTab = (tab) => {
@@ -41,10 +45,10 @@ function App() {
   };
 
   const [file, setFile] = useState(null);
-  const [subject, setSubject] = useState(localStorage.getItem('saved_subject') || 'Question about {{Website}} - Software Engineer');
-  const [body1, setBody1] = useState(localStorage.getItem('saved_body1') || 'Hi {{First Name}},\n\nI was recently checking out {{Website}}.\n\nHonestly, it feels a bit outdated compared to modern standards \u2014 especially on mobile devices. The user experience could be much smoother.\n\nSince I specialize in full-stack redesigns, I\'d love to show you how I can make it look premium and improve its performance. \n\nWant to see a quick mock-up?\n\n\u2014 Muntazir\nSoftware Engineer | Website Developer');
-  const [body2, setBody2] = useState(localStorage.getItem('saved_body2') || 'Hey {{First Name}}, following up on my previous note. \n\nI see a lot of potential in {{Website}} to convert more visitors if we modernize the layout. \n\nDid you have a chance to think about that quick example I mentioned?\n\n— Muntazir\nSoftware Engineer | Website Developer');
-  const [body3, setBody3] = useState(localStorage.getItem('saved_body3') || 'Hi {{First Name}},\n\nI know you\'re busy, so I\'ll keep this short — last message from my side.\n\n{{Website}} has real potential, and I genuinely believe a modern redesign could bring you more leads and better conversions.\n\nIf the timing isn\'t right now, no worries at all. But if you ever decide to upgrade, I\'d love to be the one to build it for you.\n\nWishing you and {{Website}} the best!\n\n— Muntazir\nSoftware Engineer | Website Developer');
+  const [subject, setSubject] = useState(localStorage.getItem('saved_subject') || 'Growth Opportunity for {{Business}}');
+  const [body1, setBody1] = useState(localStorage.getItem('saved_body1') || 'Hi {{First Name}},\n\nI was checking out {{Business}} and noticed you don’t have a website yet.\n\nMany of your competitors already have one, which makes them look more professional and helps build trust with customers.\n\nI can create a clean, modern website for {{Business}} that helps you stand out and build that trust.\n\nWant me to show you a quick demo?\n\n— Muntazir\nSoftware Engineer | Website Developer');
+  const [body2, setBody2] = useState(localStorage.getItem('saved_body2') || 'Hi {{First Name}}, following up...\n\nWhile you sleep, people are searching for your services online. Without a website, {{Business}} is invisible to them.\n\nLet\'s get you online so you stop missing out on these opportunities.\n\nReady to grow?\n\n— Muntazir\nWebsite & Software Developer');
+  const [body3, setBody3] = useState(localStorage.getItem('saved_body3') || 'Hi {{First Name}},\n\nLast note from my side. I truly believe {{Business}} has massive potential, but it needs a digital home to thrive.\n\nIf you ever decide to take your business to the next level, I’m here to help.\n\nWishing you the very best!\n\n— Muntazir\nWebsite & Software Developer');
   const [emailUser, setEmailUser] = useState(localStorage.getItem('saved_user') || 'muntazir.site@gmail.com');
   const [emailPass, setEmailPass] = useState(localStorage.getItem('saved_pass') || 'bbad zuak ztni mnbr');
   const [stats, setStats] = useState([]);
@@ -53,7 +57,7 @@ function App() {
   const [sending, setSending] = useState(false);
   const [customTemplates, setCustomTemplates] = useState([]);
   const [newTpl, setNewTpl] = useState({ name: '', subject: '', body: '' });
-  const [selectedLeadForTpl, setSelectedLeadForTpl] = useState(null); 
+  const [selectedLeadForTpl, setSelectedLeadForTpl] = useState(null);
   const [isVarModalOpen, setIsVarModalOpen] = useState(false);
   const [modalLead, setModalLead] = useState(null);
   const [modalTpl, setModalTpl] = useState(null);
@@ -66,15 +70,16 @@ function App() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [notification, setNotification] = useState(null);
   const [dynamicValues, setDynamicValues] = useState({});
+  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', onConfirm: null });
 
   // HEART-TOUCHING TEMPLATES FOR NO-WEBSITE CLIENTS
   useEffect(() => {
     localStorage.removeItem('saved_body1');
     localStorage.removeItem('saved_body2');
     localStorage.removeItem('saved_body3');
-    setBody1('Hi {{First Name}},\n\nI was just looking at {{Business}} and realized you don\'t have a website yet. It’s such a great business, and it deserves to be seen by everyone online.\n\nI’d love to help you build something beautiful that you’ll be proud of. Would you be open to a quick chat?\n\n— Muntazir\nSoftware Engineer | Website Developer');
-    setBody2('Hey {{First Name}}, just a friendly follow-up. \n\nI genuinely want to see {{Business}} succeed. A simple, professional website can open so many doors for you and bring you more local customers.\n\nI\'m here if you want to make it happen together. What do you think?\n\n— Muntazir\nSoftware Engineer | Website Developer');
-    setBody3('Hi {{First Name}}, last note from me. \n\nI truly believe in the potential of {{Business}}. If you ever decide to take it online, I’d be honored to help you grow.\n\nWishing you nothing but success always!\n\n— Muntazir\nSoftware Engineer | Website Developer');
+    setBody1('Hi {{First Name}},\n\nI was checking out {{Business}} and noticed you don’t have a website yet.\n\nMany of your competitors already have one, which makes them look more professional and helps build trust with customers.\n\nI can create a clean, modern website for {{Business}} that helps you stand out and build that trust.\n\nWant me to show you a quick demo?\n\n— Muntazir\nSoftware Engineer | Website Developer');
+    setBody2('Hi {{First Name}}, following up...\n\nWhile you sleep, people are searching for your services online. Without a website, {{Business}} is invisible to them.\n\nLet\'s get you online so you stop missing out on these opportunities.\n\nReady to grow?\n\n— Muntazir\nWebsite & Software Developer');
+    setBody3('Hi {{First Name}},\n\nLast note from my side. I truly believe {{Business}} has massive potential, but it needs a digital home to thrive.\n\nIf you ever decide to take your business to the next level, I’m here to help.\n\nWishing you the very best!\n\n— Muntazir\nWebsite & Software Developer');
   }, []);
 
   useEffect(() => {
@@ -100,14 +105,39 @@ function App() {
     try {
       const res = await axios.get('/api/custom-fields');
       setCustomFields(res.data);
-    } catch (e) {}
+    } catch (e) { }
+  };
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = (items) => {
+    if (selectedIds.length === items.length) setSelectedIds([]);
+    else setSelectedIds(items.map(r => r._id));
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedIds.length === 0) return;
+    setConfirmModal({
+      open: true,
+      title: `Archive ${selectedIds.length} leads?`,
+      onConfirm: async () => {
+        try {
+          await axios.post('/api/bulk-archive', { ids: selectedIds });
+          showToast(`${selectedIds.length} leads archived!`, "success");
+          setSelectedIds([]);
+          fetchRecipients();
+        } catch (e) { showToast("Bulk archive failed", "error"); }
+      }
+    });
   };
 
   const fetchCustomTemplates = async () => {
     try {
       const res = await axios.get('/api/email-templates');
       setCustomTemplates(res.data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleSaveCustomTemplate = async () => {
@@ -115,29 +145,34 @@ function App() {
       const name = document.getElementById('tplName').value;
       const subject = document.getElementById('tplSub').value;
       const body = document.getElementById('tplBody').value;
-      if (!name || !subject || !body) return alert("Fill all fields!");
+      if (!name || !subject || !body) return showToast("Fill all fields!", "error");
 
       if (editingTemplateId) {
         await axios.put(`/api/email-templates/${editingTemplateId}`, { name, subject, body });
         setEditingTemplateId(null);
-        alert("Template Updated!");
+        showToast("Template Updated!", "success");
       } else {
         await axios.post('/api/email-templates', { name, subject, body });
-        alert("Template Created!");
+        showToast("Template Created!", "success");
       }
-      
+
       document.getElementById('tplName').value = '';
       document.getElementById('tplSub').value = '';
       document.getElementById('tplBody').value = '';
       fetchCustomTemplates();
-    } catch (e) { alert("Save failed"); }
+    } catch (e) { showToast("Save failed", "error"); }
   };
 
   const handleDeleteTemplate = async (id) => {
-    if (window.confirm("Delete this template?")) {
-      await axios.delete(`/api/email-templates/${id}`);
-      fetchCustomTemplates();
-    }
+    setConfirmModal({
+      open: true,
+      title: "Delete this template?",
+      onConfirm: async () => {
+        await axios.delete(`/api/email-templates/${id}`);
+        showToast("Template Deleted!", "success");
+        fetchCustomTemplates();
+      }
+    });
   };
 
   const handleSendCustomTemplate = async (leadId, templateId) => {
@@ -151,14 +186,14 @@ function App() {
 
     if (!lead || !template) return;
 
-    // Extract all {{vars}} from subject and body
+    // Extract all {{vars}} or {vars} from subject and body (Clean extraction to avoid duplicates)
     const combined = (template.subject || "") + " " + (template.body || "");
-    const matches = combined.matchAll(/\{\{([^}]*)\}\}/g);
-    const vars = [...new Set([...matches].map(m => m[1]))];
+    const matches = [...combined.matchAll(/\{+([^{}]+)\}+/g)];
+    const vars = [...new Set(matches.map(m => m[1].trim()))];
 
     if (vars.length > 0) {
       const initialData = {};
-      vars.forEach(v => { 
+      vars.forEach(v => {
         // SMART ALIASING
         let val = (lead.data && lead.data[v]) || "";
         if (!val && v === 'Business') val = lead.data?.['Business Name'] || lead.data?.['business'] || "";
@@ -171,11 +206,18 @@ function App() {
       setIsVarModalOpen(true);
       setSelectedLeadForTpl(null);
     } else {
-      try {
-        const res = await axios.post(`/api/send-custom/${leadId}/${templateId}`);
-        alert(res.data.message);
-        setSelectedLeadForTpl(null);
-      } catch (e) { alert(e.response?.data?.error || "Error"); }
+      setConfirmModal({
+        open: true,
+        title: `Send "${template.name}" to ${lead.email}?`,
+        onConfirm: async () => {
+          try {
+            const res = await axios.post(`/api/send-custom/${leadId}/${templateId}`);
+            showToast(res.data.message, "success");
+            setSelectedLeadForTpl(null);
+            fetchRecipients();
+          } catch (e) { showToast(e.response?.data?.error || "Error", "error"); }
+        }
+      });
     }
   };
 
@@ -184,28 +226,28 @@ function App() {
       // If it's a step pseudo-template, we might need a special route or just handle it as custom
       // For simplicity, handle it via send-custom if templateId is an actual ID, else we need logic.
       // But we can just use the existing send-custom for everything if we pass the body/subject.
-      
+
       // Let's assume server.js send-custom can take custom subject/body if needed, 
       // but for now we'll use the existing template-based one.
       // For steps, we'll create a temporary template or a specialized route.
-      
+
       const res = await axios.post(`/api/send-custom/${modalLead._id}/${modalTpl._id}`, { customData: modalData });
-      alert(res.data.message);
+      showToast(res.data.message, "success");
       setIsVarModalOpen(false);
       fetchRecipients();
-    } catch (e) { alert(e.response?.data?.error || "Error"); }
+    } catch (e) { showToast(e.response?.data?.error || "Error", "error"); }
   };
 
   // SMART RECOVERY
   useEffect(() => {
     if (isLoggedIn && !subject && (recipients?.length || 0) > 0) {
-       const first = recipients[0];
-       setSubject(first.subject || "");
-       setBody1(first.body1 || "");
-       setBody2(first.body2 || "");
-       setBody3(first.body3 || "");
-       setEmailUser(first.emailUser || "");
-       setEmailPass(first.emailPass || "");
+      const first = recipients[0];
+      setSubject(first.subject || "");
+      setBody1(first.body1 || "");
+      setBody2(first.body2 || "");
+      setBody3(first.body3 || "");
+      setEmailUser(first.emailUser || "");
+      setEmailPass(first.emailPass || "");
     }
   }, [recipients, isLoggedIn]);
 
@@ -225,21 +267,21 @@ function App() {
     localStorage.setItem('saved_body3', body3);
     localStorage.setItem('saved_user', emailUser);
     localStorage.setItem('saved_pass', emailPass);
-    alert("Templates Saved!");
+    showToast("Templates Saved!", "success");
   };
 
   const fetchStats = async () => {
     try {
       const res = await axios.get('/api/stats');
       setStats(res.data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const fetchRecipients = async () => {
     try {
       const res = await axios.get('/api/recipients');
       setRecipients(res.data);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleFileChange = (e) => {
@@ -248,7 +290,7 @@ function App() {
   };
 
   const handleStartCampaign = async () => {
-    if (!file || !emailUser || !emailPass) return alert("Please fill all details!");
+    if (!file || !emailUser || !emailPass) return showToast("Please fill all details!", "error");
     const formData = new FormData();
     formData.append('file', file);
     formData.append('subject', subject);
@@ -261,10 +303,11 @@ function App() {
     try {
       await axios.post('/api/start-campaign', formData);
       setStatus('Campaign launched!');
+      showToast("Campaign Started!", "success");
       fetchStats();
       switchTab('logs');
     } catch (err) {
-      alert('Error: ' + err.message);
+      showToast('Error: ' + err.message, "error");
     } finally {
       setSending(false);
     }
@@ -275,7 +318,7 @@ function App() {
       <div className="login-vibe">
         <form className="login-form" onSubmit={handleLogin}>
           <div className="brand">
-            <img src="/logo.png" alt="logo" style={{height: '35px', borderRadius: '8px'}} />
+            <img src="/logo.png" alt="logo" style={{ height: '35px', borderRadius: '8px' }} />
             PRO EMAILER
           </div>
           <h1>Admin Portal</h1>
@@ -292,7 +335,7 @@ function App() {
     <div className="dashboard-container">
       <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="brand">
-          <img src="/logo.png" alt="logo" style={{height: '35px', borderRadius: '8px'}} />
+          <img src="/logo.png" alt="logo" style={{ height: '35px', borderRadius: '8px' }} />
           PRO EMAILER
         </div>
         <nav>
@@ -324,13 +367,13 @@ function App() {
 
       <main className="main-content">
         <header className="top-bar">
-          <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)}><MenuIcon /></button>
             <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'variables' ? 'Variable Manager' : activeTab === 'logs' ? 'Delivery Logs' : 'Archive'}</h2>
           </div>
-          <div style={{display:'flex', gap: '1rem', alignItems:'center'}}>
-             <span style={{color: 'var(--success)', fontSize: '0.8rem', fontWeight:'600', display:'flex', alignItems:'center', gap:'6px'}}><SuccessIcon /> System Live</span>
-             <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="btn-icon btn-stop" style={{padding:'4px 10px'}}>Logout</button>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <span style={{ color: 'var(--success)', fontSize: '0.8rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}><SuccessIcon /> System Live</span>
+            <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="btn-icon btn-stop" style={{ padding: '4px 10px' }}>Logout</button>
           </div>
         </header>
 
@@ -339,32 +382,32 @@ function App() {
             <>
               <div className="stats-grid">
                 <div className="stat-card">
-                   <span className="stat-label">Total Leads</span>
-                   <span className="stat-value">{recipients.length}</span>
+                  <span className="stat-label">Total Leads</span>
+                  <span className="stat-value">{recipients.length}</span>
                 </div>
                 <div className="stat-card">
-                   <span className="stat-label">Active</span>
-                   <span className="stat-value" style={{color: 'var(--primary)'}}>{getStatCount('pending') + getStatCount('Step 1 Sent') + getStatCount('Step 2 Sent')}</span>
+                  <span className="stat-label">Active</span>
+                  <span className="stat-value" style={{ color: 'var(--primary)' }}>{getStatCount('pending') + getStatCount('Step 1 Sent') + getStatCount('Step 2 Sent')}</span>
                 </div>
                 <div className="stat-card">
-                   <span className="stat-label">Replied</span>
-                   <span className="stat-value" style={{color: 'var(--success)'}}>{getStatCount('replied')}</span>
+                  <span className="stat-label">Replied</span>
+                  <span className="stat-value" style={{ color: 'var(--success)' }}>{getStatCount('replied')}</span>
                 </div>
                 <div className="stat-card">
-                   <span className="stat-label">Finished</span>
-                   <span className="stat-value" style={{color: 'var(--text-muted)'}}>{getStatCount('finished')}</span>
+                  <span className="stat-label">Finished</span>
+                  <span className="stat-value" style={{ color: 'var(--text-muted)' }}>{getStatCount('finished')}</span>
                 </div>
-                <div className="stat-card" style={{borderLeft: '4px solid #ef4444'}}>
-                   <span className="stat-label" style={{color: '#ef4444'}}>Stopped</span>
-                   <span className="stat-value" style={{color: '#ef4444'}}>{getStatCount('stopped')}</span>
+                <div className="stat-card" style={{ borderLeft: '4px solid #ef4444' }}>
+                  <span className="stat-label" style={{ color: '#ef4444' }}>Stopped</span>
+                  <span className="stat-value" style={{ color: '#ef4444' }}>{getStatCount('stopped')}</span>
                 </div>
               </div>
 
-              <div className="log-card" style={{marginTop: '2rem'}}>
-                <div style={{padding: '1.5rem', borderBottom: '1px solid var(--border)', fontWeight: '700', fontSize: '1.1rem', display:'flex', alignItems:'center', gap:'10px'}}>
+              <div className="log-card" style={{ marginTop: '2rem' }}>
+                <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', fontWeight: '700', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <HistoryIcon /> Recent Activity
                 </div>
-                <div style={{overflowX: 'auto'}}>
+                <div style={{ overflowX: 'auto' }}>
                   <table className="pro-table">
                     <thead>
                       <tr>
@@ -377,15 +420,15 @@ function App() {
                     <tbody>
                       {recipients.slice(0, 10).map((r, i) => (
                         <tr key={i}>
-                          <td style={{fontWeight:'500'}}>{r.email}</td>
+                          <td style={{ fontWeight: '500' }}>{r.email}</td>
                           <td>{r.step > 3 ? 'Completed' : `Step ${r.step}`}</td>
                           <td><span className={`status-badge status-${r.status.replace(/ /g, '-').toLowerCase()}`}>{r.status}</span></td>
-                          <td style={{fontSize:'0.85rem', color:'var(--text-muted)'}}>{r.lastSentAt ? new Date(r.lastSentAt).toLocaleString() : 'Queued'}</td>
+                          <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{r.lastSentAt ? new Date(r.lastSentAt).toLocaleString() : 'Queued'}</td>
                         </tr>
                       ))}
                       {recipients.length === 0 && (
                         <tr>
-                          <td colSpan="4" style={{padding:'3rem', textAlign:'center', color:'var(--text-muted)'}}>No recent activity found. Launch a campaign to see results!</td>
+                          <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>No recent activity found. Launch a campaign to see results!</td>
                         </tr>
                       )}
                     </tbody>
@@ -397,192 +440,204 @@ function App() {
 
           {activeTab === 'template' && (
             <div className="campaign-grid">
-               <div className="config-card full-width">
-                  <h3>1. SMTP Configuration</h3>
-                  <div style={{display:'grid', gridTemplateColumns: '1fr 1fr', gap:'1rem'}}>
-                    <div className="field">
-                        <label>Gmail User</label>
-                        <input type="text" value={emailUser} onChange={e => setEmailUser(e.target.value)} placeholder="yourname@gmail.com" />
-                    </div>
-                    <div className="field">
-                        <label>App Password</label>
-                        <input type="password" value={emailPass} onChange={e => setEmailPass(e.target.value)} placeholder="xxxx xxxx xxxx xxxx" />
-                    </div>
-                  </div>
-               </div>
-
-               <div className="config-card full-width">
-                  <h3>2. Automated 3-Step Sequence</h3>
+              <div className="config-card full-width">
+                <h3>1. SMTP Configuration</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="field">
-                    <label>Main Subject Line</label>
-                    <input type="text" value={subject} onChange={e => setSubject(e.target.value)} />
+                    <label>Gmail User</label>
+                    <input type="text" value={emailUser} onChange={e => setEmailUser(e.target.value)} placeholder="yourname@gmail.com" />
                   </div>
-                  <div style={{display:'grid', gridTemplateColumns: '1fr 1fr 1fr', gap:'1rem'}}>
-                    <div className="field">
-                        <label>Step 1 (3-day follow-up)</label>
-                        <textarea value={body1} onChange={e => setBody1(e.target.value)} />
-                    </div>
-                    <div className="field">
-                        <label>Step 2 (6-day follow-up)</label>
-                        <textarea value={body2} onChange={e => setBody2(e.target.value)} />
-                    </div>
-                    <div className="field">
-                        <label>Step 3 (Final touch)</label>
-                        <textarea value={body3} onChange={e => setBody3(e.target.value)} />
-                    </div>
+                  <div className="field">
+                    <label>App Password</label>
+                    <input type="password" value={emailPass} onChange={e => setEmailPass(e.target.value)} placeholder="xxxx xxxx xxxx xxxx" />
                   </div>
-                  <button className="launch-btn" onClick={handleSaveTemplates}>Save Templates</button>
-               </div>
+                </div>
+              </div>
+
+              <div className="config-card full-width">
+                <h3>2. Automated 3-Step Sequence</h3>
+                <div className="field">
+                  <label>Main Subject Line</label>
+                  <input type="text" value={subject} onChange={e => setSubject(e.target.value)} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div className="field">
+                    <label>Step 1 (3-day follow-up)</label>
+                    <textarea value={body1} onChange={e => setBody1(e.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label>Step 2 (6-day follow-up)</label>
+                    <textarea value={body2} onChange={e => setBody2(e.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label>Step 3 (Final touch)</label>
+                    <textarea value={body3} onChange={e => setBody3(e.target.value)} />
+                  </div>
+                </div>
+                <button className="launch-btn" onClick={handleSaveTemplates}>Save Templates</button>
+              </div>
             </div>
           )}
 
           {activeTab === 'custom_templates' && (
             <div className="campaign-grid">
-               <div className="config-card">
-                   <h3>{editingTemplateId ? 'Edit Your Template ✏️' : '1. Design New Template 📝'}</h3>
-                   <div className="field">
-                      <label>Template Name (Internal Reference)</label>
-                      <input id="tplName" placeholder="e.g. AC Repair Cold Pitch" />
-                   </div>
-                   <div className="field">
-                      <label>Email Subject</label>
-                      <input id="tplSub" placeholder="e.g. Improving {{Business}} Online" />
-                   </div>
-                   <div className="field">
-                      <label>Professional Body Content</label>
-                      <textarea id="tplBody" placeholder="Hi {{First Name}}, I saw {{Business}}..."></textarea>
-                   </div>
-                   <div style={{display:'flex', gap:'10px'}}>
-                      <button className="launch-btn" onClick={handleSaveCustomTemplate}>
-                        {editingTemplateId ? '💾 Update Changes' : '🚀 Save New Template'}
-                      </button>
-                      {editingTemplateId && (
-                        <button className="launch-btn" style={{background: 'var(--text-muted)'}} onClick={() => {
-                          setEditingTemplateId(null);
-                          document.getElementById('tplName').value = '';
-                          document.getElementById('tplSub').value = '';
-                          document.getElementById('tplBody').value = '';
-                        }}>Cancel Edit</button>
-                      )}
-                   </div>
+              <div className="config-card">
+                <h3>{editingTemplateId ? <><EditIcon /> Edit Your Template</> : <><DesignIcon /> 1. Design New Template</>}</h3>
+                <div className="field">
+                  <label>Template Name (Internal Reference)</label>
+                  <input id="tplName" placeholder="e.g. AC Repair Cold Pitch" />
                 </div>
+                <div className="field">
+                  <label>Email Subject</label>
+                  <input id="tplSub" placeholder="e.g. Improving {{Business}} Online" />
+                </div>
+                <div className="field">
+                  <label>Professional Body Content</label>
+                  <textarea id="tplBody" placeholder="Hi {{First Name}}, I saw {{Business}}..."></textarea>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button className="launch-btn" onClick={handleSaveCustomTemplate} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+                    {editingTemplateId ? <><SaveIcon /> Update Changes</> : <><RocketIcon /> Save New Template</>}
+                  </button>
+                  {editingTemplateId && (
+                    <button className="launch-btn" style={{ background: 'var(--text-muted)' }} onClick={() => {
+                      setEditingTemplateId(null);
+                      document.getElementById('tplName').value = '';
+                      document.getElementById('tplSub').value = '';
+                      document.getElementById('tplBody').value = '';
+                    }}>Cancel Edit</button>
+                  )}
+                </div>
+              </div>
 
-               <div className="log-card full-width" style={{marginTop:'2rem'}}>
-                  <div style={{padding: '1rem', borderBottom: '1px solid var(--border)', fontWeight: '600'}}>Saved Custom Templates</div>
-                  <div className="template-list" style={{padding:'1rem'}}>
-                    {customTemplates.length === 0 ? <p style={{color:'var(--text-muted)'}}>No custom templates yet.</p> : (
-                      customTemplates.map(t => (
-                        <div key={t._id} className="stat-card" style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem', border: '1px solid var(--border)'}}>
-                           <div>
-                             <div style={{fontWeight:'600'}}>{t.name}</div>
-                             <div style={{fontSize:'0.75rem', color:'var(--text-muted)'}}>{t.subject}</div>
-                           </div>
-                           <div style={{display:'flex', gap:'5px'}}>
-                                <button className="btn-icon btn-restart" onClick={() => {
-                                   setEditingTemplateId(t._id);
-                                   document.getElementById('tplName').value = t.name;
-                                   document.getElementById('tplSub').value = t.subject;
-                                   document.getElementById('tplBody').value = t.body;
-                                   window.scrollTo({ top: 0, behavior: 'smooth' });
-                                }}>Edit</button>
-                                <button className="btn-icon btn-stop" onClick={async () => { if(window.confirm('Delete template?')) { await axios.delete(`/api/email-templates/${t._id}`); fetchCustomTemplates(); } }}>Delete</button>
-                            </div>
+              <div className="log-card full-width" style={{ marginTop: '2rem' }}>
+                <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', fontWeight: '600' }}>Saved Custom Templates</div>
+                <div className="template-list" style={{ padding: '1rem' }}>
+                  {customTemplates.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>No custom templates yet.</p> : (
+                    customTemplates.map(t => (
+                      <div key={t._id} className="stat-card" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', border: '1px solid var(--border)' }}>
+                        <div>
+                          <div style={{ fontWeight: '600' }}>{t.name}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.subject}</div>
                         </div>
-                      ))
-                    )}
-                  </div>
-               </div>
+                        <div style={{ display: 'flex', gap: '5px' }}>
+                          <button className="btn-icon btn-restart" onClick={() => {
+                            setEditingTemplateId(t._id);
+                            document.getElementById('tplName').value = t.name;
+                            document.getElementById('tplSub').value = t.subject;
+                            document.getElementById('tplBody').value = t.body;
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}>Edit</button>
+                          <button className="btn-icon btn-stop" onClick={() => {
+                            setConfirmModal({
+                              open: true,
+                              title: `Delete template "${t.name}"?`,
+                              onConfirm: async () => {
+                                await axios.delete(`/api/email-templates/${t._id}`);
+                                showToast("Template Deleted!", "success");
+                                fetchCustomTemplates();
+                              }
+                            });
+                          }}>Delete</button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
           {activeTab === 'campaign' && (
             <div className="campaign-grid">
-               <div className="config-card">
-                  <h3>1. Bulk Outreach (Excel)</h3>
-                  <p style={{marginBottom: '1rem', color: 'var(--text-muted)'}}>Upload your Excel list to start many sequences at once.</p>
-                  <div className="upload-box" onClick={() => document.getElementById('f').click()}>
-                    <p>{file ? `File Attached: ${file.name}` : 'Click to Upload Excel/CSV'}</p>
-                    <input id="f" type="file" hidden onChange={handleFileChange} />
-                  </div>
-                  <button className="launch-btn" onClick={handleStartCampaign} disabled={sending}>
-                    {sending ? 'Starting...' : 'Start Bulk Sequence'}
-                  </button>
-               </div>
-
-               <div className="config-card">
-                   <h3>2. Quick Add Single Lead</h3>
-                   <p style={{marginBottom: '1rem', color: 'var(--text-muted)'}}>Add one direct lead manually to your active sequence.</p>
-                   
-                   <div className="field">
-                     <label>Lead's Email</label>
-                     <input type="email" id="manual_email" placeholder="client@example.com" />
-                   </div>
-
-                   {customFields.filter(f => f.active).map(f => (
-                     <div className="field" key={f._id}>
-                        <label>{f.name}</label>
-                        <input 
-                          type="text" 
-                          placeholder={`Enter ${f.name}...`} 
-                          onChange={(e) => setDynamicValues(prev => ({...prev, [f.name]: e.target.value}))}
-                        />
-                     </div>
-                   ))}
-
-                   <p style={{fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.5rem'}}>
-                     <b>Expert Tip:</b> Use Spintax like <code>{'{Hi|Hello|Hey}'}</code> in your templates to avoid spam.
-                   </p>
-
-                   <div style={{display:'flex', gap:'10px'}}>
-                     <button 
-                       className="launch-btn" 
-                       style={{background: 'var(--bg-dark)'}} 
-                       onClick={async (e) => {
-                         const btn = e.currentTarget;
-                         const em = document.getElementById('manual_email')?.value;
-                         if(!em) return showToast("Email is required", "error");
-                         if(btn.disabled) return;
-                         btn.disabled = true; btn.innerText = "...";
-                         try {
-                           await axios.post('/api/add-recipient', { 
-                             email: em, subject, body1, body2, body3, emailUser, emailPass, 
-                             data: dynamicValues 
-                           });
-                           showToast("Lead Added & Dispatched! 🚀", "success");
-                           document.getElementById('manual_email').value='';
-                           setDynamicValues({});
-                           fetchStats(); fetchRecipients();
-                           setTimeout(() => { btn.disabled = false; btn.innerText = "Add to Sequence"; }, 1500);
-                         } catch(err) { showToast(err.response?.data?.error || "Error", "error"); btn.disabled = false; btn.innerText = "Add to Sequence"; }
-                     }}>
-                       Add to Sequence
-                     </button>
-                     <button 
-                       className="launch-btn" 
-                       style={{background: 'var(--text-muted)'}} 
-                       onClick={async (e) => {
-                         const btn = e.currentTarget;
-                         const em = document.getElementById('manual_email')?.value;
-                         if(!em) return showToast("Email is required", "error");
-                         if(btn.disabled) return;
-                         btn.disabled = true; btn.innerText = "...";
-                         try {
-                           await axios.post('/api/add-recipient', { 
-                             email: em, subject, body1, body2, body3, emailUser, emailPass, 
-                             data: dynamicValues, 
-                             status: 'archived' 
-                           });
-                           showToast("Lead Archived! ✅", "success");
-                           document.getElementById('manual_email').value='';
-                           setDynamicValues({});
-                           fetchStats(); fetchRecipients();
-                           setTimeout(() => { btn.disabled = false; btn.innerText = "Add to Archive"; }, 1500);
-                         } catch(err) { showToast(err.response?.data?.error || "Error", "error"); btn.disabled = false; btn.innerText = "Add to Archive"; }
-                     }}>
-                       Add to Archive
-                     </button>
-                   </div>
+              <div className="config-card">
+                <h3>1. Bulk Outreach (Excel)</h3>
+                <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>Upload your Excel list to start many sequences at once.</p>
+                <div className="upload-box" onClick={() => document.getElementById('f').click()}>
+                  <p>{file ? `File Attached: ${file.name}` : 'Click to Upload Excel/CSV'}</p>
+                  <input id="f" type="file" hidden onChange={handleFileChange} />
                 </div>
+                <button className="launch-btn" onClick={handleStartCampaign} disabled={sending}>
+                  {sending ? 'Starting...' : 'Start Bulk Sequence'}
+                </button>
+              </div>
+
+              <div className="config-card">
+                <h3>2. Quick Add Single Lead</h3>
+                <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>Add one direct lead manually to your active sequence.</p>
+
+                <div className="field">
+                  <label>Lead's Email</label>
+                  <input type="email" id="manual_email" placeholder="client@example.com" />
+                </div>
+
+                {customFields.filter(f => f.active).map(f => (
+                  <div className="field" key={f._id}>
+                    <label>{f.name}</label>
+                    <input
+                      type="text"
+                      placeholder={`Enter ${f.name}...`}
+                      onChange={(e) => setDynamicValues(prev => ({ ...prev, [f.name]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                  <b>Expert Tip:</b> Use Spintax like <code>{'{Hi|Hello|Hey}'}</code> in your templates to avoid spam.
+                </p>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    className="launch-btn"
+                    style={{ background: 'var(--bg-dark)' }}
+                    onClick={async (e) => {
+                      const btn = e.currentTarget;
+                      const em = document.getElementById('manual_email')?.value;
+                      if (!em) return showToast("Email is required", "error");
+                      if (btn.disabled) return;
+                      btn.disabled = true; btn.innerText = "...";
+                      try {
+                        await axios.post('/api/add-recipient', {
+                          email: em, subject, body1, body2, body3, emailUser, emailPass,
+                          data: dynamicValues
+                        });
+                        showToast("Lead Added & Dispatched!", "success");
+                        if (document.getElementById('manual_email')) document.getElementById('manual_email').value = '';
+                        setDynamicValues({});
+                        fetchStats(); fetchRecipients();
+                        switchTab('logs');
+                        setTimeout(() => { btn.disabled = false; btn.innerText = "Add to Sequence"; }, 1500);
+                      } catch (err) { showToast(err.response?.data?.error || "Error", "error"); btn.disabled = false; btn.innerText = "Add to Sequence"; }
+                    }}>
+                    Add to Sequence
+                  </button>
+                  <button
+                    className="launch-btn"
+                    style={{ background: 'var(--text-muted)' }}
+                    onClick={async (e) => {
+                      const btn = e.currentTarget;
+                      const em = document.getElementById('manual_email')?.value;
+                      if (!em) return showToast("Email is required", "error");
+                      if (btn.disabled) return;
+                      btn.disabled = true; btn.innerText = "...";
+                      try {
+                        await axios.post('/api/add-recipient', {
+                          email: em, subject, body1, body2, body3, emailUser, emailPass,
+                          data: dynamicValues,
+                          status: 'archived'
+                        });
+                        showToast("Lead Archived!", "success");
+                        if (document.getElementById('manual_email')) document.getElementById('manual_email').value = '';
+                        setDynamicValues({});
+                        fetchStats(); fetchRecipients();
+                        switchTab('archive');
+                        setTimeout(() => { btn.disabled = false; btn.innerText = "Add to Archive"; }, 1500);
+                      } catch (err) { showToast(err.response?.data?.error || "Error", "error"); btn.disabled = false; btn.innerText = "Add to Archive"; }
+                    }}>
+                    Add to Archive
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -592,41 +647,46 @@ function App() {
                 <div className="bulk-bar">
                   <div className="bulk-info"><InfoIcon /> {selectedIds.length} leads selected</div>
                   <div className="bulk-actions">
-                     <select 
-                       className="pro-select" 
-                       style={{background:'rgba(255,255,255,0.1)', color:'white', border:'1px solid rgba(255,255,255,0.2)'}}
-                       onChange={async (e) => {
-                         if(!e.target.value) return;
-                         if(window.confirm(`Send this template to ${selectedIds.length} leads?`)) {
+                    <select
+                      className="pro-select"
+                      style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
+                      onChange={async (e) => {
+                        if (!e.target.value) return;
+                        const tplId = e.target.value;
+                        setConfirmModal({
+                          open: true,
+                          title: `Send this template to ${selectedIds.length} leads?`,
+                          onConfirm: async () => {
                             try {
-                               await axios.post('/api/bulk-send', { ids: selectedIds, templateId: e.target.value });
-                               showToast("Bulk send finished!", "success");
-                               setSelectedIds([]);
-                               fetchRecipients();
-                            } catch(e) { showToast("Bulk send failed", "error"); }
-                         }
-                         e.target.value = "";
-                       }}
-                     >
-                        <option value="" style={{color:'var(--bg-dark)'}}>Bulk Send Template...</option>
-                        <optgroup label="Auto Sequence" style={{color:'var(--bg-dark)'}}>
-                          <option value="step1">Step 1 (Intro)</option>
-                          <option value="step2">Step 2 (Follow-up)</option>
-                          <option value="step3">Step 3 (Final)</option>
-                        </optgroup>
-                        <optgroup label="Custom Templates" style={{color:'var(--bg-dark)'}}>
-                          {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
-                        </optgroup>
-                     </select>
-                     <button className="bulk-btn" onClick={handleBulkArchive}><ArchiveIcon /> Bulk Archive</button>
-                     <button className="bulk-btn" style={{backgroundColor:'var(--danger)'}} onClick={() => setSelectedIds([])}>Cancel</button>
+                              await axios.post('/api/bulk-send', { ids: selectedIds, templateId: tplId });
+                              showToast("Bulk send finished!", "success");
+                              setSelectedIds([]);
+                              fetchRecipients();
+                            } catch (e) { showToast("Bulk send failed", "error"); }
+                          }
+                        });
+                        e.target.value = "";
+                      }}
+                    >
+                      <option value="" style={{ color: 'var(--bg-dark)' }}>Bulk Send Template...</option>
+                      <optgroup label="Auto Sequence" style={{ color: 'var(--bg-dark)' }}>
+                        <option value="step1">Step 1 (Intro)</option>
+                        <option value="step2">Step 2 (Follow-up)</option>
+                        <option value="step3">Step 3 (Final)</option>
+                      </optgroup>
+                      <optgroup label="Custom Templates" style={{ color: 'var(--bg-dark)' }}>
+                        {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                      </optgroup>
+                    </select>
+                    <button className="bulk-btn" onClick={handleBulkArchive}><ArchiveIcon /> Bulk Archive</button>
+                    <button className="bulk-btn" style={{ backgroundColor: 'var(--danger)' }} onClick={() => setSelectedIds([])}>Cancel</button>
                   </div>
                 </div>
               )}
               <table className="pro-table">
                 <thead>
                   <tr>
-                    <th style={{width:'40px'}}>
+                    <th style={{ width: '40px' }}>
                       <input type="checkbox" checked={selectedIds.length > 0 && selectedIds.length === recipients.filter(r => !r.isArchived).length} onChange={() => toggleSelectAll(recipients.filter(r => !r.isArchived))} />
                     </th>
                     <th>RECIPIENT</th>
@@ -640,99 +700,105 @@ function App() {
                   {recipients
                     .filter(r => !r.isArchived)
                     .sort((a, b) => {
-                       const priority = (s) => {
-                         if (s.includes('Step')) return 1;
-                         if (s === 'pending') return 2;
-                         if (s === 'replied') return 3;
-                         if (s === 'finished') return 4;
-                         if (s === 'stopped') return 5;
-                         return 6;
-                       };
-                       return priority(a.status) - priority(b.status);
+                      const priority = (s) => {
+                        if (s.includes('Step')) return 1;
+                        if (s === 'pending') return 2;
+                        if (s === 'replied') return 3;
+                        if (s === 'finished') return 4;
+                        if (s === 'stopped') return 5;
+                        return 6;
+                      };
+                      return priority(a.status) - priority(b.status);
                     })
                     .map((r, i) => (
-                    <tr key={i} className={selectedIds.includes(r._id) ? 'row-selected' : ''}>
-                      <td>
-                        <input type="checkbox" checked={selectedIds.includes(r._id)} onChange={() => toggleSelectOne(r._id)} />
-                      </td>
-                      <td style={{fontWeight:'500', color: 'var(--primary)', cursor:'pointer', textDecoration:'underline'}} onClick={() => setIntelLead(r)}>
-                        {r.email}
-                      </td>
-                      <td>{r.step > 3 ? 'Completed' : `Step ${r.step}`}</td>
-                      <td><StatusBadge status={r.status} /></td>
-                      <td>{r.lastSentAt ? new Date(r.lastSentAt).toLocaleString() : 'Queued'}</td>
-                      <td>
-                        <div className="action-btn-group">
-                          {r.status !== 'finished' && r.status !== 'replied' && r.status !== 'stopped' && r.status !== 'sending' && (
-                            <>
-                              <button className="btn-icon btn-restart" onClick={async () => { await axios.post(`/api/send-now/${r._id}`); fetchRecipients(); fetchStats(); }}>Send Next</button>
-                              <button className="btn-icon btn-stop" onClick={async () => { await axios.post(`/api/stop/${r._id}`); fetchRecipients(); fetchStats(); }}>Stop</button>
-                            </>
-                          )}
+                      <tr key={i} className={selectedIds.includes(r._id) ? 'row-selected' : ''}>
+                        <td>
+                          <input type="checkbox" checked={selectedIds.includes(r._id)} onChange={() => toggleSelectOne(r._id)} />
+                        </td>
+                        <td style={{ fontWeight: '500', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setIntelLead(r)}>
+                          {r.email}
+                        </td>
+                        <td>{r.step > 3 ? 'Completed' : `Step ${r.step}`}</td>
+                        <td><StatusBadge status={r.status} /></td>
+                        <td>{r.lastSentAt ? new Date(r.lastSentAt).toLocaleString() : 'Queued'}</td>
+                        <td>
+                          <div className="action-btn-group">
+                            {r.status !== 'finished' && r.status !== 'replied' && r.status !== 'stopped' && r.status !== 'sending' && (
+                              <>
+                                <button className="btn-icon btn-restart" onClick={async () => { await axios.post(`/api/send-now/${r._id}`); fetchRecipients(); fetchStats(); }}>Send Next</button>
+                                <button className="btn-icon btn-stop" onClick={async () => { await axios.post(`/api/stop/${r._id}`); fetchRecipients(); fetchStats(); }}>Stop</button>
+                              </>
+                            )}
 
-                          {r.status === 'stopped' && (
-                            <>
-                              <button className="btn-icon btn-continue" onClick={async () => { await axios.post(`/api/continue/${r._id}`); fetchRecipients(); fetchStats(); }}>Continue</button>
-                              <button className="btn-icon btn-restart" onClick={async () => { await axios.post(`/api/restart/${r._id}`); fetchRecipients(); fetchStats(); }}>Restart</button>
-                              <button className="btn-icon btn-continue" style={{borderColor: 'var(--text-muted)', color: 'var(--text-muted)'}} onClick={async () => { await axios.post(`/api/archive/${r._id}`); fetchRecipients(); fetchStats(); }}>Archive</button>
-                            </>
-                          )}
+                            {r.status === 'stopped' && (
+                              <>
+                                <button className="btn-icon btn-continue" onClick={async () => { await axios.post(`/api/continue/${r._id}`); fetchRecipients(); fetchStats(); }}>Continue</button>
+                                <button className="btn-icon btn-restart" onClick={async () => { await axios.post(`/api/restart/${r._id}`); fetchRecipients(); fetchStats(); }}>Restart</button>
+                                <button className="btn-icon btn-continue" style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)' }} onClick={async () => { await axios.post(`/api/archive/${r._id}`); fetchRecipients(); fetchStats(); }}>Archive</button>
+                              </>
+                            )}
 
-                          {selectedLeadForTpl === r._id ? (
-                             <select 
-                               className="pro-select" 
-                               style={{appearance:'none', background:'white', border:'1px solid var(--border)', borderRadius:'8px', padding:'4px 25px 4px 10px', fontSize:'0.8rem'}}
-                               onChange={(e) => {
-                                 if(e.target.value) handleSendCustomTemplate(r._id, e.target.value);
-                                 setSelectedLeadForTpl(null);
-                               }}
-                             >
-                               <option value="">Pick Template...</option>
-                               <optgroup label="Auto Sequence">
-                                 <option value="step1">Sequence: Step 1 (Intro)</option>
-                                 <option value="step2">Sequence: Step 2 (Follow-up)</option>
-                                 <option value="step3">Sequence: Step 3 (Final)</option>
-                               </optgroup>
-                               <optgroup label="Custom Templates">
-                                 {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
-                               </optgroup>
-                               <option value="">Cancel</option>
-                             </select>
-                          ) : (
-                             <button className="btn-icon btn-continue" onClick={() => setSelectedLeadForTpl(r._id)}>Send Custom</button>
-                          )}
+                            {selectedLeadForTpl === r._id ? (
+                              <select
+                                className="pro-select"
+                                style={{ appearance: 'none', background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px 25px 4px 10px', fontSize: '0.8rem' }}
+                                onChange={(e) => {
+                                  if (e.target.value) handleSendCustomTemplate(r._id, e.target.value);
+                                  setSelectedLeadForTpl(null);
+                                }}
+                              >
+                                <option value="">Pick Template...</option>
+                                <optgroup label="Auto Sequence">
+                                  <option value="step1">Sequence: Step 1 (Intro)</option>
+                                  <option value="step2">Sequence: Step 2 (Follow-up)</option>
+                                  <option value="step3">Sequence: Step 3 (Final)</option>
+                                </optgroup>
+                                <optgroup label="Custom Templates">
+                                  {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                                </optgroup>
+                                <option value="">Cancel</option>
+                              </select>
+                            ) : (
+                              <button className="btn-icon btn-continue" onClick={() => setSelectedLeadForTpl(r._id)}>Send Custom</button>
+                            )}
 
-                          {confirmDeleteId === r._id ? (
-                            <button className="btn-icon" style={{background:'#ef4444', color:'white', border:'none'}} onClick={async () => { try { await axios.delete(`/api/delete-recipient/${r._id}`); fetchRecipients(); fetchStats(); setConfirmDeleteId(null); } catch(e) { showToast("Deleted", "success"); } }}>Confirm Delete</button>
-                          ) : (
-                            <button className="btn-icon" style={{borderColor:'var(--danger)', color:'var(--danger)'}} onClick={() => setConfirmDeleteId(r._id)}>Delete</button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            <button className="btn-icon" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={() => {
+                              setConfirmModal({
+                                open: true,
+                                title: `Delete ${r.email} forever?`,
+                                onConfirm: async () => {
+                                  await axios.delete(`/api/delete-recipient/${r._id}`);
+                                  showToast("Lead Deleted!", "success");
+                                  fetchRecipients(); fetchStats();
+                                }
+                              });
+                            }}>Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
           )}
 
           {activeTab === 'variables' && (
-            <div className="campaign-grid" style={{gridTemplateColumns:'1fr'}}>
+            <div className="campaign-grid" style={{ gridTemplateColumns: '1fr' }}>
               <div className="config-card">
                 <h3>Variable Manager</h3>
-                <p style={{fontSize:'0.85rem', color:'var(--text-muted)', marginBottom:'1.5rem'}}>Add or toggle custom fields for your outreach forms.</p>
-                
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Add or toggle custom fields for your outreach forms.</p>
+
                 <div className="var-input-group">
-                  <input 
-                    placeholder="New variable (e.g. City)" 
+                  <input
+                    placeholder="New variable (e.g. City)"
                     value={newFieldName}
-                    onChange={e => setNewFieldName(e.target.value)} 
+                    onChange={e => setNewFieldName(e.target.value)}
                   />
-                  <button className="var-add-btn" onClick={async () => { 
-                    if(!newFieldName) return;
-                    await axios.post('/api/custom-fields', { name: newFieldName }); 
+                  <button className="var-add-btn" onClick={async () => {
+                    if (!newFieldName) return;
+                    await axios.post('/api/custom-fields', { name: newFieldName });
                     setNewFieldName('');
-                    fetchCustomFields(); 
+                    fetchCustomFields();
                     showToast("Field Added!", "success");
                   }}>Add Field</button>
                 </div>
@@ -740,22 +806,26 @@ function App() {
                 <div className="variable-list">
                   {customFields.map(f => (
                     <div key={f._id} className="variable-item">
-                       <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
-                          <input 
-                            type="checkbox" 
-                            className="pro-checkbox"
-                            checked={f.active} 
-                            onChange={async () => { await axios.put(`/api/custom-fields/${f._id}`, { active: !f.active }); fetchCustomFields(); showToast("Field Updated!", "success"); }} 
-                          />
-                          <span style={{fontWeight:'500', color: f.active ? 'var(--text)' : 'var(--text-muted)'}}>{f.name}</span>
-                       </div>
-                       <button className="btn-icon btn-stop" style={{padding:'4px 8px'}} onClick={async () => {
-                         if(window.confirm('Delete this variable?')) {
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <input
+                          type="checkbox"
+                          className="pro-checkbox"
+                          checked={f.active}
+                          onChange={async () => { await axios.put(`/api/custom-fields/${f._id}`, { active: !f.active }); fetchCustomFields(); showToast("Field Updated!", "success"); }}
+                        />
+                        <span style={{ fontWeight: '500', color: f.active ? 'var(--text)' : 'var(--text-muted)' }}>{f.name}</span>
+                      </div>
+                      <button className="btn-icon btn-stop" style={{ padding: '4px 8px' }} onClick={() => {
+                        setConfirmModal({
+                          open: true,
+                          title: `Delete variable "${f.name}"?`,
+                          onConfirm: async () => {
                             await axios.delete(`/api/custom-fields/${f._id}`);
                             fetchCustomFields();
-                            showToast("Field Deleted!", "error");
-                         }
-                       }}>Delete</button>
+                            showToast("Field Deleted!", "success");
+                          }
+                        });
+                      }}>Delete</button>
                     </div>
                   ))}
                 </div>
@@ -765,7 +835,7 @@ function App() {
 
           {activeTab === 'archive' && (
             <div className="log-card">
-              <div style={{padding: '1.5rem', background: '#f8fafc', fontSize: '0.8rem', color: 'var(--text-muted)'}}>Records moved here are hidden from Delivery Logs but kept in database.</div>
+              <div style={{ padding: '1.5rem', background: '#f8fafc', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Records moved here are hidden from Delivery Logs but kept in database.</div>
               <table className="pro-table">
                 <thead>
                   <tr>
@@ -778,104 +848,133 @@ function App() {
                   {recipients
                     .filter(r => r.isArchived)
                     .sort((a, b) => {
-                       const priority = (s) => {
-                         if (s.includes('Step')) return 1;
-                         if (s === 'pending') return 2;
-                         if (s === 'finished') return 3;
-                         if (s === 'stopped') return 4;
-                         return 5;
-                       };
-                       return priority(a.status) - priority(b.status);
+                      const priority = (s) => {
+                        if (s.includes('Step')) return 1;
+                        if (s === 'pending') return 2;
+                        if (s === 'finished') return 3;
+                        if (s === 'stopped') return 4;
+                        return 5;
+                      };
+                      return priority(a.status) - priority(b.status);
                     })
                     .map((r, i) => (
-                    <tr key={i}>
-                      <td style={{fontWeight:'500', color: 'var(--primary)', cursor:'pointer', textDecoration:'underline'}} onClick={() => setIntelLead(r)}>
-                        {r.email}
-                      </td>
-                      <td><StatusBadge status={r.status} /></td>
-                      <td>
-                        <div className="action-btn-group">
+                      <tr key={i}>
+                        <td style={{ fontWeight: '500', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setIntelLead(r)}>
+                          {r.email}
+                        </td>
+                        <td><StatusBadge status={r.status} /></td>
+                        <td>
+                          <div className="action-btn-group">
                             <button className="btn-icon btn-restart" onClick={async () => { await axios.post(`/api/restart/${r._id}`); fetchRecipients(); fetchStats(); }}>Restore & Restart</button>
-                            
+
                             {selectedLeadForTpl === r._id ? (
-                               <select 
-                                 className="pro-select" 
-                                 style={{appearance:'none', background:'white', border:'1px solid var(--border)', borderRadius:'8px', padding:'4px 25px 4px 10px', fontSize:'0.8rem'}}
-                                 onChange={(e) => {
-                                   if(e.target.value) handleSendCustomTemplate(r._id, e.target.value);
-                                   setSelectedLeadForTpl(null);
-                                 }}
-                               >
-                                 <option value="">Pick Template...</option>
-                                 <optgroup label="Auto Sequence">
-                                   <option value="step1">Sequence: Step 1 (Intro)</option>
-                                   <option value="step2">Sequence: Step 2 (Follow-up)</option>
-                                   <option value="step3">Sequence: Step 3 (Final)</option>
-                                 </optgroup>
-                                 <optgroup label="Custom Templates">
-                                   {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
-                                 </optgroup>
-                                 <option value="">Cancel</option>
-                               </select>
+                              <select
+                                className="pro-select"
+                                style={{ appearance: 'none', background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px 25px 4px 10px', fontSize: '0.8rem' }}
+                                onChange={(e) => {
+                                  if (e.target.value) handleSendCustomTemplate(r._id, e.target.value);
+                                  setSelectedLeadForTpl(null);
+                                }}
+                              >
+                                <option value="">Pick Template...</option>
+                                <optgroup label="Auto Sequence">
+                                  <option value="step1">Sequence: Step 1 (Intro)</option>
+                                  <option value="step2">Sequence: Step 2 (Follow-up)</option>
+                                  <option value="step3">Sequence: Step 3 (Final)</option>
+                                </optgroup>
+                                <optgroup label="Custom Templates">
+                                  {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                                </optgroup>
+                                <option value="">Cancel</option>
+                              </select>
                             ) : (
-                               <button className="btn-icon btn-continue" onClick={() => setSelectedLeadForTpl(r._id)}>Send Custom</button>
+                              <button className="btn-icon btn-continue" onClick={() => setSelectedLeadForTpl(r._id)}>Send Custom</button>
                             )}
 
-                            <button className="btn-icon" style={{borderColor: 'var(--danger)', color: 'var(--danger)'}} onClick={async () => { if(window.confirm('Delete forever?')) { await axios.delete(`/api/delete-recipient/${r._id}`); fetchRecipients(); fetchStats(); } }}>Delete</button>
-                         </div>
-                      </td>
-                    </tr>
-                  ))}
+                            <button className="btn-icon" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={() => {
+                              setConfirmModal({
+                                open: true,
+                                title: `Delete ${r.email} forever?`,
+                                onConfirm: async () => {
+                                  await axios.delete(`/api/delete-recipient/${r._id}`);
+                                  showToast("Lead Deleted!", "success");
+                                  fetchRecipients(); fetchStats();
+                                }
+                              });
+                            }}>Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
           )}
         </section>
       </main>
-      
-      {/* LEAD INTELLIGENCE MODAL */}
+
       {intelLead && (
         <div className="modal-overlay">
-           <div className="modal-content" style={{width: '650px'}}>
-              <div className="modal-header">
-                <h3>Lead Intelligence: {intelLead.email}</h3>
-                <button className="btn-close" onClick={() => setIntelLead(null)}><CloseIcon /></button>
-              </div>
-              <div className="modal-body">
-                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'2rem'}}>
-                   <div>
-                      <h4 style={{marginBottom:'1rem', fontSize:'0.9rem', color:'var(--bg-dark)'}}>Profile Information</h4>
-                      <div className="intel-info-box">
-                         <div className="intel-field"><strong>Campaign:</strong> {intelLead.campaignId}</div>
-                         <div className="intel-field"><strong>Status:</strong> {intelLead.status}</div>
-                         <div className="intel-field"><strong>Current Step:</strong> {intelLead.step}</div>
-                         <hr style={{margin:'1rem 0', borderColor:'#f1f5f9'}} />
-                         <p style={{fontSize:'0.75rem', fontWeight:'600', marginBottom:'0.5rem', color:'var(--text-muted)'}}>CUSTOM DATA</p>
-                         {intelLead.data ? Object.keys(intelLead.data).map(k => (
-                           <div key={k} className="intel-field"><strong>{k}:</strong> {intelLead.data[k]}</div>
-                         )) : <p>No data</p>}
-                      </div>
-                   </div>
-                   <div>
-                      <h4 style={{marginBottom:'1rem', fontSize:'0.9rem', color:'var(--bg-dark)'}}>Communication Timeline</h4>
-                      <div className="timeline">
-                         {intelLead.history && intelLead.history.length > 0 ? intelLead.history.slice().reverse().map((h, idx) => (
-                           <div key={idx} className="timeline-item">
-                              <div className="timeline-date">{new Date(h.sentAt).toLocaleString()}</div>
-                              <div className="timeline-event">{h.event}</div>
-                              <div className="timeline-subject">{h.subject}</div>
-                           </div>
-                         )) : <p style={{color:'var(--text-muted)', fontSize:'0.8rem'}}>No communication logs yet.</p>}
-                      </div>
-                   </div>
+          <div className="modal-content intel-modal">
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="intel-avatar">{intelLead.email[0].toUpperCase()}</div>
+                <div>
+                  <h3 style={{ margin: 0 }}>{intelLead.email}</h3>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Intelligence View Enabled</span>
                 </div>
               </div>
-              <div className="modal-footer" style={{marginTop:'2rem'}}>
-                 <button className="launch-btn" onClick={() => setIntelLead(null)}>Close Inteligience View</button>
+              <button className="btn-close" onClick={() => setIntelLead(null)}><CloseIcon /></button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                <div>
+                  <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--bg-dark)' }}>Profile Information</h4>
+                  <div className="intel-info-box">
+                    <div className="intel-field"><strong>Campaign:</strong> {intelLead.campaignId}</div>
+                    <div className="intel-field"><strong>Status:</strong> {intelLead.status}</div>
+                    <div className="intel-field"><strong>Current Step:</strong> {intelLead.step}</div>
+                    <hr style={{ margin: '1rem 0', borderColor: '#f1f5f9' }} />
+                    <p style={{ fontSize: '0.75rem', fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>CUSTOM DATA</p>
+                    {intelLead.data ? Object.keys(intelLead.data).map(k => (
+                      <div key={k} className="intel-field"><strong>{k}:</strong> {intelLead.data[k]}</div>
+                    )) : <p>No data</p>}
+                  </div>
+                </div>
+                <div>
+                  <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--bg-dark)' }}>Communication Timeline</h4>
+                  <div className="timeline">
+                    {intelLead.history && intelLead.history.length > 0 ? intelLead.history.slice().reverse().map((h, idx) => (
+                      <div key={idx} className="timeline-item">
+                        <div className="timeline-date">{new Date(h.sentAt).toLocaleString()}</div>
+                        <div className="timeline-event">{h.event}</div>
+                        <div className="timeline-subject">{h.subject}</div>
+                      </div>
+                    )) : <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No communication logs yet.</p>}
+                  </div>
+                </div>
               </div>
-           </div>
+            </div>
+            <div className="modal-footer" style={{ marginTop: '2rem' }}>
+              <button className="launch-btn" onClick={() => setIntelLead(null)}>Close Intelligence View</button>
+            </div>
+          </div>
         </div>
       )}
+
+      {confirmModal.open && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="log-card" style={{ maxWidth: '400px', width: '100%', padding: '2rem', textAlign: 'center', animation: 'slideIn 0.3s ease-out' }}>
+            <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}><AlertIcon /></div>
+            <h3 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>{confirmModal.title}</h3>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button className="launch-btn" style={{ padding: '10px 25px' }} onClick={() => { confirmModal.onConfirm(); setConfirmModal({ open: false }); }}>Yes, Proceed</button>
+              <button className="bulk-btn" style={{ backgroundColor: 'var(--danger)', padding: '10px 25px', color: 'white' }} onClick={() => setConfirmModal({ open: false })}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isVarModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -884,25 +983,25 @@ function App() {
               <button className="btn-close" onClick={() => setIsVarModalOpen(false)}><CloseIcon /></button>
             </div>
             <div className="modal-body">
-              <p style={{fontSize:'0.85rem', color:'var(--text-muted)', marginBottom:'1.5rem'}}>
-                Template: <b>{modalTpl?.name}</b> <br/>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                Template: <b>{modalTpl?.name}</b> <br />
                 Sending to: <b>{modalLead?.email}</b>
               </p>
               {Object.keys(modalData).map(key => (
                 <div className="field" key={key}>
                   <label>Value for <code>{`{{${key}}}`}</code></label>
-                  <input 
-                    type="text" 
-                    value={modalData[key]} 
-                    onChange={e => setModalData({...modalData, [key]: e.target.value})} 
+                  <input
+                    type="text"
+                    value={modalData[key]}
+                    onChange={e => setModalData({ ...modalData, [key]: e.target.value })}
                     placeholder={`Enter ${key}...`}
                   />
                 </div>
               ))}
             </div>
-            <div className="modal-footer" style={{marginTop:'1.5rem', display:'flex', gap:'1rem'}}>
-              <button className="launch-btn" style={{flex: 1, display:'flex', alignItems:'center', justifyContent:'center', gap:'10px'}} onClick={confirmAndSendCustom}>Confirm & Send Email <RocketIcon /></button>
-              <button className="launch-btn" style={{flex: 1, backgroundColor: 'var(--bg-dark)'}} onClick={() => setIsVarModalOpen(false)}>Cancel</button>
+            <div className="modal-footer" style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
+              <button className="launch-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }} onClick={confirmAndSendCustom}>Confirm & Send Email <RocketIcon /></button>
+              <button className="launch-btn" style={{ flex: 1, backgroundColor: 'var(--bg-dark)' }} onClick={() => setIsVarModalOpen(false)}>Cancel</button>
             </div>
           </div>
         </div>
