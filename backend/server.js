@@ -8,6 +8,7 @@ const cron = require('node-cron');
 const path = require('path');
 const { ImapFlow } = require('imapflow');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+const puppeteer = require('puppeteer');
 
 const app = express();
 app.use(cors());
@@ -90,6 +91,19 @@ const customFieldSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 const CustomField = mongoose.models.CustomField || mongoose.model('CustomField', customFieldSchema);
+
+// Scraped Leads Schema
+const scrapedLeadSchema = new mongoose.Schema({
+  name: String,
+  phone: String,
+  address: String,
+  mapsLink: { type: String, unique: true },
+  keyword: String,
+  city: String,
+  isContacted: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+});
+const ScrapedLead = mongoose.models.ScrapedLead || mongoose.model('ScrapedLead', scrapedLeadSchema);
 
 const upload = multer({ dest: 'uploads/' });
 
@@ -516,3 +530,137 @@ cron.schedule('*/10 * * * *', async () => {
   }
 });
 
+// --- LEAD SCRAPER API (STREAMING VERSION) ---
+app.get('/api/scrape-leads', async (req, res) => {
+  const { keyword, city } = req.query;
+  if (!keyword || !city) return res.status(400).json({ error: 'Keyword and City are required' });
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const sendData = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  let browser;
+  const processedLinks = new Set();
+
+  try {
+    browser = await puppeteer.launch({ headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    const page = await browser.newPage();
+    const workerPage = await browser.newPage(); // Dedicated tab for deep details
+    const query = `${keyword} in ${city}`;
+    await page.goto(`https://www.google.com/maps/search/${encodeURIComponent(query)}`);
+
+    await page.waitForSelector('div[role="feed"]', { timeout: 15000 }).catch(() => {});
+
+    let consecutiveNoResults = 0;
+    for (let loop = 0; loop < 15; loop++) {
+      // BETTER SCROLL: Scroll to the last element in the feed
+      await page.evaluate(async () => {
+        const feed = document.querySelector('div[role="feed"]');
+        if (feed) {
+          const lastChild = feed.lastElementChild;
+          if (lastChild) {
+            lastChild.scrollIntoView();
+          }
+          await new Promise(r => setTimeout(r, 2500));
+        }
+      });
+
+      const links = await page.evaluate(() => {
+        return Array.from(document.querySelectorAll('a[href*="https://www.google.com/maps/place/"]')).map(a => a.href);
+      });
+
+      const newLinks = [...new Set(links)].filter(link => !processedLinks.has(link));
+      
+      if (newLinks.length === 0) {
+        consecutiveNoResults++;
+        sendData({ type: 'status', message: `Iteration ${loop+1}: Scrolling for more... (${consecutiveNoResults}/3)` });
+        if (consecutiveNoResults >= 3) break; // Auto-stop if no new results
+        continue;
+      }
+
+      consecutiveNoResults = 0; // Reset counter if we found data
+      for (let link of newLinks) {
+        processedLinks.add(link);
+        try {
+          // SCRAPE USING WORKER PAGE (DOES NOT DISTURB MAIN FEED)
+          await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          await new Promise(r => setTimeout(r, 1200));
+
+          const details = await workerPage.evaluate(() => {
+            const name = document.querySelector('h1')?.innerText || 'Unknown';
+            const websiteBtn = document.querySelector('[data-item-id="authority"]');
+            if (websiteBtn) return null;
+
+            const phoneBtn = document.querySelector('[data-item-id^="phone:tel:"]');
+            let phone = phoneBtn ? phoneBtn.innerText || phoneBtn.getAttribute('aria-label') : 'N/A';
+            if (phone !== 'N/A') phone = phone.replace(/[^\d+\s-]/g, '').trim();
+
+            const addressBtn = document.querySelector('[data-item-id="address"]');
+            let address = addressBtn ? addressBtn.innerText || addressBtn.getAttribute('aria-label') : 'N/A';
+            if (address !== 'N/A') address = address.replace('Address: ', '').trim();
+
+            return { name, phone, address };
+          });
+
+          if (details) {
+            const leadData = { ...details, mapsLink: link, keyword, city };
+            try { await ScrapedLead.findOneAndUpdate({ mapsLink: link }, { $set: leadData }, { upsert: true }); } catch (dbErr) {}
+            sendData({ type: 'lead', data: leadData });
+          }
+        } catch (e) {
+          console.log("Error in worker page:", e.message);
+        }
+      }
+      sendData({ type: 'status', message: `Iteration ${loop+1} done. Found ${newLinks.length} new leads.` });
+    }
+    sendData({ type: 'done', message: 'Finished successfully.' });
+  } catch (error) {
+    sendData({ type: 'error', message: error.message });
+  } finally {
+    if (browser) await browser.close();
+    res.end();
+  }
+});
+
+// --- SAVED LEADS API ---
+app.get('/api/saved-leads', async (req, res) => {
+  try {
+    const leads = await ScrapedLead.find().sort({ createdAt: -1 });
+    res.json(leads);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/saved-leads/group', async (req, res) => {
+  try {
+    const { keyword, city } = req.query;
+    if (!keyword || !city) return res.status(400).json({ error: 'Keyword and City required' });
+    
+    await ScrapedLead.deleteMany({ 
+      keyword: keyword, 
+      city: city 
+    });
+    
+    res.json({ message: `All leads for ${keyword} in ${city} deleted!` });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/saved-leads/:id', async (req, res) => {
+  try {
+    await ScrapedLead.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Lead Deleted!' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/saved-leads/:id/contacted', async (req, res) => {
+  try {
+    const lead = await ScrapedLead.findById(req.params.id);
+    lead.isContacted = !lead.isContacted;
+    await lead.save();
+    res.json(lead);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});

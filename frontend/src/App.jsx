@@ -22,6 +22,8 @@ const LockIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="non
 const DesignIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.5 1.5"></path></svg>;
 const AlertIcon = () => <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>;
 const CheckIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>;
+const SearchIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
+const UsersIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
 
 const StatusBadge = ({ status }) => {
   const s = status.toLowerCase();
@@ -54,6 +56,8 @@ function App() {
   const [emailPass, setEmailPass] = useState(localStorage.getItem('saved_pass') || 'bbad zuak ztni mnbr');
   const [stats, setStats] = useState([]);
   const [recipients, setRecipients] = useState([]);
+  const [savedLeads, setSavedLeads] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const [status, setStatus] = useState('');
   const [sending, setSending] = useState(false);
   const [customTemplates, setCustomTemplates] = useState([]);
@@ -73,6 +77,12 @@ function App() {
   const [dynamicValues, setDynamicValues] = useState({});
   const [confirmModal, setConfirmModal] = useState({ open: false, title: '', onConfirm: null });
   const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('pro_theme') || 'theme-dark');
+
+  const [scrapeKeyword, setScrapeKeyword] = useState('');
+  const [scrapeCity, setScrapeCity] = useState('');
+  const [scrapedLeads, setScrapedLeads] = useState([]);
+  const [isScraping, setIsScraping] = useState(false);
+  const [isLoadingSavedLeads, setIsLoadingSavedLeads] = useState(false);
 
   useEffect(() => {
     document.body.className = currentTheme;
@@ -168,6 +178,58 @@ function App() {
       document.getElementById('tplBody').value = '';
       fetchCustomTemplates();
     } catch (e) { showToast("Save failed", "error"); }
+  };
+
+  const handleScrape = (e) => {
+    e.preventDefault();
+    setIsScraping(true);
+    setScrapedLeads([]);
+    showToast("Live Scraping Started! Data will stream in every 10-15s...", "success");
+
+    const url = `/api/scrape-leads?keyword=${encodeURIComponent(scrapeKeyword)}&city=${encodeURIComponent(scrapeCity)}`;
+    const eventSource = new EventSource(url);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const parsed = JSON.parse(event.data);
+        if (parsed.type === 'lead') {
+          console.log("🔥 New Lead Received:", parsed.data.name);
+          setScrapedLeads(prev => [...prev, parsed.data]);
+        } else if (parsed.type === 'status') {
+          console.log("Scraper Status:", parsed.message);
+        } else if (parsed.type === 'done') {
+          showToast("Bulk Scraping Finished!", "success");
+          eventSource.close();
+          setIsScraping(false);
+        } else if (parsed.type === 'error') {
+          showToast("Error: " + parsed.message, "error");
+          eventSource.close();
+          setIsScraping(false);
+        }
+      } catch (err) {
+        console.error("Failed to parse SSE data:", err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error("EventSource Error:", err);
+      eventSource.close();
+      setIsScraping(false);
+    };
+  };
+
+  const handleDeleteGroup = async (keyword, city) => {
+    setConfirmModal({
+      open: true,
+      title: `Delete ALL leads for "${keyword}" in "${city}"?`,
+      onConfirm: async () => {
+        try {
+          await axios.delete(`/api/saved-leads/group?keyword=${encodeURIComponent(keyword)}&city=${encodeURIComponent(city)}`);
+          showToast("Folder and all leads deleted!", "success");
+          fetchSavedLeads();
+        } catch (e) { showToast("Delete failed", "error"); }
+      }
+    });
   };
 
   const handleDeleteTemplate = async (id) => {
@@ -280,15 +342,25 @@ function App() {
   const fetchStats = async () => {
     try {
       const res = await axios.get('/api/stats');
-      setStats(res.data);
+      if (Array.isArray(res.data)) setStats(res.data);
     } catch (e) { }
   };
 
   const fetchRecipients = async () => {
     try {
       const res = await axios.get('/api/recipients');
-      setRecipients(res.data);
+      if (Array.isArray(res.data)) setRecipients(res.data);
     } catch (e) { }
+  };
+
+  const fetchSavedLeads = async () => {
+    setIsLoadingSavedLeads(true);
+    try {
+      const res = await axios.get('/api/saved-leads');
+      if (Array.isArray(res.data)) setSavedLeads(res.data);
+    } catch (e) { } finally {
+      setTimeout(() => setIsLoadingSavedLeads(false), 800); // Small delay for smooth transition
+    }
   };
 
   const handleFileChange = (e) => {
@@ -361,7 +433,7 @@ function App() {
     );
   }
 
-  const getStatCount = (id) => stats.find(s => s._id === id)?.count || 0;
+  const getStatCount = (id) => (Array.isArray(stats) ? stats : []).find(s => s._id === id)?.count || 0;
 
   return (
     <div className="dashboard-container">
@@ -392,6 +464,12 @@ function App() {
           <div className={`nav-item ${activeTab === 'archive' ? 'active' : ''}`} onClick={() => { switchTab('archive'); setIsMobileMenuOpen(false); }}>
             <ArchiveIcon /> Archive
           </div>
+          <div className={`nav-item ${activeTab === 'scraper' ? 'active' : ''}`} onClick={() => { switchTab('scraper'); setIsMobileMenuOpen(false); }}>
+            <SearchIcon /> Lead Scraper
+          </div>
+          <div className={`nav-item ${activeTab === 'saved_leads' ? 'active' : ''}`} onClick={() => { switchTab('saved_leads'); setIsMobileMenuOpen(false); fetchSavedLeads(); }}>
+            <UsersIcon /> Lead Automation CRM
+          </div>
         </nav>
       </aside>
 
@@ -401,7 +479,7 @@ function App() {
         <header className="top-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)}><MenuIcon /></button>
-            <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'variables' ? 'Variable Manager' : activeTab === 'logs' ? 'Delivery Logs' : 'Archive'}</h2>
+            <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'variables' ? 'Variable Manager' : activeTab === 'logs' ? 'Delivery Logs' : activeTab === 'scraper' ? 'Lead Scraper' : activeTab === 'saved_leads' ? 'Lead Automation CRM' : 'Archive'}</h2>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <select 
@@ -481,6 +559,58 @@ function App() {
                 </div>
               </div>
             </>
+          )}
+
+          {activeTab === 'scraper' && (
+            <div className="content-area">
+              <div className="config-card">
+                <h3>Extract Local Businesses (No Website)</h3>
+                <p style={{color:'var(--text-muted)', marginBottom:'2rem', fontSize:'0.9rem'}}>Automatically searches Google Maps using browser automation and extracts businesses that do NOT have a digital presence.</p>
+                <form onSubmit={handleScrape} style={{display:'flex', gap:'1rem', alignItems:'flex-end', flexWrap: 'wrap'}}>
+                  <div className="field" style={{flex:1, minWidth: '200px'}}>
+                    <label>Business Type / Keyword</label>
+                    <input type="text" placeholder="e.g. Interior Designer, Furniture, Clinic..." required value={scrapeKeyword} onChange={e => setScrapeKeyword(e.target.value)} />
+                  </div>
+                  <div className="field" style={{flex:1, minWidth: '200px'}}>
+                    <label>Target Location (City, State, Zip, or Country)</label>
+                    <input type="text" placeholder="e.g. Ahmedabad, Gujarat OR 380015 (Typos auto-corrected)" required value={scrapeCity} onChange={e => setScrapeCity(e.target.value)} />
+                  </div>
+                  <div className="field" style={{flex: 0, minWidth: '200px'}}>
+                    <label>&nbsp;</label>
+                    <button type="submit" className="launch-btn" disabled={isScraping} style={{width:'100%', padding:'0.875rem 2rem'}}>
+                      {isScraping ? 'Scraping...' : 'Start Extraction'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+              
+              {scrapedLeads.length > 0 && (
+                <div className="log-card">
+                  <table className="pro-table">
+                    <thead>
+                      <tr>
+                        <th>Business Name</th>
+                        <th>Phone</th>
+                        <th>Address</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {scrapedLeads.map((lead, idx) => (
+                        <tr key={idx}>
+                          <td style={{fontWeight:'600'}}>{lead.name}</td>
+                          <td style={{color:'var(--success)', fontWeight:'500'}}>{lead.phone}</td>
+                          <td style={{color:'var(--text-muted)', fontSize:'0.8rem'}}>{lead.address}</td>
+                          <td>
+                            <a href={lead.mapsLink} target="_blank" rel="noreferrer" className="btn-icon btn-restart" style={{textDecoration:'none'}}>View Map</a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === 'template' && (
@@ -1036,6 +1166,98 @@ function App() {
                     ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {activeTab === 'saved_leads' && (
+            <div className="content-area">
+              <div className="log-card">
+                <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 style={{ margin: 0 }}>Lead Automation CRM</h3>
+                    <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Centralized vault for all AI-scraped high-intent leads.</p>
+                  </div>
+                  <div>
+                    <button className="glass-btn" onClick={fetchSavedLeads} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Refresh Intelligence</button>
+                  </div>
+                </div>
+                {isLoadingSavedLeads ? (
+                  <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' }}>
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="config-card skeleton-pulse" style={{ height: '180px', border: '1px solid var(--border)' }}></div>
+                    ))}
+                  </div>
+                ) : savedLeads.length === 0 ? (
+                  <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No saved leads yet. Go to Lead Scraper to extract some!</p>
+                ) : !selectedGroup ? (
+                  <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' }}>
+                    {Object.entries(savedLeads.reduce((acc, lead) => {
+                      const groupName = `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}`;
+                      if (!acc[groupName]) acc[groupName] = [];
+                      acc[groupName].push(lead);
+                      return acc;
+                    }, {})).map(([groupName, leads]) => {
+                      const sample = leads[0] || {};
+                      return (
+                        <div key={groupName} className="config-card" style={{ cursor: 'pointer', textAlign: 'center', border: '1px solid var(--primary)', transition: 'all 0.2s ease', position: 'relative', animation: 'fadeInScale 0.4s ease forwards' }}>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleDeleteGroup(sample.keyword, sample.city); }}
+                            style={{ position: 'absolute', top: '10px', right: '10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}
+                            title="Delete Folder"
+                          >
+                            ✕
+                          </button>
+                          <div onClick={() => setSelectedGroup(groupName)}>
+                            <div style={{ marginBottom: '1rem', color: 'var(--primary)' }}><FolderIcon /></div>
+                            <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)', fontSize: '1rem' }}>{groupName}</h4>
+                            <p style={{ color: 'var(--success)', fontWeight: 'bold', fontSize: '0.85rem' }}>{leads.length} Target Leads</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <table className="pro-table">
+                    <thead>
+                      <tr>
+                        <th>Business Name</th>
+                        <th>Contact / Link</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {savedLeads.filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup).map((lead) => (
+                        <tr key={lead._id}>
+                          <td style={{fontWeight:'600'}}>
+                            {lead.name}
+                            <div style={{fontSize:'0.75rem', color:'var(--text-muted)', marginTop:'4px'}}>{lead.keyword}</div>
+                          </td>
+                          <td>
+                            <div style={{color:'var(--success)', fontWeight:'500'}}>{lead.phone}</div>
+                            {lead.phone !== 'N/A' && (
+                              <a href={`https://wa.me/${lead.phone.replace(/[^\d+]/g, '')}`} target="_blank" rel="noreferrer" style={{color:'#10b981', fontSize:'0.8rem', textDecoration:'none', marginTop:'4px', display:'inline-block'}}>💬 WhatsApp</a>
+                            )}
+                          </td>
+                          <td style={{color:'var(--text-muted)', fontSize:'0.8rem'}}>{lead.address}<br/>{lead.city}</td>
+                          <td>
+                            <button onClick={async () => { await axios.put(`/api/saved-leads/${lead._id}/contacted`); fetchSavedLeads(); }} className={`status-badge ${lead.isContacted ? 'status-finished' : 'status-pending'}`} style={{cursor:'pointer', border:'none'}}>
+                              {lead.isContacted ? 'Contacted' : 'Pending'}
+                            </button>
+                          </td>
+                          <td>
+                            <div style={{display:'flex', gap:'8px'}}>
+                              <a href={lead.mapsLink} target="_blank" rel="noreferrer" className="btn-icon btn-restart" style={{textDecoration:'none', display:'flex', alignItems:'center'}}>Map</a>
+                              <button onClick={async () => { await axios.delete(`/api/saved-leads/${lead._id}`); fetchSavedLeads(); }} className="btn-icon btn-stop">Del</button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
           )}
         </section>
