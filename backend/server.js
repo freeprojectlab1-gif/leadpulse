@@ -46,8 +46,9 @@ mongoose.connect(process.env.MONGO_URI)
 
     console.log("Credentials Synced & Core Variables Initialized! ✅");
 
-    app.listen(5001, () => {
-      console.log(`Bulletproof Server running on port 5001`);
+    const PORT = process.env.PORT || 5001;
+    app.listen(PORT, () => {
+      console.log(`Bulletproof Server running on port ${PORT}`);
     });
   })
   .catch(err => {
@@ -548,7 +549,7 @@ app.get('/api/scrape-leads', async (req, res) => {
   const processedLinks = new Set();
 
   try {
-    browser = await puppeteer.launch({ headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    browser = await puppeteer.launch({ headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
     const page = await browser.newPage();
     const workerPage = await browser.newPage(); // Dedicated tab for deep details
     const query = `${keyword} in ${city}`;
