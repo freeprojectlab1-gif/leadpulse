@@ -549,7 +549,11 @@ app.get('/api/scrape-leads', async (req, res) => {
   const processedLinks = new Set();
 
   try {
-    browser = await puppeteer.launch({ headless: "new", args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
+    browser = await puppeteer.launch({ 
+      headless: "new", 
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      timeout: 60000 
+    });
     const page = await browser.newPage();
     const workerPage = await browser.newPage(); // Dedicated tab for deep details
     const query = `${keyword} in ${city}`;
