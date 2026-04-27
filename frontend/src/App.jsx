@@ -114,7 +114,7 @@ function App() {
   const [scrapeMode, setScrapeMode] = useState('no_website');
   const [scrapeSources, setScrapeSources] = useState(['map']);
   const [scrapedLeads, setScrapedLeads] = useState([]);
-  const [isScraping,] = useState(false);
+  const [isScraping, setIsScraping] = useState(false);
   const [isLoadingSavedLeads, setIsLoadingSavedLeads] = useState(false);
   const [findingEmailIds, setFindingEmailIds] = useState(new Set());
   const [isBulkFinding, setIsBulkFinding] = useState(false);
