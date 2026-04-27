@@ -25,7 +25,6 @@ import {
   Menu,
   Square,
   MessageSquare,
-  Share2,
   Loader2,
   Phone,
   Flame,
@@ -116,9 +115,14 @@ function App() {
   const [scrapedLeads, setScrapedLeads] = useState([]);
   const [isScraping, setIsScraping] = useState(false);
   const [isLoadingSavedLeads, setIsLoadingSavedLeads] = useState(false);
-  const [findingEmailIds, setFindingEmailIds] = useState(new Set());
   const [isBulkFinding, setIsBulkFinding] = useState(false);
   const [emailFindLog, setEmailFindLog] = useState('');
+  const [isEnricherSending, setIsEnricherSending] = useState(false);
+  const [enricherBulkPicker, setEnricherBulkPicker] = useState(false);
+  const [enricherEditMode, setEnricherEditMode] = useState(false);
+  const [addEmailModal, setAddEmailModal] = useState(false);
+  const [addEmailForm, setAddEmailForm] = useState({ email: '', name: '', phone: '', city: '', keyword: '' });
+  const [isAddingEmail, setIsAddingEmail] = useState(false);
   const [keywordHistory, setKeywordHistory] = useState(JSON.parse(localStorage.getItem('keyword_history') || '[]'));
   const [cityHistory, setCityHistory] = useState(JSON.parse(localStorage.getItem('city_history') || '[]'));
 
@@ -150,6 +154,13 @@ function App() {
       return () => clearInterval(interval);
     }
   }, [isLoggedIn]);
+
+  // Auto-fetch saved leads when entering Enricher / CRM tab (handles page reload too)
+  useEffect(() => {
+    if (isLoggedIn && (activeTab === 'email_finder' || activeTab === 'saved_leads')) {
+      fetchSavedLeads();
+    }
+  }, [isLoggedIn, activeTab]);
 
   const showToast = (msg, type = 'success') => {
     setNotification({ msg, type });
@@ -216,32 +227,6 @@ function App() {
       document.getElementById('tplBody').value = '';
       fetchCustomTemplates();
     } catch (e) { showToast("Save failed", "error"); }
-  };
-
-  const handleFindEmail = (leadId) => {
-    setFindingEmailIds(prev => new Set([...prev, leadId]));
-    setEmailFindLog('');
-    const es = new EventSource(`/api/find-email/${leadId}`);
-    es.onmessage = (event) => {
-      try {
-        const d = JSON.parse(event.data);
-        if (d.type === 'status') setEmailFindLog(d.message);
-        if (d.type === 'done') {
-          setSavedLeads(prev => prev.map(l => l._id === leadId
-            ? { ...l, email: d.email, emailFound: !!d.email, emailSource: d.emailSource, socialLinks: d.socialLinks }
-            : l));
-          setFindingEmailIds(prev => { const s = new Set(prev); s.delete(leadId); return s; });
-          showToast(d.email ? `✅ ${d.email}` : '❌ No email found', d.email ? 'success' : 'error');
-          es.close();
-        }
-        if (d.type === 'error') {
-          showToast('Error: ' + d.message, 'error');
-          setFindingEmailIds(prev => { const s = new Set(prev); s.delete(leadId); return s; });
-          es.close();
-        }
-      } catch (_) { }
-    };
-    es.onerror = () => { setFindingEmailIds(prev => { const s = new Set(prev); s.delete(leadId); return s; }); es.close(); };
   };
 
   const handleBulkFindEmails = (ids) => {
@@ -365,13 +350,44 @@ function App() {
   };
 
   const handleSendCustomTemplate = async (leadId, templateId) => {
-    const lead = recipients.find(r => r._id === leadId);
+    // Try recipients (campaign leads) first, then fall back to savedLeads (enricher)
+    let lead = recipients.find(r => r._id === leadId);
+    let isEnricherLead = false;
+    if (!lead) {
+      const sl = savedLeads.find(s => s._id === leadId);
+      if (sl) {
+        isEnricherLead = true;
+        // Detect junk scraped names (Facebook headers, generic page labels) — fall back to keyword
+        const junkNames = ['chats', 'ad', 'ads', 'search results', 'search result', 'home', 'about', 'contact', 'menu', 'profile', 'page', 'untitled', 'facebook', 'instagram'];
+        const rawName = (sl.name || '').trim();
+        const isJunk = !rawName || junkNames.includes(rawName.toLowerCase());
+        const businessVal = isJunk ? (sl.keyword || rawName || '') : rawName;
+        const firstNameVal = isJunk ? (sl.keyword || '') : (rawName.split(/\s+/)[0] || '');
+        lead = {
+          ...sl,
+          data: {
+            'Name': businessVal,
+            'First Name': firstNameVal,
+            'Business': businessVal,
+            'Business Name': businessVal,
+            'Phone': sl.phone || '',
+            'Address': sl.address || '',
+            'City': sl.city || '',
+            'Keyword': sl.keyword || '',
+            'Email': sl.email || ''
+          },
+          _enricherLead: true
+        };
+      }
+    }
+
     let template = customTemplates.find(t => t._id === templateId);
 
     // Support for Step 1/2/3 pseudo-templates
-    if (templateId === 'step1') template = { _id: 'step1', name: 'Auto Sequence: Step 1', subject: lead.subject, body: lead.body1 };
-    if (templateId === 'step2') template = { _id: 'step2', name: 'Auto Sequence: Step 2', subject: lead.subject, body: lead.body2 };
-    if (templateId === 'step3') template = { _id: 'step3', name: 'Auto Sequence: Step 3', subject: lead.subject, body: lead.body3 };
+    // For Enricher leads, fall back to global subject/body (Campaign tab values)
+    if (templateId === 'step1') template = { _id: 'step1', name: 'Auto Sequence: Step 1', subject: (isEnricherLead ? subject : lead?.subject), body: (isEnricherLead ? body1 : lead?.body1) };
+    if (templateId === 'step2') template = { _id: 'step2', name: 'Auto Sequence: Step 2', subject: (isEnricherLead ? subject : lead?.subject), body: (isEnricherLead ? body2 : lead?.body2) };
+    if (templateId === 'step3') template = { _id: 'step3', name: 'Auto Sequence: Step 3', subject: (isEnricherLead ? subject : lead?.subject), body: (isEnricherLead ? body3 : lead?.body3) };
 
     if (!lead || !template) return;
 
@@ -383,10 +399,12 @@ function App() {
     if (vars.length > 0) {
       const initialData = {};
       vars.forEach(v => {
-        // SMART ALIASING
-        let val = (lead.data && lead.data[v]) || "";
-        if (!val && v === 'Business') val = lead.data?.['Business Name'] || lead.data?.['business'] || "";
-        if (!val && v === 'First Name') val = lead.data?.['Name'] || lead.data?.['first_name'] || "";
+        // SMART ALIASING — case-insensitive lookup
+        const dataKeys = Object.keys(lead.data || {});
+        const matchKey = dataKeys.find(k => k.toLowerCase() === v.toLowerCase());
+        let val = matchKey ? lead.data[matchKey] : "";
+        if (!val && v.toLowerCase() === 'business') val = lead.data?.['Business Name'] || lead.data?.['business'] || lead.data?.['Name'] || "";
+        if (!val && v.toLowerCase() === 'first name') val = (lead.data?.['Name'] || lead.data?.['first_name'] || '').split(/\s+/)[0] || "";
         initialData[v] = val;
       });
       setModalData(initialData);
@@ -400,10 +418,18 @@ function App() {
         title: `Send "${template.name}" to ${lead.email}?`,
         onConfirm: async () => {
           try {
-            const res = await axios.post(`/api/send-custom/${leadId}/${templateId}`);
-            showToast(res.data.message, "success");
+            if (isEnricherLead) {
+              const res = await axios.post('/api/enricher-send', {
+                leadIds: [leadId], templateId, emailUser, emailPass, customVars: {}
+              });
+              showToast(res.data.message, "success");
+              fetchSavedLeads();
+            } else {
+              const res = await axios.post(`/api/send-custom/${leadId}/${templateId}`);
+              showToast(res.data.message, "success");
+              fetchRecipients();
+            }
             setSelectedLeadForTpl(null);
-            fetchRecipients();
           } catch (e) { showToast(e.response?.data?.error || "Error", "error"); }
         }
       });
@@ -412,18 +438,30 @@ function App() {
 
   const confirmAndSendCustom = async () => {
     try {
-      // If it's a step pseudo-template, we might need a special route or just handle it as custom
-      // For simplicity, handle it via send-custom if templateId is an actual ID, else we need logic.
-      // But we can just use the existing send-custom for everything if we pass the body/subject.
-
-      // Let's assume server.js send-custom can take custom subject/body if needed, 
-      // but for now we'll use the existing template-based one.
-      // For steps, we'll create a temporary template or a specialized route.
-
-      const res = await axios.post(`/api/send-custom/${modalLead._id}/${modalTpl._id}`, { customData: modalData });
-      showToast(res.data.message, "success");
-      setIsVarModalOpen(false);
-      fetchRecipients();
+      if (modalLead?._enricherLead) {
+        if (!emailUser || !emailPass) return showToast('SMTP credentials missing — Campaign tab pe set karo!', 'error');
+        const isStep = ['step1', 'step2', 'step3'].includes(modalTpl._id);
+        const payload = {
+          leadIds: [modalLead._id],
+          emailUser,
+          emailPass,
+          customVars: modalData
+        };
+        if (isStep) {
+          payload.template = { subject: modalTpl.subject, body: modalTpl.body };
+        } else {
+          payload.templateId = modalTpl._id;
+        }
+        const res = await axios.post('/api/enricher-send', payload);
+        showToast(res.data.message, "success");
+        setIsVarModalOpen(false);
+        fetchSavedLeads();
+      } else {
+        const res = await axios.post(`/api/send-custom/${modalLead._id}/${modalTpl._id}`, { customData: modalData });
+        showToast(res.data.message, "success");
+        setIsVarModalOpen(false);
+        fetchRecipients();
+      }
     } catch (e) { showToast(e.response?.data?.error || "Error", "error"); }
   };
 
@@ -715,11 +753,10 @@ function App() {
                       ].map(src => (
                         <label key={src.id} style={{
                           display: 'flex', alignItems: 'center', gap: '6px',
-                          padding: '6px 12px', background: scrapeSources.includes(src.id) ? 'var(--primary-light)' : 'var(--card-bg-light)',
+                          padding: '6px 12px', background: scrapeSources.includes(src.id) ? 'var(--primary)' : 'transparent',
                           border: `1px solid ${scrapeSources.includes(src.id) ? 'var(--primary)' : 'var(--border)'}`,
                           borderRadius: '20px', cursor: 'pointer', fontSize: '0.85rem', color: scrapeSources.includes(src.id) ? '#fff' : 'var(--text-muted)',
-                          transition: 'all 0.2s', userSelect: 'none',
-                          boxShadow: scrapeSources.includes(src.id) ? '0 0 10px rgba(99, 102, 241, 0.2)' : 'none'
+                          userSelect: 'none'
                         }}>
                           <input
                             type="checkbox"
@@ -1373,139 +1410,348 @@ function App() {
             </div>
           )}
 
-          {activeTab === 'email_finder' && (
-            <div className="content-area">
-              <div className="log-card">
-                <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <h3 style={{ margin: 0 }}>Email Enricher</h3>
-                    <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Find emails for businesses from their Google, Facebook, Instagram, and LinkedIn profiles.</p>
-                  </div>
-                  <div>
-                    <button className="glass-btn" onClick={fetchSavedLeads} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Refresh Intelligence</button>
-                  </div>
-                </div>
-                {isLoadingSavedLeads ? (
-                  <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' }}>
-                    {[1, 2, 3, 4].map(i => (
-                      <div key={i} className="config-card skeleton-pulse" style={{ height: '180px', border: '1px solid var(--border)' }}></div>
-                    ))}
-                  </div>
-                ) : savedLeads.length === 0 ? (
-                  <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No saved leads yet. Go to Lead Scraper to extract some!</p>
-                ) : !selectedGroup ? (
-                  <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' }}>
-                    {Object.entries(savedLeads.reduce((acc, lead) => {
-                      const groupName = `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}`;
-                      if (!acc[groupName]) acc[groupName] = [];
-                      acc[groupName].push(lead);
-                      return acc;
-                    }, {})).map(([groupName, leads]) => {
-                      const sample = leads[0] || {};
-                      const emailCount = leads.filter(l => l.emailFound).length;
-                      return (
-                        <div key={groupName} className="config-card" style={{ cursor: 'pointer', textAlign: 'center', border: '1px solid var(--primary)', transition: 'all 0.2s ease', position: 'relative', animation: 'fadeInScale 0.4s ease forwards' }}>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteGroup(sample.keyword, sample.city); }}
-                            style={{ position: 'absolute', top: '10px', right: '10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}
-                            title="Delete Folder"
-                          >✕</button>
-                          <div onClick={() => setSelectedGroup(groupName)}>
-                            <div style={{ marginBottom: '1rem', color: 'var(--primary)' }}><FolderIcon /></div>
-                            <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)', fontSize: '1rem' }}>{groupName}</h4>
-                            <p style={{ color: 'var(--success)', fontWeight: 'bold', fontSize: '0.85rem' }}>{leads.length} Target Leads</p>
-                            {emailCount > 0 && <p style={{ color: '#6366f1', fontSize: '0.78rem', margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={12} /> {emailCount} emails found</p>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <button className="btn-icon btn-continue" onClick={() => setSelectedGroup(null)} style={{ fontSize: '0.8rem' }}>← Back</button>
-                      <span style={{ fontWeight: '600', color: 'var(--text-main)', flex: 1 }}>{selectedGroup}</span>
+          {activeTab === 'email_finder' && (() => {
+            const seen = new Set();
+            const uniqueEmailLeads = savedLeads.filter(l => {
+              if (!l.emailFound || !l.email) return false;
+              const key = l.email.trim().toLowerCase();
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+            const pendingLeads = savedLeads.filter(l => !l.emailFound);
+            // Map recipients (auto-sequence enrolled) by email
+            const recipientByEmail = {};
+            recipients.forEach(r => {
+              if (r.email) recipientByEmail[r.email.trim().toLowerCase()] = r;
+            });
+            const isAutoActive = (status) => ['pending', 'sending', 'replied'].includes(status) || (status || '').toLowerCase().includes('step');
+            return (
+              <div className="content-area">
+                <div className="log-card">
+                  <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                      <h3 style={{ margin: 0 }}>Email Enricher</h3>
+                      <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>All globally enriched emails — deduplicated across every scraped folder.</p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <div style={{ padding: '8px 14px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.35)', borderRadius: '8px', fontSize: '0.85rem', color: '#6366f1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Mail size={14} /> Total: {uniqueEmailLeads.length}
+                      </div>
                       <button
                         className="launch-btn"
-                        style={{ padding: '6px 16px', fontSize: '0.8rem', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', gap: '6px' }}
-                        disabled={isBulkFinding}
-                        onClick={() => {
-                          const gl = savedLeads.filter(l => `${(l.keyword || 'Unknown').toUpperCase()} in ${(l.city || 'Unknown').toUpperCase()}` === selectedGroup && !l.emailFound);
-                          handleBulkFindEmails(gl.map(l => l._id));
-                        }}
+                        style={{ width: 'auto', height: 'auto', padding: '6px 14px', fontSize: '0.8rem', borderRadius: '8px' }}
+                        onClick={() => { setAddEmailForm({ email: '', name: '', phone: '', city: '', keyword: '' }); setAddEmailModal(true); }}
                       >
-                        {isBulkFinding ? <><Loader2 size={16} className="animate-spin" /> Searching...</> : <><Search size={16} /> Find Emails (All)</>}
+                        + Add Email
                       </button>
+                      {pendingLeads.length > 0 && (
+                        <button
+                          className="launch-btn"
+                          style={{ width: 'auto', height: 'auto', padding: '6px 14px', fontSize: '0.8rem', borderRadius: '8px', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
+                          disabled={isBulkFinding}
+                          onClick={() => handleBulkFindEmails(pendingLeads.map(l => l._id))}
+                        >
+                          {isBulkFinding ? <><Loader2 size={16} className="animate-spin" /> Searching...</> : <><Search size={16} /> Find Emails ({pendingLeads.length})</>}
+                        </button>
+                      )}
+                      {uniqueEmailLeads.length > 0 && (
+                        enricherBulkPicker ? (
+                          <select
+                            className="pro-select"
+                            autoFocus
+                            style={{ appearance: 'none', background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px 25px 6px 12px', fontSize: '0.8rem' }}
+                            onChange={(e) => {
+                              const tplId = e.target.value;
+                              setEnricherBulkPicker(false);
+                              if (!tplId) return;
+                              if (!emailUser || !emailPass) return showToast('SMTP credentials missing — Campaign tab pe set karo!', 'error');
+                              const stepMap = {
+                                step1: { name: 'Sequence: Step 1', subject, body: body1 },
+                                step2: { name: 'Sequence: Step 2', subject, body: body2 },
+                                step3: { name: 'Sequence: Step 3', subject, body: body3 }
+                              };
+                              const isStep = !!stepMap[tplId];
+                              const tplName = isStep ? stepMap[tplId].name : (customTemplates.find(t => t._id === tplId)?.name || 'template');
+                              setConfirmModal({
+                                open: true,
+                                title: `Send "${tplName}" to all ${uniqueEmailLeads.length} emails?`,
+                                onConfirm: async () => {
+                                  setIsEnricherSending(true);
+                                  try {
+                                    const payload = {
+                                      leadIds: uniqueEmailLeads.map(l => l._id),
+                                      emailUser, emailPass, customVars: {}
+                                    };
+                                    if (isStep) payload.template = { subject: stepMap[tplId].subject, body: stepMap[tplId].body };
+                                    else payload.templateId = tplId;
+                                    const res = await axios.post('/api/enricher-send', payload);
+                                    showToast(res.data.message, 'success');
+                                    fetchSavedLeads();
+                                  } catch (err) {
+                                    showToast('Send failed: ' + (err.response?.data?.error || err.message), 'error');
+                                  } finally { setIsEnricherSending(false); }
+                                }
+                              });
+                            }}
+                          >
+                            <option value="">Pick Template...</option>
+                            <optgroup label="Auto Sequence">
+                              <option value="step1">Sequence: Step 1 (Intro)</option>
+                              <option value="step2">Sequence: Step 2 (Follow-up)</option>
+                              <option value="step3">Sequence: Step 3 (Final)</option>
+                            </optgroup>
+                            <optgroup label="Custom Templates">
+                              {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                            </optgroup>
+                          </select>
+                        ) : (
+                          <button
+                            className="launch-btn"
+                            style={{ width: 'auto', height: 'auto', padding: '6px 14px', fontSize: '0.8rem', borderRadius: '8px', background: 'linear-gradient(135deg,#10b981,#059669)' }}
+                            disabled={isEnricherSending}
+                            onClick={() => setEnricherBulkPicker(true)}
+                          >
+                            {isEnricherSending ? <><Loader2 size={16} className="animate-spin" /> Sending...</> : <><Mail size={16} /> Send All ({uniqueEmailLeads.length})</>}
+                          </button>
+                        )
+                      )}
+                      {uniqueEmailLeads.length > 0 && (
+                        <button
+                          className={enricherEditMode ? 'launch-btn' : 'glass-btn'}
+                          style={{ width: 'auto', height: 'auto', padding: '6px 14px', fontSize: '0.8rem', borderRadius: '8px' }}
+                          onClick={() => { setEnricherEditMode(m => !m); if (enricherEditMode) setSelectedIds([]); }}
+                        >
+                          {enricherEditMode ? 'Done' : 'Edit'}
+                        </button>
+                      )}
+                      <button className="glass-btn" onClick={fetchSavedLeads} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Refresh</button>
                     </div>
-                    {(isBulkFinding || emailFindLog) && (
-                      <div style={{ margin: '1rem 1.5rem 0', padding: '10px 16px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', fontSize: '0.8rem', color: '#6366f1' }}>
-                        {isBulkFinding && <Loader2 size={14} className="animate-spin" style={{ display: 'inline', marginRight: '6px' }} />}{emailFindLog || 'Starting...'}
+                  </div>
+                  {(isBulkFinding || emailFindLog) && (
+                    <div style={{ margin: '1rem 1.5rem 0', padding: '10px 16px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', fontSize: '0.8rem', color: '#6366f1' }}>
+                      {isBulkFinding && <Loader2 size={14} className="animate-spin" style={{ display: 'inline', marginRight: '6px' }} />}{emailFindLog || 'Starting...'}
+                    </div>
+                  )}
+                  {enricherEditMode && selectedIds.length > 0 && uniqueEmailLeads.some(l => selectedIds.includes(l._id)) && (
+                    <div className="bulk-bar">
+                      <div className="bulk-info"><InfoIcon /> {selectedIds.filter(id => uniqueEmailLeads.some(l => l._id === id)).length} emails selected</div>
+                      <div className="bulk-actions">
+                        <button
+                          className="bulk-btn"
+                          style={{ background: 'linear-gradient(135deg,#10b981,#059669)', color: 'white', fontWeight: 600 }}
+                          disabled={isEnricherSending}
+                          onClick={() => {
+                            const ids = selectedIds.filter(id => uniqueEmailLeads.some(l => l._id === id));
+                            if (!emailUser || !emailPass) return showToast('SMTP credentials missing — Campaign tab pe set karo!', 'error');
+                            if (!subject || !body1) return showToast('Campaign subject & Step 1 body missing — Campaign tab pe set karo!', 'error');
+                            setConfirmModal({
+                              open: true,
+                              title: `Start 3-step Email Marketing for ${ids.length} selected emails? (Will use Campaign tab's subject + Step 1/2/3 bodies, tracked in Delivery Logs)`,
+                              onConfirm: async () => {
+                                setIsEnricherSending(true);
+                                try {
+                                  const res = await axios.post('/api/enricher-enroll', {
+                                    leadIds: ids, emailUser, emailPass, subject, body1, body2, body3
+                                  });
+                                  showToast(res.data.message, 'success');
+                                  setSelectedIds([]);
+                                  setEnricherEditMode(false);
+                                  fetchSavedLeads();
+                                  fetchRecipients();
+                                  fetchStats();
+                                } catch (err) {
+                                  showToast('Enroll failed: ' + (err.response?.data?.error || err.message), 'error');
+                                } finally { setIsEnricherSending(false); }
+                              }
+                            });
+                          }}
+                        >
+                          {isEnricherSending ? <><Loader2 size={14} className="animate-spin" style={{ display: 'inline', marginRight: '4px' }} /> Starting...</> : <>🚀 Start Email Marketing (3-Step Auto)</>}
+                        </button>
+                        <select
+                          className="pro-select"
+                          style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
+                          onChange={(e) => {
+                            const tplId = e.target.value;
+                            e.target.value = '';
+                            if (!tplId) return;
+                            if (!emailUser || !emailPass) return showToast('SMTP credentials missing — Campaign tab pe set karo!', 'error');
+                            const ids = selectedIds.filter(id => uniqueEmailLeads.some(l => l._id === id));
+                            const stepMap = {
+                              step1: { name: 'Sequence: Step 1', subject, body: body1 },
+                              step2: { name: 'Sequence: Step 2', subject, body: body2 },
+                              step3: { name: 'Sequence: Step 3', subject, body: body3 }
+                            };
+                            const isStep = !!stepMap[tplId];
+                            const tplName = isStep ? stepMap[tplId].name : (customTemplates.find(t => t._id === tplId)?.name || 'template');
+                            setConfirmModal({
+                              open: true,
+                              title: `Send "${tplName}" to ${ids.length} selected emails?`,
+                              onConfirm: async () => {
+                                setIsEnricherSending(true);
+                                try {
+                                  const payload = { leadIds: ids, emailUser, emailPass, customVars: {} };
+                                  if (isStep) payload.template = { subject: stepMap[tplId].subject, body: stepMap[tplId].body };
+                                  else payload.templateId = tplId;
+                                  const res = await axios.post('/api/enricher-send', payload);
+                                  showToast(res.data.message, 'success');
+                                  setSelectedIds([]);
+                                  fetchSavedLeads();
+                                } catch (err) {
+                                  showToast('Send failed: ' + (err.response?.data?.error || err.message), 'error');
+                                } finally { setIsEnricherSending(false); }
+                              }
+                            });
+                          }}
+                        >
+                          <option value="" style={{ color: 'var(--bg-dark)' }}>Bulk Send Template...</option>
+                          <optgroup label="Auto Sequence" style={{ color: 'var(--bg-dark)' }}>
+                            <option value="step1">Sequence: Step 1 (Intro)</option>
+                            <option value="step2">Sequence: Step 2 (Follow-up)</option>
+                            <option value="step3">Sequence: Step 3 (Final)</option>
+                          </optgroup>
+                          <optgroup label="Custom Templates" style={{ color: 'var(--bg-dark)' }}>
+                            {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                          </optgroup>
+                        </select>
+                        <button className="bulk-btn" style={{ backgroundColor: 'var(--danger)' }} onClick={() => setSelectedIds([])}>Cancel</button>
                       </div>
-                    )}
-                    <table className="pro-table">
+                    </div>
+                  )}
+                  {isLoadingSavedLeads ? (
+                    <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</p>
+                  ) : uniqueEmailLeads.length === 0 ? (
+                    <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No emails enriched yet. Use "Find Emails" above to start enriching scraped leads.</p>
+                  ) : (
+                    <div style={{ overflowX: 'auto', width: '100%' }}>
+                    <table className="pro-table" style={{ minWidth: '950px' }}>
                       <thead>
                         <tr>
-                          <th>Business</th>
-                          <th>Phone</th>
-                          <th><Mail size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Email Found</th>
-                          <th><Share2 size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Social</th>
-                          <th>Location</th>
-                          <th>Actions</th>
+                          {enricherEditMode && (
+                            <th style={{ width: '40px' }}>
+                              <input
+                                type="checkbox"
+                                checked={uniqueEmailLeads.length > 0 && uniqueEmailLeads.every(l => selectedIds.includes(l._id))}
+                                onChange={() => {
+                                  const allSelected = uniqueEmailLeads.every(l => selectedIds.includes(l._id));
+                                  if (allSelected) setSelectedIds(prev => prev.filter(id => !uniqueEmailLeads.some(l => l._id === id)));
+                                  else setSelectedIds(prev => [...new Set([...prev, ...uniqueEmailLeads.map(l => l._id)])]);
+                                }}
+                              />
+                            </th>
+                          )}
+                          <th style={{ width: '50px' }}>#</th>
+                          <th style={{ minWidth: '220px' }}><Mail size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Email</th>
+                          <th style={{ minWidth: '160px' }}>Business</th>
+                          <th style={{ minWidth: '120px' }}>Phone</th>
+                          <th style={{ minWidth: '90px' }}>Source</th>
+                          <th style={{ minWidth: '120px' }}>Location</th>
+                          <th style={{ minWidth: '230px' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {savedLeads.filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup).map((lead) => (
-                          <tr key={lead._id}>
+                        {uniqueEmailLeads.map((lead, idx) => {
+                          const recipient = recipientByEmail[lead.email.trim().toLowerCase()];
+                          const autoActive = recipient && isAutoActive(recipient.status);
+                          const rowClass = (enricherEditMode && selectedIds.includes(lead._id)) ? 'row-selected' : '';
+                          const rowStyle = autoActive ? { background: 'rgba(16, 185, 129, 0.08)' } : (recipient ? { background: 'rgba(99, 102, 241, 0.05)' } : {});
+                          return (
+                          <tr key={lead._id} className={rowClass} style={rowStyle}>
+                            {enricherEditMode && (
+                              <td>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedIds.includes(lead._id)}
+                                  onChange={() => toggleSelectOne(lead._id)}
+                                />
+                              </td>
+                            )}
+                            <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{idx + 1}</td>
+                            <td>
+                              {recipient ? (
+                                <span
+                                  onClick={() => setIntelLead(recipient)}
+                                  style={{ color: autoActive ? '#10b981' : '#6366f1', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                  title="Click to view delivery logs"
+                                >
+                                  <Mail size={14} /> {lead.email}
+                                  {autoActive && (
+                                    <span style={{ marginLeft: '6px', padding: '2px 8px', background: '#10b981', color: 'white', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 700 }}>
+                                      AUTO • Step {recipient.step}
+                                    </span>
+                                  )}
+                                  {!autoActive && recipient && (
+                                    <span style={{ marginLeft: '6px', padding: '2px 8px', background: 'var(--text-muted)', color: 'white', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 700 }}>
+                                      {(recipient.status || '').toUpperCase()}
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                <a href={`mailto:${lead.email}`} style={{ color: '#6366f1', fontWeight: '600', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={14} /> {lead.email}</a>
+                              )}
+                            </td>
                             <td style={{ fontWeight: '600' }}>
                               {lead.name}
                               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px' }}>{lead.keyword}</div>
                             </td>
+                            <td style={{ color: 'var(--success)', fontWeight: '500' }}>{lead.phone || '—'}</td>
+                            <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{(() => {
+                              const map = { ig: 'Instagram', instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', website: 'Website', search_engine: 'Search Engine', google_dork: 'Google Search', google: 'Google' };
+                              const s = (lead.emailSource || '').toLowerCase();
+                              return map[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—');
+                            })()}</td>
+                            <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{lead.city}</td>
                             <td>
-                              <div style={{ color: 'var(--success)', fontWeight: '500' }}>{lead.phone}</div>
-                            </td>
-                            <td>
-                              {lead.emailFound ? (
-                                <div>
-                                  <a href={`mailto:${lead.email}`} style={{ color: '#6366f1', fontWeight: '600', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={14} /> {lead.email}</a>
-                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>via {lead.emailSource}</div>
-                                </div>
-                              ) : (
-                                <button
-                                  className="btn-icon"
-                                  style={{ borderColor: '#6366f1', color: '#6366f1', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
-                                  disabled={findingEmailIds.has(lead._id)}
-                                  onClick={() => handleFindEmail(lead._id)}
-                                >
-                                  {findingEmailIds.has(lead._id) ? <><Loader2 size={14} className="animate-spin" style={{ display: 'inline', marginRight: '4px' }} /> Searching...</> : <><Search size={14} style={{ marginRight: '4px' }} /> Find Email</>}
-                                </button>
-                              )}
-                            </td>
-                            <td>
-                              <div style={{ display: 'flex', gap: '6px' }}>
-                                {lead.socialLinks?.facebook && <a href={lead.socialLinks.facebook} target="_blank" rel="noreferrer" title="Facebook" style={{ color: '#3b5998' }}><Facebook size={18} /></a>}
-                                {lead.socialLinks?.instagram && <a href={lead.socialLinks.instagram} target="_blank" rel="noreferrer" title="Instagram" style={{ color: '#e1306c' }}><Instagram size={18} /></a>}
-                                {lead.socialLinks?.linkedin && <a href={lead.socialLinks.linkedin} target="_blank" rel="noreferrer" title="LinkedIn" style={{ color: '#0077b5' }}><Linkedin size={18} /></a>}
-                                {!lead.socialLinks?.facebook && !lead.socialLinks?.instagram && !lead.socialLinks?.linkedin && (
-                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                {selectedLeadForTpl === lead._id ? (
+                                  <select
+                                    className="pro-select"
+                                    style={{ appearance: 'none', background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px 25px 4px 10px', fontSize: '0.8rem' }}
+                                    onChange={(e) => {
+                                      if (e.target.value) handleSendCustomTemplate(lead._id, e.target.value);
+                                      setSelectedLeadForTpl(null);
+                                    }}
+                                  >
+                                    <option value="">Pick Template...</option>
+                                    <optgroup label="Auto Sequence">
+                                      <option value="step1">Sequence: Step 1 (Intro)</option>
+                                      <option value="step2">Sequence: Step 2 (Follow-up)</option>
+                                      <option value="step3">Sequence: Step 3 (Final)</option>
+                                    </optgroup>
+                                    <optgroup label="Custom Templates">
+                                      {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                                    </optgroup>
+                                    <option value="">Cancel</option>
+                                  </select>
+                                ) : (
+                                  <button
+                                    className="btn-icon"
+                                    style={{ borderColor: '#10b981', color: '#10b981', fontSize: '0.78rem' }}
+                                    onClick={() => setSelectedLeadForTpl(lead._id)}
+                                    title="Send email"
+                                  >Send</button>
                                 )}
-                              </div>
-                            </td>
-                            <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{lead.address}<br />{lead.city}</td>
-                            <td>
-                              <div style={{ display: 'flex', gap: '6px' }}>
-                                <a href={lead.mapsLink} target="_blank" rel="noreferrer" className="btn-icon btn-restart" style={{ textDecoration: 'none' }}>Map</a>
+                                <button
+                                  onClick={() => { navigator.clipboard.writeText(lead.email); }}
+                                  className="btn-icon btn-restart"
+                                  title="Copy email"
+                                >Copy</button>
                                 <button onClick={async () => { await axios.delete(`/api/saved-leads/${lead._id}`); fetchSavedLeads(); }} className="btn-icon btn-stop">Del</button>
                               </div>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
-                  </>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
+
 
           {activeTab === 'saved_leads' && (
             <div className="content-area">
@@ -1667,6 +1913,94 @@ function App() {
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button className="launch-btn" style={{ padding: '10px 25px' }} onClick={() => { confirmModal.onConfirm(); setConfirmModal({ open: false }); }}>Yes, Proceed</button>
               <button className="bulk-btn" style={{ backgroundColor: 'var(--danger)', padding: '10px 25px', color: 'white' }} onClick={() => setConfirmModal({ open: false })}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {addEmailModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>Add Email Manually</h3>
+              <button className="btn-close" onClick={() => !isAddingEmail && setAddEmailModal(false)}><CloseIcon /></button>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                Add a contact directly to the Email Enricher list. Email is required, others optional.
+              </p>
+              <div className="field">
+                <label>Email <span style={{ color: 'var(--danger)' }}>*</span></label>
+                <input
+                  type="email"
+                  value={addEmailForm.email}
+                  onChange={e => setAddEmailForm({ ...addEmailForm, email: e.target.value })}
+                  placeholder="contact@business.com"
+                  autoFocus
+                />
+              </div>
+              <div className="field">
+                <label>Business / Name</label>
+                <input
+                  type="text"
+                  value={addEmailForm.name}
+                  onChange={e => setAddEmailForm({ ...addEmailForm, name: e.target.value })}
+                  placeholder="Acme Corp"
+                />
+              </div>
+              <div className="field">
+                <label>Phone</label>
+                <input
+                  type="text"
+                  value={addEmailForm.phone}
+                  onChange={e => setAddEmailForm({ ...addEmailForm, phone: e.target.value })}
+                  placeholder="+1 555 1234"
+                />
+              </div>
+              <div className="field">
+                <label>City</label>
+                <input
+                  type="text"
+                  value={addEmailForm.city}
+                  onChange={e => setAddEmailForm({ ...addEmailForm, city: e.target.value })}
+                  placeholder="New York"
+                />
+              </div>
+              <div className="field">
+                <label>Category / Keyword</label>
+                <input
+                  type="text"
+                  value={addEmailForm.keyword}
+                  onChange={e => setAddEmailForm({ ...addEmailForm, keyword: e.target.value })}
+                  placeholder="Plumber, Restaurant, etc."
+                />
+              </div>
+            </div>
+            <div className="modal-footer" style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
+              <button
+                className="launch-btn"
+                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                disabled={isAddingEmail || !addEmailForm.email.trim()}
+                onClick={async () => {
+                  setIsAddingEmail(true);
+                  try {
+                    await axios.post('/api/saved-leads/manual', addEmailForm);
+                    showToast('Email added!', 'success');
+                    setAddEmailModal(false);
+                    fetchSavedLeads();
+                  } catch (e) {
+                    showToast(e.response?.data?.error || 'Add failed', 'error');
+                  } finally { setIsAddingEmail(false); }
+                }}
+              >
+                {isAddingEmail ? <><Loader2 size={16} className="animate-spin" /> Adding...</> : <>Add Email <RocketIcon /></>}
+              </button>
+              <button
+                className="launch-btn"
+                style={{ flex: 1, backgroundColor: 'var(--bg-dark)' }}
+                disabled={isAddingEmail}
+                onClick={() => setAddEmailModal(false)}
+              >Cancel</button>
             </div>
           </div>
         </div>

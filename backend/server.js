@@ -1123,6 +1123,102 @@ app.delete('/api/saved-leads/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── ENROLL ENRICHER LEADS into the auto-sequence (creates Recipients) ──
+app.post('/api/enricher-enroll', async (req, res) => {
+  const { leadIds, emailUser, emailPass, subject, body1, body2, body3 } = req.body;
+  if (!Array.isArray(leadIds) || leadIds.length === 0) return res.status(400).json({ error: 'leadIds required' });
+  if (!emailUser || !emailPass) return res.status(400).json({ error: 'SMTP credentials required' });
+  if (!subject || !body1) return res.status(400).json({ error: 'Subject and at least Step 1 body required' });
+
+  const results = { enrolled: 0, duplicates: 0, skipped: 0, failed: 0, errors: [] };
+  const seen = new Set();
+
+  for (const id of leadIds) {
+    try {
+      const lead = await ScrapedLead.findById(id);
+      if (!lead || !lead.email || !lead.emailFound) { results.skipped++; continue; }
+      const key = lead.email.trim().toLowerCase();
+      if (seen.has(key)) { results.skipped++; continue; }
+      seen.add(key);
+
+      // Smart business / first name from scraped data
+      const junkNames = ['chats', 'ad', 'ads', 'search results', 'search result', 'home', 'about', 'contact', 'menu', 'profile', 'page', 'untitled', 'facebook', 'instagram'];
+      const rawName = (lead.name || '').trim();
+      const isJunk = !rawName || junkNames.includes(rawName.toLowerCase());
+      const businessVal = isJunk ? (lead.keyword || rawName || '') : rawName;
+      const firstNameVal = isJunk ? (lead.keyword || '') : (rawName.split(/\s+/)[0] || '');
+
+      const data = {
+        'Name': businessVal,
+        'First Name': firstNameVal,
+        'Business': businessVal,
+        'Business Name': businessVal,
+        'Phone': lead.phone || '',
+        'Address': lead.address || '',
+        'City': lead.city || '',
+        'Keyword': lead.keyword || '',
+        'Email': lead.email
+      };
+
+      try {
+        const nr = new Recipient({
+          email: lead.email,
+          status: 'pending',
+          step: 1,
+          campaignId: 'ENRICHER_' + Date.now(),
+          emailUser, emailPass, subject, body1, body2, body3, data,
+          nextSendAt: new Date(Date.now() + 5000)
+        });
+        await nr.save();
+        sendEmail(nr._id); // instant dispatch of Step 1
+        lead.isContacted = true;
+        await lead.save();
+        results.enrolled++;
+      } catch (dupErr) {
+        if (dupErr.code === 11000) results.duplicates++;
+        else { results.failed++; results.errors.push({ id, error: dupErr.message }); }
+      }
+    } catch (e) {
+      results.failed++;
+      results.errors.push({ id, error: e.message });
+    }
+  }
+
+  res.json({
+    message: `Enrolled ${results.enrolled} into auto-sequence — ${results.duplicates} already existed, ${results.skipped} skipped, ${results.failed} failed`,
+    ...results
+  });
+});
+
+// Manually add a saved lead with email (for Email Enricher)
+app.post('/api/saved-leads/manual', async (req, res) => {
+  try {
+    const { email, name, phone, city, keyword, address } = req.body;
+    if (!email || !email.trim()) return res.status(400).json({ error: 'Email is required' });
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Reject duplicates
+    const existing = await ScrapedLead.findOne({ email: cleanEmail });
+    if (existing) return res.status(409).json({ error: 'Email already exists' });
+
+    const lead = await ScrapedLead.create({
+      name: (name || '').trim() || cleanEmail.split('@')[0],
+      phone: (phone || '').trim() || 'N/A',
+      address: (address || '').trim() || 'N/A',
+      mapsLink: `manual:${cleanEmail}:${Date.now()}`,
+      keyword: (keyword || '').trim() || 'manual',
+      city: (city || '').trim() || 'N/A',
+      email: cleanEmail,
+      emailFound: true,
+      emailSource: 'manual'
+    });
+    res.json(lead);
+  } catch (e) {
+    if (e.code === 11000) return res.status(409).json({ error: 'Duplicate entry' });
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.put('/api/saved-leads/:id/contacted', async (req, res) => {
   try {
     const lead = await ScrapedLead.findById(req.params.id);
@@ -1130,6 +1226,99 @@ app.put('/api/saved-leads/:id/contacted', async (req, res) => {
     await lead.save();
     res.json(lead);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── ENRICHER SEND (send emails to ScrapedLead enriched emails) ─────────
+app.post('/api/enricher-send', async (req, res) => {
+  const { leadIds, templateId, template: inlineTemplate, emailUser, emailPass, customVars } = req.body;
+  if (!Array.isArray(leadIds) || leadIds.length === 0) return res.status(400).json({ error: 'leadIds required' });
+  if (!templateId && !inlineTemplate) return res.status(400).json({ error: 'templateId or template required' });
+  if (!emailUser || !emailPass) return res.status(400).json({ error: 'SMTP credentials required' });
+
+  try {
+    let template;
+    if (inlineTemplate && inlineTemplate.subject && inlineTemplate.body) {
+      template = { subject: inlineTemplate.subject, body: inlineTemplate.body };
+    } else {
+      template = await EmailTemplate.findById(templateId);
+      if (!template) return res.status(404).json({ error: 'Template not found' });
+    }
+
+    const cleanPass = emailPass.replace(/\s+/g, '');
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com', port: 465, secure: true,
+      auth: { user: emailUser.trim(), pass: cleanPass }
+    });
+
+    const results = { sent: 0, failed: 0, skipped: 0, errors: [] };
+    const sentEmails = new Set();
+
+    for (const id of leadIds) {
+      try {
+        const lead = await ScrapedLead.findById(id);
+        if (!lead || !lead.email || !lead.emailFound) { results.skipped++; continue; }
+        const emailKey = lead.email.trim().toLowerCase();
+        if (sentEmails.has(emailKey)) { results.skipped++; continue; }
+        sentEmails.add(emailKey);
+
+        const junkNames = ['chats', 'ad', 'ads', 'search results', 'search result', 'home', 'about', 'contact', 'menu', 'profile', 'page', 'untitled', 'facebook', 'instagram'];
+        const rawName = (lead.name || '').trim();
+        const isJunk = !rawName || junkNames.includes(rawName.toLowerCase());
+        const businessVal = isJunk ? (lead.keyword || rawName || '') : rawName;
+        const firstNameVal = isJunk ? (lead.keyword || '') : (rawName.split(/\s+/)[0] || '');
+        const autoVars = {
+          name: businessVal,
+          business: businessVal,
+          'business name': businessVal,
+          'first name': firstNameVal,
+          phone: lead.phone || '',
+          address: lead.address || '',
+          city: lead.city || '',
+          keyword: lead.keyword || '',
+          email: lead.email || ''
+        };
+        // customVars from modal override / supplement auto-extracted vars
+        const userVars = customVars || {};
+        const mergedVars = { ...autoVars };
+        Object.keys(userVars).forEach(k => {
+          if (userVars[k] && String(userVars[k]).trim()) mergedVars[k.toLowerCase()] = userVars[k];
+          // also keep original case key
+          if (userVars[k] && String(userVars[k]).trim()) mergedVars[k] = userVars[k];
+        });
+
+        let subject = template.subject || '';
+        let body = template.body || '';
+        Object.keys(mergedVars).forEach(key => {
+          const re = new RegExp(`\\{+\\s*${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\}+`, 'gi');
+          subject = subject.replace(re, mergedVars[key]);
+          body = body.replace(re, mergedVars[key]);
+        });
+
+        const finalSubject = applySpintax(subject);
+        const finalBody = applySpintax(body);
+
+        await transporter.sendMail({
+          from: emailUser.trim(),
+          to: lead.email,
+          subject: finalSubject,
+          html: wrapHtml(finalBody)
+        });
+
+        lead.isContacted = true;
+        await lead.save();
+        results.sent++;
+      } catch (e) {
+        results.failed++;
+        results.errors.push({ id, error: e.message });
+        console.error(`[ENRICHER SEND] Failed for ${id}: ${e.message}`);
+      }
+    }
+
+    res.json({ message: `Done — sent ${results.sent}, failed ${results.failed}, skipped ${results.skipped}`, ...results });
+  } catch (e) {
+    console.error('[ENRICHER SEND] Fatal:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ─── EMAIL FINDER API (Single Lead — SSE Streaming) ──────────────────────────
