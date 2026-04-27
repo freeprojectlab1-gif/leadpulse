@@ -553,13 +553,26 @@ function App() {
   if (!isLoggedIn) {
     return (
       <div className="hero-vibe">
+        <video
+          className="hero-video"
+          autoPlay
+          muted
+          loop
+          playsInline
+          poster="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=2070"
+        >
+          <source src="https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-binary-code-and-data-24018-large.mp4" type="video/mp4" />
+        </video>
+        <div className="hero-overlay"></div>
+        <div className="cyber-scanner"></div>
+
         {/* PREMIUM THEME SWITCHER - LANDING PAGE */}
         <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 100 }}>
           <select
             value={currentTheme}
             onChange={(e) => setCurrentTheme(e.target.value)}
             className="pro-select"
-            style={{ padding: '8px 16px', fontSize: '0.85rem', background: 'var(--glass-bg)', color: 'var(--hero-text)', border: '1px solid var(--glass-border)', borderRadius: '12px', backdropFilter: 'blur(20px)', cursor: 'pointer', outline: 'none' }}
+            style={{ padding: '8px 16px', fontSize: '0.85rem', background: 'rgba(0,0,0,0.5)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', backdropFilter: 'blur(20px)', cursor: 'pointer', outline: 'none' }}
           >
             <option value="theme-dark" style={{ color: '#000' }}>Dark Premium</option>
             <option value="theme-light" style={{ color: '#000' }}>Light Minimal</option>
@@ -570,13 +583,8 @@ function App() {
           </select>
         </div>
 
-        <div className="hero-blobs">
-          <div className="blob blob-1"></div>
-          <div className="blob blob-2"></div>
-          <div className="blob blob-3"></div>
-        </div>
         <div className="hero-content">
-          <div className="brand" style={{ justifyContent: 'center', marginBottom: '2rem', fontSize: '1.5rem', color: '#fff' }}>
+          <div className="brand" style={{ justifyContent: 'center', marginBottom: '1.5rem', fontSize: '1.5rem', color: '#fff', letterSpacing: '4px' }}>
             <img src="/logo.png" alt="logo" style={{ height: '40px', borderRadius: '10px' }} />
             PRO EMAILER
           </div>
