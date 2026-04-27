@@ -1,6 +1,12 @@
 node_modules/
 .env
 backend/uploads/
+backend/.cache/
+backend/browser_session/
 frontend/dist/
 .DS_Store
 *.log
+*.png
+*.html
+!backend/ddg_*.html
+!backend/yahoo_*.html

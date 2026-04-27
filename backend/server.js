@@ -9,6 +9,8 @@ const path = require('path');
 const { ImapFlow } = require('imapflow');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const puppeteer = require('puppeteer');
+const { executablePath } = require('puppeteer');
+const BROWSER_SESSION_DIR = path.join(__dirname, 'browser_session');
 
 const app = express();
 app.use(cors());
@@ -102,6 +104,15 @@ const scrapedLeadSchema = new mongoose.Schema({
   keyword: String,
   city: String,
   isContacted: { type: Boolean, default: false },
+  // Email Enrichment Fields
+  email: { type: String, default: null },
+  emailFound: { type: Boolean, default: false },
+  emailSource: { type: String, default: null }, // 'google', 'facebook', 'instagram', 'linkedin'
+  socialLinks: {
+    facebook: { type: String, default: null },
+    instagram: { type: String, default: null },
+    linkedin: { type: String, default: null }
+  },
   createdAt: { type: Date, default: Date.now }
 });
 const ScrapedLead = mongoose.models.ScrapedLead || mongoose.model('ScrapedLead', scrapedLeadSchema);
@@ -115,6 +126,247 @@ const applySpintax = (text) => {
     const arr = choices.split('|');
     return arr[Math.floor(Math.random() * arr.length)];
   });
+};
+
+// --- GENERIC EMAIL PROVIDERS ---
+const GENERIC_PROVIDERS = [
+  'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com', 
+  'aol.com', 'mail.com', 'zoho.com', 'protonmail.com', 'yandex.com',
+  'gmx.com', 'live.com', 'msn.com', 'me.com', 'rocketmail.com', 'rediffmail.com',
+  'mac.com', 'googlemail.com', 'mail.ru', 'att.net', 'comcast.net', 'verizon.net',
+  'btinternet.com', 'bellsouth.net', 'charter.net', 'cox.net', 'earthlink.net',
+  'juno.com', 'mindspring.com', 'netzero.net', 'prodigy.net', 'sbcglobal.net',
+  'web.de', 't-online.de', 'wanadoo.fr', 'orange.fr', 'free.fr', 'laposte.net',
+  'tiscali.it', 'alice.it', 'virgilio.it', 'tin.it', 'libero.it'
+];
+
+const isGenericEmail = (email) => {
+  if (!email) return false;
+  const domain = email.split('@')[1]?.toLowerCase();
+  return GENERIC_PROVIDERS.includes(domain);
+};
+
+// ─── EMAIL EXTRACTOR UTILITY ────────────────────────────────────────────────
+const extractEmailsFromText = (text) => {
+  if (!text) return [];
+  const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+  const found = text.match(emailRegex) || [];
+  // Filter common false positives
+  const blacklist = ['example.com', 'sentry.io', 'wixpress.com', 'squarespace.com',
+    'amazonaws.com', 'cloudflare.com', 'google.com', 'facebook.com',
+    'instagram.com', 'twitter.com', 'linkedin.com', 'apple.com', 'microsoft.com'];
+  return [...new Set(found)].filter(email => {
+    const lower = email.toLowerCase();
+    if (lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.gif') || lower.endsWith('.svg')) return false;
+    if (lower.includes('@2x') || lower.includes('@3x')) return false;
+    if (lower.startsWith('noreply') || lower.startsWith('no-reply') || lower.startsWith('donotreply')) return false;
+    return !blacklist.some(b => lower.includes(b));
+  });
+};
+
+// ─── FIND EMAIL FOR LEAD (4-STRATEGY PIPELINE) ──────────────────────────────
+const findEmailForLead = async (lead, sendStatusUpdate) => {
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      executablePath: executablePath(),
+      userDataDir: BROWSER_SESSION_DIR,
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'],
+      timeout: 60000
+    });
+
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
+
+    const socialLinks = { facebook: null, instagram: null, linkedin: null };
+    let foundEmail = null;
+    let emailSource = null;
+
+    // ── STRATEGY 0: Check Website (If available) ────────────────────────────
+    if (lead.website) {
+      try {
+        if (sendStatusUpdate) sendStatusUpdate(`🌐 Checking website: ${lead.website}`);
+        await page.goto(lead.website, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await new Promise(r => setTimeout(r, 2500));
+
+        const webResult = await page.evaluate(() => {
+          const text = document.body.innerText;
+          const mailtoLinks = Array.from(document.querySelectorAll('a[href^="mailto:"]'))
+            .map(a => a.href.replace('mailto:', '').split('?')[0]);
+          return { text, mailtoLinks };
+        });
+
+        if (webResult.mailtoLinks.length > 0) {
+          const validEmails = webResult.mailtoLinks.filter(isGenericEmail);
+          if (validEmails.length > 0) {
+            foundEmail = validEmails[0];
+            emailSource = 'website';
+          }
+        } else {
+          const webEmails = extractEmailsFromText(webResult.text);
+          const validEmails = webEmails.filter(isGenericEmail);
+          if (validEmails.length > 0) {
+            foundEmail = validEmails[0];
+            emailSource = 'website';
+          }
+        }
+        if (foundEmail && sendStatusUpdate) sendStatusUpdate(`✅ Email found on website: ${foundEmail}`);
+      } catch (e) {
+        console.log('[EmailFinder] Website check error:', e.message);
+      }
+    }
+
+    // ── STRATEGY 1: Google Search for email (Yahoo fallback) ────────────────
+    if (!foundEmail) {
+      try {
+        const query = `"${lead.name}" "${lead.city}" email contact`;
+        if (sendStatusUpdate) sendStatusUpdate(`Searching: ${lead.name}...`);
+        
+        // TRY YAHOO FIRST
+        await page.goto(`https://search.yahoo.com/search?p=${encodeURIComponent(query)}`, {
+          waitUntil: 'domcontentloaded', timeout: 15000
+        });
+        await new Promise(r => setTimeout(r, 2000));
+        let resultsText = await page.evaluate(() => document.body.innerText);
+        
+        // TRY BING IF NO LUCK
+        const initialEmails = extractEmailsFromText(resultsText).filter(isGenericEmail);
+        if (initialEmails.length === 0) {
+          if (sendStatusUpdate) sendStatusUpdate(`Trying Bing fallback...`);
+          await page.goto(`https://www.bing.com/search?q=${encodeURIComponent(query)}`, {
+            waitUntil: 'domcontentloaded', timeout: 15000
+          });
+          await new Promise(r => setTimeout(r, 2000));
+          resultsText += " " + await page.evaluate(() => document.body.innerText);
+        }
+
+        const googleEmails = extractEmailsFromText(resultsText);
+        const validEmails = googleEmails.filter(isGenericEmail);
+        if (validEmails.length > 0) {
+          foundEmail = validEmails[0];
+          emailSource = 'search_engine';
+          if (sendStatusUpdate) sendStatusUpdate(`Email found via Search Engine: ${foundEmail}`);
+        }
+      } catch (e) {
+        console.log('[EmailFinder] Search error:', e.message);
+      }
+    }
+
+    // ── STRATEGY 1.5: Deep Search (Google Dork for Email Providers) ─────────
+    if (!foundEmail) {
+      try {
+        const dorkQuery = `"${lead.name}" "${lead.city}" ("@gmail.com" OR "@yahoo.com" OR "@hotmail.com" OR "mailto:")`;
+        if (sendStatusUpdate) sendStatusUpdate(`Deep Searching Emails: ${lead.name}...`);
+        await page.goto(`https://search.yahoo.com/search?p=${encodeURIComponent(dorkQuery)}`, {
+          waitUntil: 'domcontentloaded', timeout: 15000
+        });
+        try {
+          const agreeBtn = await page.waitForSelector('button[name="agree"]', { timeout: 3000 });
+          if (agreeBtn) {
+            await agreeBtn.click();
+            await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 });
+          }
+        } catch (e) { }
+        await new Promise(r => setTimeout(r, 2000));
+
+        const dorkResultText = await page.evaluate(() => document.body.innerText);
+        const dorkEmails = extractEmailsFromText(dorkResultText);
+        const validEmails = dorkEmails.filter(isGenericEmail);
+
+        if (validEmails.length > 0) {
+          foundEmail = validEmails[0];
+          emailSource = 'google_dork';
+          if (sendStatusUpdate) sendStatusUpdate(`Email found via Deep Search: ${foundEmail}`);
+        }
+      } catch (e) {
+        console.log('[EmailFinder] Deep search error:', e.message);
+      }
+    }
+
+    // ── STRATEGY 2: Facebook About page ─────────────────────────────────────
+    if (!foundEmail && socialLinks.facebook) {
+      try {
+        if (sendStatusUpdate) sendStatusUpdate(`Checking Facebook page...`);
+        // Try the /about page
+        const fbAboutUrl = socialLinks.facebook.replace(/\/$/, '') + '/about';
+        await page.goto(fbAboutUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await new Promise(r => setTimeout(r, 2500));
+        const fbText = await page.evaluate(() => document.body.innerText);
+        const fbEmails = extractEmailsFromText(fbText);
+        const validEmails = fbEmails.filter(isGenericEmail);
+        if (validEmails.length > 0) {
+          foundEmail = validEmails[0];
+          emailSource = 'facebook';
+          if (sendStatusUpdate) sendStatusUpdate(`Email found via Facebook: ${foundEmail}`);
+        }
+      } catch (e) {
+        console.log('[EmailFinder] Facebook error:', e.message);
+      }
+    }
+
+    // ── STRATEGY 3: Instagram Bio ────────────────────────────────────────────
+    if (!foundEmail && socialLinks.instagram) {
+      try {
+        if (sendStatusUpdate) sendStatusUpdate(`Checking Instagram bio...`);
+        await page.goto(socialLinks.instagram, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await new Promise(r => setTimeout(r, 2500));
+        const igResult = await page.evaluate(() => {
+          const text = document.body.innerText;
+          // Also look for mailto: links in bio
+          const mailtoLinks = Array.from(document.querySelectorAll('a[href^="mailto:"]'))
+            .map(a => a.href.replace('mailto:', '').split('?')[0]);
+          return { text, mailtoLinks };
+        });
+        // Prioritize explicit mailto links
+        const validMailto = igResult.mailtoLinks.filter(isGenericEmail);
+        if (validMailto.length > 0) {
+          foundEmail = validMailto[0];
+          emailSource = 'instagram';
+        } else {
+          const igEmails = extractEmailsFromText(igResult.text);
+          const validEmails = igEmails.filter(isGenericEmail);
+          if (validEmails.length > 0) {
+            foundEmail = validEmails[0];
+            emailSource = 'instagram';
+          }
+        }
+        if (foundEmail && sendStatusUpdate) sendStatusUpdate(`✅ Email found via Instagram: ${foundEmail}`);
+      } catch (e) {
+        console.log('[EmailFinder] Instagram error:', e.message);
+      }
+    }
+
+    // ── STRATEGY 4: LinkedIn Company Page ───────────────────────────────────
+    if (!foundEmail && socialLinks.linkedin) {
+      try {
+        if (sendStatusUpdate) sendStatusUpdate(`💼 Checking LinkedIn page...`);
+        await page.goto(socialLinks.linkedin, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await new Promise(r => setTimeout(r, 2500));
+        const liText = await page.evaluate(() => document.body.innerText);
+        const liEmails = extractEmailsFromText(liText);
+        const validEmails = liEmails.filter(isGenericEmail);
+        if (validEmails.length > 0) {
+          foundEmail = validEmails[0];
+          emailSource = 'linkedin';
+          if (sendStatusUpdate) sendStatusUpdate(`Email found via LinkedIn: ${foundEmail}`);
+        }
+      } catch (e) {
+        console.log('[EmailFinder] LinkedIn error:', e.message);
+      }
+    }
+
+    if (!foundEmail && sendStatusUpdate) sendStatusUpdate(`❌ No email found for ${lead.name}`);
+
+    return { email: foundEmail, emailSource, socialLinks };
+
+  } catch (err) {
+    console.error('[EmailFinder] Fatal error:', err.message);
+    return { email: null, emailSource: null, socialLinks: { facebook: null, instagram: null, linkedin: null } };
+  } finally {
+    if (browser) await browser.close();
+  }
 };
 
 // HTML WRAPPER FOR DESIGN & TRUST
@@ -131,14 +383,14 @@ const wrapHtml = (body) => {
           <tr>
             <td style="padding: 5px 0;">
               <span style="background: #f8fafc; padding: 5px 10px; border-radius: 6px; display: inline-block;">
-                📧 <a href="mailto:muntazir.site@gmail.com" style="color: #4f46e5; text-decoration: none; font-weight: 600;">muntazir.site@gmail.com</a>
+                 <a href="mailto:muntazir.site@gmail.com" style="color: #4f46e5; text-decoration: none; font-weight: 600;">muntazir.site@gmail.com</a>
               </span>
             </td>
           </tr>
           <tr>
             <td style="padding: 5px 0;">
               <span style="background: #f0fdf4; padding: 5px 10px; border-radius: 6px; display: inline-block;">
-                💬 <a href="https://wa.me/918511868872" style="color: #10b981; text-decoration: none; font-weight: 600;">WhatsApp: +91 8511868872</a>
+                <a href="https://wa.me/918511868872" style="color: #10b981; text-decoration: none; font-weight: 600;">WhatsApp: +91 8511868872</a>
               </span>
             </td>
           </tr>
@@ -494,8 +746,15 @@ app.post('/api/send-custom/:leadId/:templateId', async (req, res) => {
 });
 
 const distPath = path.join(__dirname, '../frontend/dist');
-app.use(express.static(distPath));
-app.use((req, res, next) => { if (!req.path.startsWith('/api')) res.sendFile(path.join(distPath, 'index.html')); else next(); });
+app.use(express.static(distPath, { setHeaders: (res, path) => { if (path.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache'); } }));
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api')) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(distPath, 'index.html'));
+  } else {
+    next();
+  }
+});
 
 cron.schedule('*/1 * * * *', async () => {
   const pending = await Recipient.find({
@@ -531,107 +790,302 @@ cron.schedule('*/10 * * * *', async () => {
   }
 });
 
+// --- OPEN BROWSER FOR LOGIN ---
+app.get('/api/open-browser', async (req, res) => {
+  try {
+    const browser = await puppeteer.launch({
+      executablePath: executablePath(),
+      userDataDir: BROWSER_SESSION_DIR,
+      headless: false,
+      defaultViewport: null,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
+    // Open Instagram and LinkedIn in separate tabs
+    const page1 = await browser.newPage();
+    await page1.goto('https://www.instagram.com', { waitUntil: 'domcontentloaded' });
+
+    const page2 = await browser.newPage();
+    await page2.goto('https://www.linkedin.com/login', { waitUntil: 'domcontentloaded' });
+
+    res.json({ message: 'Browser opened successfully! Please log in, then close the browser window.' });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- SOCIAL SCRAPING ENGINE ---
+const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, foundEmailsSet, getCancelled) => {
+  const page = await browser.newPage();
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+  let siteDomain = '';
+  if (source === 'ig') siteDomain = 'instagram.com';
+  else if (source === 'facebook') siteDomain = 'facebook.com';
+  else if (source === 'linkedin') siteDomain = 'linkedin.com'; 
+
+  const queries = [
+    `site:${siteDomain} "${keyword}" "${city}"`,
+    `site:${siteDomain} "${keyword}" in "${city}" email`,
+    `site:${siteDomain} "${keyword}" "${city}" contact`,
+    `site:${siteDomain} "${keyword}" ${city} "gmail.com"`
+  ];
+
+  try {
+    for (const query of queries) {
+      if (getCancelled()) break;
+      
+      for (let pageNum = 0; pageNum < 20; pageNum++) {
+        if (getCancelled()) break;
+        
+        const start = pageNum * 10 + 1;
+        const yahooUrl = `https://search.yahoo.com/search?p=${encodeURIComponent(query)}&b=${start}`;
+        const bingUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}&first=${start}`;
+        
+        sendData({ type: 'status', message: `Unlimited Hack: ${source.toUpperCase()} - Query ${queries.indexOf(query) + 1}, Page ${pageNum + 1}...` });
+        
+        // TRY YAHOO
+        await page.goto(yahooUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await new Promise(r => setTimeout(r, 1500));
+        let resultsText = await page.evaluate(() => document.body.innerText);
+
+        // TRY BING FALLBACK
+        if (extractEmailsFromText(resultsText).filter(isGenericEmail).length === 0) {
+           sendData({ type: 'status', message: `Checking Bing fallback...` });
+           await page.goto(bingUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+           await new Promise(r => setTimeout(r, 1500));
+           resultsText += " " + await page.evaluate(() => document.body.innerText);
+        }
+        
+        const links = await page.evaluate(() => {
+          return Array.from(document.querySelectorAll('a[href]'))
+            .map(a => a.href)
+            .map(href => {
+              if (href.includes('RU=')) {
+                try { return decodeURIComponent(href.split('RU=')[1].split('/RK=')[0]); }
+                catch (e) { return href; }
+              }
+              return href;
+            });
+        });
+
+        const uniqueLinks = [...new Set(links)].filter(href => {
+           if (source === 'ig') return href.includes('instagram.com/') && !href.includes('/p/') && !href.includes('/explore/');
+           if (source === 'facebook') return href.includes('facebook.com/') && !href.includes('/sharer');
+           if (source === 'linkedin') return href.includes('linkedin.com/') && !href.includes('/jobs/');
+           return false;
+        });
+
+        if (uniqueLinks.length === 0) break;
+
+        for (let link of uniqueLinks) {
+          if (getCancelled()) break;
+          try {
+            sendData({ type: 'status', message: `Checking ${link}...` });
+            await page.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            await new Promise(r => setTimeout(r, 2500));
+
+            const pageText = await page.evaluate(() => document.body.innerText);
+            const name = await page.evaluate(() => document.querySelector('h1')?.innerText || document.querySelector('h2')?.innerText || document.title.split('|')[0].split('-')[0].trim() || 'Unknown');
+
+            const emails = extractEmailsFromText(pageText);
+            const validEmails = emails.filter(isGenericEmail);
+            
+            if (validEmails.length > 0) {
+              const finalEmail = validEmails[0];
+              if (foundEmailsSet.has(finalEmail.toLowerCase())) continue;
+              foundEmailsSet.add(finalEmail.toLowerCase());
+
+              const leadData = {
+                name,
+                phone: 'N/A', address: 'N/A',
+                email: finalEmail,
+                emailFound: true,
+                emailSource: source,
+                mapsLink: link,
+                keyword, city
+              };
+              try { await ScrapedLead.findOneAndUpdate({ mapsLink: link }, { $set: leadData }, { upsert: true }); } catch (dbErr) { }
+              sendData({ type: 'lead', data: leadData });
+            }
+          } catch (e) { }
+        }
+        
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+  } catch (e) {
+    console.log(`[SocialScraper] Error searching ${source}:`, e.message);
+  } finally {
+    if (page && !page.isClosed()) await page.close();
+  }
+};
+
 // --- LEAD SCRAPER API (STREAMING VERSION) ---
 app.get('/api/scrape-leads', async (req, res) => {
-  const { keyword, city } = req.query;
+  const { keyword, city, mode, sources } = req.query;
   if (!keyword || !city) return res.status(400).json({ error: 'Keyword and City are required' });
+
+  const sourceList = sources ? sources.split(',') : ['map'];
+  const foundEmailsInThisRun = new Set();
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
+  let isCancelled = false;
+  req.on('close', () => {
+    console.log("Client closed connection. Stopping scraper.");
+    isCancelled = true;
+    if (browser) browser.close().catch(() => { });
+  });
+
   const sendData = (data) => {
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (!isCancelled) res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
   let browser;
   const processedLinks = new Set();
 
   try {
-    browser = await puppeteer.launch({ 
-      headless: "new", 
+    const launchArgs = {
+      executablePath: executablePath(),
+      userDataDir: BROWSER_SESSION_DIR,
+      headless: "new",
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-      timeout: 60000 
-    });
-    const page = await browser.newPage();
-    const workerPage = await browser.newPage(); // Dedicated tab for deep details
-    const query = `${keyword} in ${city}`;
-    await page.goto(`https://www.google.com/maps/search/${encodeURIComponent(query)}`);
+      timeout: 60000
+    };
 
-    await page.waitForSelector('div[role="feed"]', { timeout: 15000 }).catch(() => {});
-
-    let consecutiveNoResults = 0;
-    for (let loop = 0; loop < 200; loop++) {
-      // BETTER SCROLL: Scroll to the last element in the feed
-      const isEnd = await page.evaluate(async () => {
-        const feed = document.querySelector('div[role="feed"]');
-        if (feed) {
-          const lastChild = feed.lastElementChild;
-          if (lastChild) lastChild.scrollIntoView();
-          await new Promise(r => setTimeout(r, 2500));
-          
-          // Check for "You've reached the end of the list" or similar markers
-          const text = feed.innerText || "";
-          return text.includes("You've reached the end of the list") || text.includes("No more results");
-        }
-        return false;
-      });
-
-      if (isEnd) {
-        sendData({ type: 'status', message: "Reached the end of Google Maps results." });
-        break;
+    try {
+      browser = await puppeteer.launch(launchArgs);
+    } catch (launchErr) {
+      if (launchErr.message.includes('already running')) {
+        console.log("⚠️ Browser lock detected. Force-clearing session...");
+        const { execSync } = require('child_process');
+        try { execSync(`pkill -f "${BROWSER_SESSION_DIR}"`); } catch (e) { }
+        await new Promise(r => setTimeout(r, 1000));
+        browser = await puppeteer.launch(launchArgs);
+      } else {
+        throw launchErr;
       }
-
-      const links = await page.evaluate(() => {
-        return Array.from(document.querySelectorAll('a[href*="https://www.google.com/maps/place/"]')).map(a => a.href);
-      });
-
-      const newLinks = [...new Set(links)].filter(link => !processedLinks.has(link));
-      
-      if (newLinks.length === 0) {
-        consecutiveNoResults++;
-        sendData({ type: 'status', message: `Iteration ${loop+1}: Scrolling for more... (${consecutiveNoResults}/10)` });
-        if (consecutiveNoResults >= 10) break; // Increased retry to 10 for "unlimited" feel
-        continue;
-      }
-
-      consecutiveNoResults = 0; // Reset counter if we found data
-      for (let link of newLinks) {
-        processedLinks.add(link);
-        try {
-          // SCRAPE USING WORKER PAGE (DOES NOT DISTURB MAIN FEED)
-          await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
-          await new Promise(r => setTimeout(r, 1200));
-
-          const details = await workerPage.evaluate(() => {
-            const name = document.querySelector('h1')?.innerText || 'Unknown';
-            const websiteBtn = document.querySelector('[data-item-id="authority"]');
-            if (websiteBtn) return null;
-
-            const phoneBtn = document.querySelector('[data-item-id^="phone:tel:"]');
-            let phone = phoneBtn ? phoneBtn.innerText || phoneBtn.getAttribute('aria-label') : 'N/A';
-            if (phone !== 'N/A') phone = phone.replace(/[^\d+\s-]/g, '').trim();
-
-            const addressBtn = document.querySelector('[data-item-id="address"]');
-            let address = addressBtn ? addressBtn.innerText || addressBtn.getAttribute('aria-label') : 'N/A';
-            if (address !== 'N/A') address = address.replace('Address: ', '').trim();
-
-            return { name, phone, address };
-          });
-
-          if (details) {
-            const leadData = { ...details, mapsLink: link, keyword, city };
-            try { await ScrapedLead.findOneAndUpdate({ mapsLink: link }, { $set: leadData }, { upsert: true }); } catch (dbErr) {}
-            sendData({ type: 'lead', data: leadData });
-          }
-        } catch (e) {
-          console.log("Error in worker page:", e.message);
-        }
-      }
-      sendData({ type: 'status', message: `Iteration ${loop+1} done. Found ${newLinks.length} new leads.` });
     }
-    sendData({ type: 'done', message: 'Finished successfully.' });
+
+    if (sourceList.includes('map') && !isCancelled) {
+      const page = await browser.newPage();
+      const workerPage = await browser.newPage(); // Dedicated tab for deep details
+      const query = `${keyword} in ${city}`;
+      await page.goto(`https://www.google.com/maps/search/${encodeURIComponent(query)}`);
+
+      await page.waitForSelector('div[role="feed"]', { timeout: 15000 }).catch(() => { });
+
+      let consecutiveNoResults = 0;
+      for (let loop = 0; loop < 1000; loop++) {
+        if (isCancelled) break;
+        // BETTER SCROLL: Scroll to the last element in the feed
+        const isEnd = await page.evaluate(async () => {
+          const feed = document.querySelector('div[role="feed"]');
+          if (feed) {
+            const lastChild = feed.lastElementChild;
+            if (lastChild) lastChild.scrollIntoView();
+            await new Promise(r => setTimeout(r, 2500));
+
+            // Check for "You've reached the end of the list" or similar markers
+            const text = feed.innerText || "";
+            return text.includes("You've reached the end of the list") || text.includes("No more results");
+          }
+          return false;
+        });
+
+        if (isEnd) {
+          sendData({ type: 'status', message: "Reached the end of Google Maps results." });
+          break;
+        }
+
+        const links = await page.evaluate(() => {
+          return Array.from(document.querySelectorAll('a[href*="https://www.google.com/maps/place/"]')).map(a => a.href);
+        });
+
+        const newLinks = [...new Set(links)].filter(link => !processedLinks.has(link));
+
+        if (newLinks.length === 0) {
+          consecutiveNoResults++;
+          sendData({ type: 'status', message: `Iteration ${loop + 1}: Scrolling for more... (${consecutiveNoResults}/30)` });
+          if (consecutiveNoResults >= 30) break; // Increased retry to 30 for "unlimited" feel
+          continue;
+        }
+
+        consecutiveNoResults = 0; // Reset counter if we found data
+        for (let link of newLinks) {
+          if (isCancelled) break;
+          processedLinks.add(link);
+          try {
+            // SCRAPE USING WORKER PAGE (DOES NOT DISTURB MAIN FEED)
+            await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            await new Promise(r => setTimeout(r, 1200));
+
+            const details = await workerPage.evaluate(() => {
+              let name = document.querySelector('h1')?.innerText;
+              if (!name) {
+                const title = document.title || '';
+                name = title.split('- Google')[0].trim() || 'Unknown';
+              }
+              if (name === 'Unknown' || name === '') return null; // Skip junk leads
+
+              const websiteBtn = document.querySelector('[data-item-id="authority"]');
+
+              // WE ONLY TARGET BUSINESSES WITHOUT WEBSITES
+              if (websiteBtn) return null;
+
+              const phoneBtn = document.querySelector('[data-item-id^="phone:tel:"]');
+              let phone = phoneBtn ? phoneBtn.innerText || phoneBtn.getAttribute('aria-label') : 'N/A';
+              if (phone !== 'N/A') phone = phone.replace(/[^\d+\s-]/g, '').trim();
+
+              const addressBtn = document.querySelector('[data-item-id="address"]');
+              let address = addressBtn ? addressBtn.innerText || addressBtn.getAttribute('aria-label') : 'N/A';
+              if (address !== 'N/A') address = address.replace('Address: ', '').trim();
+
+              return { name, phone, address };
+            });
+
+            if (details) {
+              let leadData = { ...details, mapsLink: link, keyword, city };
+
+              if (mode === 'emails_only') {
+                sendData({ type: 'status', message: `Fetching email for ${leadData.name}...` });
+                const emailResult = await findEmailForLead(leadData, null);
+                if (emailResult.email && foundEmailsInThisRun.has(emailResult.email.toLowerCase())) {
+                  sendData({ type: 'status', message: `Duplicate email skipped: ${emailResult.email}` });
+                  continue;
+                }
+                if (emailResult.email) foundEmailsInThisRun.add(emailResult.email.toLowerCase());
+                
+                leadData.email = emailResult.email;
+                leadData.emailFound = !!emailResult.email;
+                leadData.emailSource = emailResult.emailSource;
+                leadData.socialLinks = emailResult.socialLinks;
+              }
+
+              try { await ScrapedLead.findOneAndUpdate({ mapsLink: link }, { $set: leadData }, { upsert: true }); } catch (dbErr) { }
+              sendData({ type: 'lead', data: leadData });
+            }
+          } catch (e) {
+            console.log("Error in worker page:", e.message);
+          }
+        }
+        sendData({ type: 'status', message: `Iteration ${loop + 1} done. Found ${newLinks.length} new leads.` });
+      }
+    } // End of Map Block
+
+    // Social Sources
+    for (let src of ['ig', 'facebook', 'linkedin']) {
+      if (isCancelled) break;
+      if (sourceList.includes(src)) {
+        await scrapeSocialDirectly(src, keyword, city, browser, sendData, foundEmailsInThisRun, () => isCancelled);
+      }
+    }
+
+    if (!isCancelled) sendData({ type: 'done', message: 'Finished successfully.' });
   } catch (error) {
     sendData({ type: 'error', message: error.message });
   } finally {
@@ -652,12 +1106,12 @@ app.delete('/api/saved-leads/group', async (req, res) => {
   try {
     const { keyword, city } = req.query;
     if (!keyword || !city) return res.status(400).json({ error: 'Keyword and City required' });
-    
-    await ScrapedLead.deleteMany({ 
-      keyword: keyword, 
-      city: city 
+
+    await ScrapedLead.deleteMany({
+      keyword: keyword,
+      city: city
     });
-    
+
     res.json({ message: `All leads for ${keyword} in ${city} deleted!` });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -676,4 +1130,98 @@ app.put('/api/saved-leads/:id/contacted', async (req, res) => {
     await lead.save();
     res.json(lead);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── EMAIL FINDER API (Single Lead — SSE Streaming) ──────────────────────────
+app.get('/api/find-email/:id', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const sendData = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+
+  try {
+    const lead = await ScrapedLead.findById(req.params.id);
+    if (!lead) { sendData({ type: 'error', message: 'Lead not found' }); return res.end(); }
+
+    sendData({ type: 'status', message: `🚀 Starting email search for ${lead.name}...` });
+
+    const result = await findEmailForLead(lead, (msg) => sendData({ type: 'status', message: msg }));
+
+    // Persist results to DB
+    const updateData = { socialLinks: result.socialLinks };
+    if (result.email) {
+      updateData.email = result.email;
+      updateData.emailFound = true;
+      updateData.emailSource = result.emailSource;
+    }
+    await ScrapedLead.findByIdAndUpdate(lead._id, { $set: updateData });
+
+    sendData({
+      type: 'done',
+      leadId: lead._id,
+      email: result.email,
+      emailSource: result.emailSource,
+      socialLinks: result.socialLinks,
+      message: result.email ? `✅ Email found: ${result.email}` : '❌ No email found'
+    });
+  } catch (e) {
+    sendData({ type: 'error', message: e.message });
+  } finally {
+    res.end();
+  }
+});
+
+// ─── BULK EMAIL FINDER API (Multiple Leads — SSE Streaming) ──────────────────
+app.get('/api/bulk-find-emails', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const sendData = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+
+  try {
+    const ids = (req.query.ids || '').split(',').filter(Boolean);
+    if (ids.length === 0) { sendData({ type: 'error', message: 'No lead IDs provided' }); return res.end(); }
+
+    const leads = await ScrapedLead.find({ _id: { $in: ids } });
+    sendData({ type: 'start', total: leads.length, message: `🎯 Starting email search for ${leads.length} leads...` });
+
+    let found = 0;
+    for (let i = 0; i < leads.length; i++) {
+      const lead = leads[i];
+      sendData({ type: 'status', message: `[${i + 1}/${leads.length}] Searching: ${lead.name}...`, leadId: lead._id });
+
+      const result = await findEmailForLead(lead, (msg) => sendData({ type: 'status', message: msg, leadId: lead._id }));
+
+      const updateData = { socialLinks: result.socialLinks };
+      if (result.email) {
+        updateData.email = result.email;
+        updateData.emailFound = true;
+        updateData.emailSource = result.emailSource;
+        found++;
+      }
+      await ScrapedLead.findByIdAndUpdate(lead._id, { $set: updateData });
+
+      sendData({
+        type: 'lead_done',
+        leadId: lead._id,
+        name: lead.name,
+        email: result.email,
+        emailSource: result.emailSource,
+        socialLinks: result.socialLinks
+      });
+
+      // Rate limit delay between leads
+      if (i < leads.length - 1) await new Promise(r => setTimeout(r, 4000));
+    }
+
+    sendData({ type: 'done', found, total: leads.length, message: `✅ Done! Found emails for ${found}/${leads.length} leads.` });
+  } catch (e) {
+    sendData({ type: 'error', message: e.message });
+  } finally {
+    res.end();
+  }
 });
