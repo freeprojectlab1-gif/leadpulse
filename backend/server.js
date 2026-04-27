@@ -104,6 +104,7 @@ const scrapedLeadSchema = new mongoose.Schema({
   keyword: String,
   city: String,
   isContacted: { type: Boolean, default: false },
+  website: { type: String, default: null }, // If populated, lead has a website — skip email enrichment
   // Email Enrichment Fields
   email: { type: String, default: null },
   emailFound: { type: Boolean, default: false },
@@ -164,21 +165,33 @@ const extractEmailsFromText = (text) => {
   });
 };
 
-// ─── FIND EMAIL FOR LEAD (4-STRATEGY PIPELINE) ──────────────────────────────
-const findEmailForLead = async (lead, sendStatusUpdate) => {
-  let browser;
+// ─── FIND EMAIL FOR LEAD (5-STRATEGY PIPELINE, browser-reusable) ────────────
+const findEmailForLead = async (lead, sendStatusUpdate, sharedBrowser = null) => {
+  let browser = sharedBrowser;
+  let ownBrowser = false;
+  let page;
   try {
-    browser = await puppeteer.launch({
-      executablePath: executablePath(),
-      userDataDir: BROWSER_SESSION_DIR,
-      headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'],
-      timeout: 60000
-    });
+    if (!browser) {
+      browser = await puppeteer.launch({
+        executablePath: executablePath(),
+        userDataDir: BROWSER_SESSION_DIR,
+        headless: 'new',
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'],
+        timeout: 60000
+      });
+      ownBrowser = true;
+    }
 
-    const page = await browser.newPage();
+    page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
+    // Block heavy resources for speed
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      const t = req.resourceType();
+      if (t === 'image' || t === 'media' || t === 'font' || t === 'stylesheet') req.abort();
+      else req.continue();
+    });
 
     const socialLinks = { facebook: null, instagram: null, linkedin: null };
     let foundEmail = null;
@@ -188,8 +201,8 @@ const findEmailForLead = async (lead, sendStatusUpdate) => {
     if (lead.website) {
       try {
         if (sendStatusUpdate) sendStatusUpdate(`🌐 Checking website: ${lead.website}`);
-        await page.goto(lead.website, { waitUntil: 'domcontentloaded', timeout: 15000 });
-        await new Promise(r => setTimeout(r, 2500));
+        await page.goto(lead.website, { waitUntil: 'domcontentloaded', timeout: 10000 });
+        await new Promise(r => setTimeout(r, 1200));
 
         const webResult = await page.evaluate(() => {
           const text = document.body.innerText;
@@ -198,174 +211,134 @@ const findEmailForLead = async (lead, sendStatusUpdate) => {
           return { text, mailtoLinks };
         });
 
-        if (webResult.mailtoLinks.length > 0) {
-          const validEmails = webResult.mailtoLinks.filter(isGenericEmail);
-          if (validEmails.length > 0) {
-            foundEmail = validEmails[0];
-            emailSource = 'website';
-          }
-        } else {
-          const webEmails = extractEmailsFromText(webResult.text);
-          const validEmails = webEmails.filter(isGenericEmail);
-          if (validEmails.length > 0) {
-            foundEmail = validEmails[0];
-            emailSource = 'website';
-          }
+        const allCandidates = [...webResult.mailtoLinks, ...extractEmailsFromText(webResult.text)];
+        const validEmails = allCandidates.filter(isGenericEmail);
+        if (validEmails.length > 0) {
+          foundEmail = validEmails[0];
+          emailSource = 'website';
+          if (sendStatusUpdate) sendStatusUpdate(`✅ Email found on website: ${foundEmail}`);
         }
-        if (foundEmail && sendStatusUpdate) sendStatusUpdate(`✅ Email found on website: ${foundEmail}`);
-      } catch (e) {
-        console.log('[EmailFinder] Website check error:', e.message);
-      }
+      } catch (e) { /* swallow */ }
     }
 
-    // ── STRATEGY 1: Google Search for email (Yahoo fallback) ────────────────
+    // ── STRATEGY 1: Combined search (Bing → DDG → Yahoo) — extracts emails AND social links
     if (!foundEmail) {
       try {
         const query = `"${lead.name}" "${lead.city}" email contact`;
         if (sendStatusUpdate) sendStatusUpdate(`Searching: ${lead.name}...`);
-        
-        // TRY YAHOO FIRST
-        await page.goto(`https://search.yahoo.com/search?p=${encodeURIComponent(query)}`, {
-          waitUntil: 'domcontentloaded', timeout: 15000
-        });
-        await new Promise(r => setTimeout(r, 2000));
-        let resultsText = await page.evaluate(() => document.body.innerText);
-        
-        // TRY BING IF NO LUCK
-        const initialEmails = extractEmailsFromText(resultsText).filter(isGenericEmail);
-        if (initialEmails.length === 0) {
-          if (sendStatusUpdate) sendStatusUpdate(`Trying Bing fallback...`);
-          await page.goto(`https://www.bing.com/search?q=${encodeURIComponent(query)}`, {
-            waitUntil: 'domcontentloaded', timeout: 15000
-          });
-          await new Promise(r => setTimeout(r, 2000));
-          resultsText += " " + await page.evaluate(() => document.body.innerText);
+
+        const searchUrls = [
+          `https://www.bing.com/search?q=${encodeURIComponent(query)}`,
+          `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
+          `https://search.yahoo.com/search?p=${encodeURIComponent(query)}`
+        ];
+
+        let combinedText = '';
+        let combinedHrefs = [];
+        for (const url of searchUrls) {
+          try {
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 10000 });
+            await new Promise(r => setTimeout(r, 1200));
+            const data = await page.evaluate(() => ({
+              text: document.body.innerText,
+              hrefs: Array.from(document.querySelectorAll('a[href]')).map(a => a.href).filter(Boolean)
+            }));
+            combinedText += ' ' + data.text;
+            combinedHrefs.push(...data.hrefs);
+            // Early break if we already have a valid email
+            const found = extractEmailsFromText(combinedText).filter(isGenericEmail);
+            if (found.length > 0) break;
+          } catch (e) { /* try next engine */ }
         }
 
-        const googleEmails = extractEmailsFromText(resultsText);
-        const validEmails = googleEmails.filter(isGenericEmail);
+        // Extract social links from search results
+        for (const href of combinedHrefs) {
+          let real = href;
+          if (href.includes('RU=')) {
+            try { real = decodeURIComponent(href.split('RU=')[1].split('/RK=')[0]); } catch (e) { }
+          }
+          if (!socialLinks.facebook && real.includes('facebook.com/') && !real.includes('/sharer') && !real.includes('/login')) {
+            socialLinks.facebook = real.split('?')[0];
+          }
+          if (!socialLinks.instagram && real.includes('instagram.com/') && !real.includes('/p/') && !real.includes('/explore/')) {
+            socialLinks.instagram = real.split('?')[0];
+          }
+          if (!socialLinks.linkedin && real.includes('linkedin.com/') && !real.includes('/jobs/') && !real.includes('/login')) {
+            socialLinks.linkedin = real.split('?')[0];
+          }
+        }
+
+        const validEmails = extractEmailsFromText(combinedText).filter(isGenericEmail);
         if (validEmails.length > 0) {
           foundEmail = validEmails[0];
           emailSource = 'search_engine';
           if (sendStatusUpdate) sendStatusUpdate(`Email found via Search Engine: ${foundEmail}`);
         }
-      } catch (e) {
-        console.log('[EmailFinder] Search error:', e.message);
-      }
-    }
-
-    // ── STRATEGY 1.5: Deep Search (Google Dork for Email Providers) ─────────
-    if (!foundEmail) {
-      try {
-        const dorkQuery = `"${lead.name}" "${lead.city}" ("@gmail.com" OR "@yahoo.com" OR "@hotmail.com" OR "mailto:")`;
-        if (sendStatusUpdate) sendStatusUpdate(`Deep Searching Emails: ${lead.name}...`);
-        await page.goto(`https://search.yahoo.com/search?p=${encodeURIComponent(dorkQuery)}`, {
-          waitUntil: 'domcontentloaded', timeout: 15000
-        });
-        try {
-          const agreeBtn = await page.waitForSelector('button[name="agree"]', { timeout: 3000 });
-          if (agreeBtn) {
-            await agreeBtn.click();
-            await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 });
-          }
-        } catch (e) { }
-        await new Promise(r => setTimeout(r, 2000));
-
-        const dorkResultText = await page.evaluate(() => document.body.innerText);
-        const dorkEmails = extractEmailsFromText(dorkResultText);
-        const validEmails = dorkEmails.filter(isGenericEmail);
-
-        if (validEmails.length > 0) {
-          foundEmail = validEmails[0];
-          emailSource = 'google_dork';
-          if (sendStatusUpdate) sendStatusUpdate(`Email found via Deep Search: ${foundEmail}`);
-        }
-      } catch (e) {
-        console.log('[EmailFinder] Deep search error:', e.message);
-      }
+      } catch (e) { /* swallow */ }
     }
 
     // ── STRATEGY 2: Facebook About page ─────────────────────────────────────
     if (!foundEmail && socialLinks.facebook) {
       try {
         if (sendStatusUpdate) sendStatusUpdate(`Checking Facebook page...`);
-        // Try the /about page
         const fbAboutUrl = socialLinks.facebook.replace(/\/$/, '') + '/about';
-        await page.goto(fbAboutUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
-        await new Promise(r => setTimeout(r, 2500));
+        await page.goto(fbAboutUrl, { waitUntil: 'domcontentloaded', timeout: 10000 });
+        await new Promise(r => setTimeout(r, 1500));
         const fbText = await page.evaluate(() => document.body.innerText);
-        const fbEmails = extractEmailsFromText(fbText);
-        const validEmails = fbEmails.filter(isGenericEmail);
+        const validEmails = extractEmailsFromText(fbText).filter(isGenericEmail);
         if (validEmails.length > 0) {
           foundEmail = validEmails[0];
           emailSource = 'facebook';
           if (sendStatusUpdate) sendStatusUpdate(`Email found via Facebook: ${foundEmail}`);
         }
-      } catch (e) {
-        console.log('[EmailFinder] Facebook error:', e.message);
-      }
+      } catch (e) { /* swallow */ }
     }
 
     // ── STRATEGY 3: Instagram Bio ────────────────────────────────────────────
     if (!foundEmail && socialLinks.instagram) {
       try {
         if (sendStatusUpdate) sendStatusUpdate(`Checking Instagram bio...`);
-        await page.goto(socialLinks.instagram, { waitUntil: 'domcontentloaded', timeout: 15000 });
-        await new Promise(r => setTimeout(r, 2500));
-        const igResult = await page.evaluate(() => {
-          const text = document.body.innerText;
-          // Also look for mailto: links in bio
-          const mailtoLinks = Array.from(document.querySelectorAll('a[href^="mailto:"]'))
-            .map(a => a.href.replace('mailto:', '').split('?')[0]);
-          return { text, mailtoLinks };
-        });
-        // Prioritize explicit mailto links
-        const validMailto = igResult.mailtoLinks.filter(isGenericEmail);
-        if (validMailto.length > 0) {
-          foundEmail = validMailto[0];
+        await page.goto(socialLinks.instagram, { waitUntil: 'domcontentloaded', timeout: 10000 });
+        await new Promise(r => setTimeout(r, 1500));
+        const igResult = await page.evaluate(() => ({
+          text: document.body.innerText,
+          mailtoLinks: Array.from(document.querySelectorAll('a[href^="mailto:"]')).map(a => a.href.replace('mailto:', '').split('?')[0])
+        }));
+        const candidates = [...igResult.mailtoLinks, ...extractEmailsFromText(igResult.text)];
+        const validEmails = candidates.filter(isGenericEmail);
+        if (validEmails.length > 0) {
+          foundEmail = validEmails[0];
           emailSource = 'instagram';
-        } else {
-          const igEmails = extractEmailsFromText(igResult.text);
-          const validEmails = igEmails.filter(isGenericEmail);
-          if (validEmails.length > 0) {
-            foundEmail = validEmails[0];
-            emailSource = 'instagram';
-          }
+          if (sendStatusUpdate) sendStatusUpdate(`✅ Email found via Instagram: ${foundEmail}`);
         }
-        if (foundEmail && sendStatusUpdate) sendStatusUpdate(`✅ Email found via Instagram: ${foundEmail}`);
-      } catch (e) {
-        console.log('[EmailFinder] Instagram error:', e.message);
-      }
+      } catch (e) { /* swallow */ }
     }
 
     // ── STRATEGY 4: LinkedIn Company Page ───────────────────────────────────
     if (!foundEmail && socialLinks.linkedin) {
       try {
         if (sendStatusUpdate) sendStatusUpdate(`💼 Checking LinkedIn page...`);
-        await page.goto(socialLinks.linkedin, { waitUntil: 'domcontentloaded', timeout: 15000 });
-        await new Promise(r => setTimeout(r, 2500));
+        await page.goto(socialLinks.linkedin, { waitUntil: 'domcontentloaded', timeout: 10000 });
+        await new Promise(r => setTimeout(r, 1500));
         const liText = await page.evaluate(() => document.body.innerText);
-        const liEmails = extractEmailsFromText(liText);
-        const validEmails = liEmails.filter(isGenericEmail);
+        const validEmails = extractEmailsFromText(liText).filter(isGenericEmail);
         if (validEmails.length > 0) {
           foundEmail = validEmails[0];
           emailSource = 'linkedin';
           if (sendStatusUpdate) sendStatusUpdate(`Email found via LinkedIn: ${foundEmail}`);
         }
-      } catch (e) {
-        console.log('[EmailFinder] LinkedIn error:', e.message);
-      }
+      } catch (e) { /* swallow */ }
     }
 
     if (!foundEmail && sendStatusUpdate) sendStatusUpdate(`❌ No email found for ${lead.name}`);
-
     return { email: foundEmail, emailSource, socialLinks };
 
   } catch (err) {
     console.error('[EmailFinder] Fatal error:', err.message);
     return { email: null, emailSource: null, socialLinks: { facebook: null, instagram: null, linkedin: null } };
   } finally {
-    if (browser) await browser.close();
+    if (page) { try { await page.close(); } catch (e) { } }
+    if (ownBrowser && browser) { try { await browser.close(); } catch (e) { } }
   }
 };
 
@@ -544,7 +517,7 @@ app.get('/api/stats', async (req, res) => {
 });
 
 app.get('/api/recipients', async (req, res) => {
-  const list = await Recipient.find().sort({ lastSentAt: -1, _id: -1 }).limit(100);
+  const list = await Recipient.find().sort({ lastSentAt: -1, _id: -1 });
   res.json(list);
 });
 
@@ -761,7 +734,7 @@ cron.schedule('*/1 * * * *', async () => {
     isArchived: { $ne: true },
     status: { $nin: ['finished', 'replied', 'stopped', 'sending'] },
     nextSendAt: { $lte: new Date() }
-  }).limit(5);
+  });
 
   for (const rec of pending) {
     await sendEmail(rec._id);
@@ -818,6 +791,13 @@ app.get('/api/open-browser', async (req, res) => {
 const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, foundEmailsSet, getCancelled) => {
   const page = await browser.newPage();
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+  // Block heavy resources on the search-results page itself for speed
+  await page.setRequestInterception(true);
+  page.on('request', (req) => {
+    const t = req.resourceType();
+    if (t === 'image' || t === 'media' || t === 'font' || t === 'stylesheet') req.abort();
+    else req.continue();
+  });
 
   let siteDomain = '';
   if (source === 'ig') siteDomain = 'instagram.com';
@@ -835,69 +815,85 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
     for (const query of queries) {
       if (getCancelled()) break;
       
-      for (let pageNum = 0; pageNum < 20; pageNum++) {
+      for (let pageNum = 0; pageNum < 1000; pageNum++) {
         if (getCancelled()) break;
         
         const start = pageNum * 10 + 1;
-        const yahooUrl = `https://search.yahoo.com/search?p=${encodeURIComponent(query)}&b=${start}`;
         const bingUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}&first=${start}`;
-        
-        sendData({ type: 'status', message: `Unlimited Hack: ${source.toUpperCase()} - Query ${queries.indexOf(query) + 1}, Page ${pageNum + 1}...` });
-        
-        // TRY YAHOO
-        await page.goto(yahooUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await new Promise(r => setTimeout(r, 1500));
-        let resultsText = await page.evaluate(() => document.body.innerText);
+        const ddgUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}&s=${start}`;
+        const yahooUrl = `https://search.yahoo.com/search?p=${encodeURIComponent(query)}&b=${start}`;
 
-        // TRY BING FALLBACK
-        if (extractEmailsFromText(resultsText).filter(isGenericEmail).length === 0) {
-           sendData({ type: 'status', message: `Checking Bing fallback...` });
-           await page.goto(bingUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-           await new Promise(r => setTimeout(r, 1500));
-           resultsText += " " + await page.evaluate(() => document.body.innerText);
-        }
-        
-        const links = await page.evaluate(() => {
-          return Array.from(document.querySelectorAll('a[href]'))
-            .map(a => a.href)
-            .map(href => {
-              if (href.includes('RU=')) {
-                try { return decodeURIComponent(href.split('RU=')[1].split('/RK=')[0]); }
-                catch (e) { return href; }
-              }
-              return href;
+        sendData({ type: 'status', message: `${source.toUpperCase()} • Query ${queries.indexOf(query) + 1} • Page ${pageNum + 1}` });
+
+        // Try Bing → DuckDuckGo → Yahoo, accumulate links
+        let allHrefs = [];
+        for (const url of [bingUrl, ddgUrl, yahooUrl]) {
+          try {
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 12000 });
+            await new Promise(r => setTimeout(r, 800));
+            const hrefs = await page.evaluate(() => {
+              return Array.from(document.querySelectorAll('a[href]'))
+                .map(a => a.href)
+                .map(href => {
+                  if (href.includes('RU=')) {
+                    try { return decodeURIComponent(href.split('RU=')[1].split('/RK=')[0]); }
+                    catch (e) { return href; }
+                  }
+                  if (href.includes('uddg=')) {
+                    try { return decodeURIComponent(href.split('uddg=')[1].split('&')[0]); }
+                    catch (e) { return href; }
+                  }
+                  return href;
+                });
             });
-        });
+            allHrefs.push(...hrefs);
+          } catch (e) { }
+        }
 
-        const uniqueLinks = [...new Set(links)].filter(href => {
-           if (source === 'ig') return href.includes('instagram.com/') && !href.includes('/p/') && !href.includes('/explore/');
-           if (source === 'facebook') return href.includes('facebook.com/') && !href.includes('/sharer');
-           if (source === 'linkedin') return href.includes('linkedin.com/') && !href.includes('/jobs/');
+        const uniqueLinks = [...new Set(allHrefs)].filter(href => {
+           if (source === 'ig') return href.includes('instagram.com/') && !href.includes('/p/') && !href.includes('/explore/') && !href.includes('/reel/');
+           if (source === 'facebook') return href.includes('facebook.com/') && !href.includes('/sharer') && !href.includes('/login') && !href.includes('/help');
+           if (source === 'linkedin') return href.includes('linkedin.com/') && !href.includes('/jobs/') && !href.includes('/login');
            return false;
         });
 
         if (uniqueLinks.length === 0) break;
 
-        for (let link of uniqueLinks) {
-          if (getCancelled()) break;
+        // PARALLEL link processing — open multiple worker pages concurrently
+        const CONCURRENCY = 4;
+        sendData({ type: 'status', message: `Found ${uniqueLinks.length} ${source} links — parallel scanning (${CONCURRENCY}x)...` });
+
+        const visitLink = async (link) => {
+          if (getCancelled()) return;
+          let workerPage;
           try {
-            sendData({ type: 'status', message: `Checking ${link}...` });
-            await page.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            await new Promise(r => setTimeout(r, 2500));
+            workerPage = await browser.newPage();
+            await workerPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+            await workerPage.setRequestInterception(true);
+            workerPage.on('request', (req) => {
+              const t = req.resourceType();
+              if (t === 'image' || t === 'media' || t === 'font' || t === 'stylesheet') req.abort();
+              else req.continue();
+            });
+            await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 10000 });
+            await new Promise(r => setTimeout(r, 1200));
 
-            const pageText = await page.evaluate(() => document.body.innerText);
-            const name = await page.evaluate(() => document.querySelector('h1')?.innerText || document.querySelector('h2')?.innerText || document.title.split('|')[0].split('-')[0].trim() || 'Unknown');
+            const data = await workerPage.evaluate(() => ({
+              text: document.body.innerText,
+              name: document.querySelector('h1')?.innerText || document.querySelector('h2')?.innerText || document.title.split('|')[0].split('-')[0].trim() || 'Unknown',
+              mailtos: Array.from(document.querySelectorAll('a[href^="mailto:"]')).map(a => a.href.replace('mailto:', '').split('?')[0])
+            }));
 
-            const emails = extractEmailsFromText(pageText);
-            const validEmails = emails.filter(isGenericEmail);
-            
+            const candidates = [...data.mailtos, ...extractEmailsFromText(data.text)];
+            const validEmails = candidates.filter(isGenericEmail);
+
             if (validEmails.length > 0) {
               const finalEmail = validEmails[0];
-              if (foundEmailsSet.has(finalEmail.toLowerCase())) continue;
+              if (foundEmailsSet.has(finalEmail.toLowerCase())) return;
               foundEmailsSet.add(finalEmail.toLowerCase());
 
               const leadData = {
-                name,
+                name: data.name,
                 phone: 'N/A', address: 'N/A',
                 email: finalEmail,
                 emailFound: true,
@@ -908,10 +904,20 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
               try { await ScrapedLead.findOneAndUpdate({ mapsLink: link }, { $set: leadData }, { upsert: true }); } catch (dbErr) { }
               sendData({ type: 'lead', data: leadData });
             }
-          } catch (e) { }
+          } catch (e) { /* swallow */ }
+          finally {
+            if (workerPage && !workerPage.isClosed()) { try { await workerPage.close(); } catch (e) { } }
+          }
+        };
+
+        // Process in chunks of CONCURRENCY
+        for (let i = 0; i < uniqueLinks.length; i += CONCURRENCY) {
+          if (getCancelled()) break;
+          const chunk = uniqueLinks.slice(i, i + CONCURRENCY);
+          await Promise.all(chunk.map(visitLink));
         }
-        
-        await new Promise(r => setTimeout(r, 1500));
+
+        await new Promise(r => setTimeout(r, 800));
       }
     }
   } catch (e) {
@@ -1371,19 +1377,49 @@ app.get('/api/bulk-find-emails', async (req, res) => {
 
   const sendData = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
 
+  let browser;
   try {
     const ids = (req.query.ids || '').split(',').filter(Boolean);
     if (ids.length === 0) { sendData({ type: 'error', message: 'No lead IDs provided' }); return res.end(); }
 
-    const leads = await ScrapedLead.find({ _id: { $in: ids } });
-    sendData({ type: 'start', total: leads.length, message: `🎯 Starting email search for ${leads.length} leads...` });
+    const allLeads = await ScrapedLead.find({ _id: { $in: ids } });
+
+    // Skip leads that already have a website (per user preference) or already have an email
+    const leads = [];
+    let skippedWebsite = 0;
+    let skippedAlreadyHasEmail = 0;
+    for (const l of allLeads) {
+      if (l.website) { skippedWebsite++; continue; }
+      if (l.emailFound && l.email) { skippedAlreadyHasEmail++; continue; }
+      leads.push(l);
+    }
+
+    sendData({
+      type: 'start',
+      total: leads.length,
+      message: `🎯 Starting email search for ${leads.length} leads (skipped ${skippedWebsite} with websites, ${skippedAlreadyHasEmail} already enriched)...`
+    });
+
+    if (leads.length === 0) {
+      sendData({ type: 'done', found: 0, total: 0, message: `Nothing to enrich.` });
+      return res.end();
+    }
+
+    // Launch ONE browser, reuse for all leads (massive speedup vs per-lead launch)
+    browser = await puppeteer.launch({
+      executablePath: executablePath(),
+      userDataDir: BROWSER_SESSION_DIR,
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'],
+      timeout: 60000
+    });
 
     let found = 0;
     for (let i = 0; i < leads.length; i++) {
       const lead = leads[i];
       sendData({ type: 'status', message: `[${i + 1}/${leads.length}] Searching: ${lead.name}...`, leadId: lead._id });
 
-      const result = await findEmailForLead(lead, (msg) => sendData({ type: 'status', message: msg, leadId: lead._id }));
+      const result = await findEmailForLead(lead, (msg) => sendData({ type: 'status', message: msg, leadId: lead._id }), browser);
 
       const updateData = { socialLinks: result.socialLinks };
       if (result.email) {
@@ -1403,14 +1439,15 @@ app.get('/api/bulk-find-emails', async (req, res) => {
         socialLinks: result.socialLinks
       });
 
-      // Rate limit delay between leads
-      if (i < leads.length - 1) await new Promise(r => setTimeout(r, 4000));
+      // Reduced rate limit delay between leads
+      if (i < leads.length - 1) await new Promise(r => setTimeout(r, 1000));
     }
 
     sendData({ type: 'done', found, total: leads.length, message: `✅ Done! Found emails for ${found}/${leads.length} leads.` });
   } catch (e) {
     sendData({ type: 'error', message: e.message });
   } finally {
+    if (browser) { try { await browser.close(); } catch (e) { } }
     res.end();
   }
 });
