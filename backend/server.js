@@ -562,7 +562,7 @@ app.get('/api/scrape-leads', async (req, res) => {
     await page.waitForSelector('div[role="feed"]', { timeout: 15000 }).catch(() => {});
 
     let consecutiveNoResults = 0;
-    for (let loop = 0; loop < 15; loop++) {
+    for (let loop = 0; loop < 40; loop++) {
       // BETTER SCROLL: Scroll to the last element in the feed
       await page.evaluate(async () => {
         const feed = document.querySelector('div[role="feed"]');
@@ -583,8 +583,8 @@ app.get('/api/scrape-leads', async (req, res) => {
       
       if (newLinks.length === 0) {
         consecutiveNoResults++;
-        sendData({ type: 'status', message: `Iteration ${loop+1}: Scrolling for more... (${consecutiveNoResults}/3)` });
-        if (consecutiveNoResults >= 3) break; // Auto-stop if no new results
+        sendData({ type: 'status', message: `Iteration ${loop+1}: Scrolling for more... (${consecutiveNoResults}/6)` });
+        if (consecutiveNoResults >= 6) break; // Auto-stop if no new results after 6 tries
         continue;
       }
 
