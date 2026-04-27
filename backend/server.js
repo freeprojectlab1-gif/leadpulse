@@ -562,18 +562,26 @@ app.get('/api/scrape-leads', async (req, res) => {
     await page.waitForSelector('div[role="feed"]', { timeout: 15000 }).catch(() => {});
 
     let consecutiveNoResults = 0;
-    for (let loop = 0; loop < 40; loop++) {
+    for (let loop = 0; loop < 200; loop++) {
       // BETTER SCROLL: Scroll to the last element in the feed
-      await page.evaluate(async () => {
+      const isEnd = await page.evaluate(async () => {
         const feed = document.querySelector('div[role="feed"]');
         if (feed) {
           const lastChild = feed.lastElementChild;
-          if (lastChild) {
-            lastChild.scrollIntoView();
-          }
+          if (lastChild) lastChild.scrollIntoView();
           await new Promise(r => setTimeout(r, 2500));
+          
+          // Check for "You've reached the end of the list" or similar markers
+          const text = feed.innerText || "";
+          return text.includes("You've reached the end of the list") || text.includes("No more results");
         }
+        return false;
       });
+
+      if (isEnd) {
+        sendData({ type: 'status', message: "Reached the end of Google Maps results." });
+        break;
+      }
 
       const links = await page.evaluate(() => {
         return Array.from(document.querySelectorAll('a[href*="https://www.google.com/maps/place/"]')).map(a => a.href);
@@ -583,8 +591,8 @@ app.get('/api/scrape-leads', async (req, res) => {
       
       if (newLinks.length === 0) {
         consecutiveNoResults++;
-        sendData({ type: 'status', message: `Iteration ${loop+1}: Scrolling for more... (${consecutiveNoResults}/6)` });
-        if (consecutiveNoResults >= 6) break; // Auto-stop if no new results after 6 tries
+        sendData({ type: 'status', message: `Iteration ${loop+1}: Scrolling for more... (${consecutiveNoResults}/10)` });
+        if (consecutiveNoResults >= 10) break; // Increased retry to 10 for "unlimited" feel
         continue;
       }
 
