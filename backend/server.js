@@ -879,6 +879,9 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
 
         const visitLink = async (link) => {
           if (getCancelled()) return;
+          
+          sendData({ type: 'status', message: `🔍 Scanning: ${link}` });
+          
           let workerPage;
           try {
             workerPage = await browser.newPage();
