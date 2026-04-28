@@ -907,7 +907,7 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
             await new Promise(r => setTimeout(r, 1200));
 
             const data = await workerPage.evaluate(() => ({
-              text: document.body.innerText,
+              text: document.documentElement.outerHTML,
               name: document.querySelector('h1')?.innerText || document.querySelector('h2')?.innerText || document.title.split('|')[0].split('-')[0].trim() || 'Unknown',
               mailtos: Array.from(document.querySelectorAll('a[href^="mailto:"]')).map(a => a.href.replace('mailto:', '').split('?')[0])
             }));
