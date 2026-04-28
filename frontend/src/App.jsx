@@ -81,7 +81,7 @@ function App() {
 
   const [file, setFile] = useState(null);
   const [subject, setSubject] = useState(localStorage.getItem('saved_subject') || 'Growth Opportunity for {{Business}}');
-  const [body1, setBody1] = useState(localStorage.getItem('saved_body1') || 'Hi {{First Name}},\n\nI came across {{Business}} on social media and decided to check it out.\n\nI noticed you don’t have a website yet.\n\nMany of your competitors already have one, which makes them look more professional and helps build trust with customers.\n\nI can create a clean, modern website for {{Business}} that helps you stand out and build that trust.\n\nIf this sounds useful, feel free to reply — I’d be happy to share a quick idea with you.\n\n— Muntazir\nSoftware Engineer | Website Developer');
+  const [body1, setBody1] = useState(localStorage.getItem('saved_body1') || 'Hi {{First Name}},\n\nI came across {{Business}} on social media and decided to check it out.\n\nI noticed you don’t have a website yet.\n\nMany of your competitors already have one, which makes them look more professional and helps build trust with customers.\n\nI can create a clean, modern website for {{Business}}.\n\nIf this sounds useful, feel free to reply — I’d be happy to share a quick idea with you.\n\n— Muntazir\nSoftware Engineer | Website Developer');
   const [body2, setBody2] = useState(localStorage.getItem('saved_body2') || 'Hi {{First Name}}, following up...\n\nWhile you sleep, people are searching for your services online. Without a website, {{Business}} is invisible to them.\n\nLet\'s get you online so you stop missing out on these opportunities.\n\nReady to grow?\n\n— Muntazir\nWebsite & Software Developer');
   const [body3, setBody3] = useState(localStorage.getItem('saved_body3') || 'Hi {{First Name}},\n\nLast note from my side. I truly believe {{Business}} has massive potential, but it needs a digital home to thrive.\n\nIf you ever decide to take your business to the next level, I’m here to help.\n\nWishing you the very best!\n\n— Muntazir\nWebsite & Software Developer');
   const [emailUser, setEmailUser] = useState(localStorage.getItem('saved_user') || 'muntazir.site@gmail.com');
@@ -145,7 +145,7 @@ function App() {
     localStorage.removeItem('saved_body1');
     localStorage.removeItem('saved_body2');
     localStorage.removeItem('saved_body3');
-    setBody1('Hi {{First Name}},\n\nI came across {{Business}} on social media and decided to check it out.\n\nI noticed you don’t have a website yet.\n\nMany of your competitors already have one, which makes them look more professional and helps build trust with customers.\n\nI can create a clean, modern website for {{Business}} that helps you stand out and build that trust.\n\nIf this sounds useful, feel free to reply — I’d be happy to share a quick idea with you.\n\n— Muntazir\nSoftware Engineer | Website Developer');
+    setBody1('Hi {{First Name}},\n\nI came across {{Business}} on social media and decided to check it out.\n\nI noticed you don’t have a website yet.\n\nMany of your competitors already have one, which makes them look more professional and helps build trust with customers.\n\nI can create a clean, modern website for {{Business}}.\n\nIf this sounds useful, feel free to reply — I’d be happy to share a quick idea with you.\n\n— Muntazir\nSoftware Engineer | Website Developer');
     setBody2('Hi {{First Name}}, following up...\n\nWhile you sleep, people are searching for your services online. Without a website, {{Business}} is invisible to them.\n\nLet\'s get you online so you stop missing out on these opportunities.\n\nReady to grow?\n\n— Muntazir\nWebsite & Software Developer');
     setBody3('Hi {{First Name}},\n\nLast note from my side. I truly believe {{Business}} has massive potential, but it needs a digital home to thrive.\n\nIf you ever decide to take your business to the next level, I’m here to help.\n\nWishing you the very best!\n\n— Muntazir\nWebsite & Software Developer');
   }, []);
@@ -401,7 +401,7 @@ function App() {
         const rawName = (sl.name || '').trim();
         const isJunk = !rawName || junkNames.includes(rawName.toLowerCase());
         const businessVal = isJunk ? (sl.keyword || rawName || '') : rawName;
-        const firstNameVal = isJunk ? (sl.keyword || '') : (rawName.split(/\s+/)[0] || '');
+        const firstNameVal = businessVal; // User requested full business name instead of first name split
         lead = {
           ...sl,
           data: {
@@ -443,7 +443,7 @@ function App() {
         const matchKey = dataKeys.find(k => k.toLowerCase() === v.toLowerCase());
         let val = matchKey ? lead.data[matchKey] : "";
         if (!val && v.toLowerCase() === 'business') val = lead.data?.['Business Name'] || lead.data?.['business'] || lead.data?.['Name'] || "";
-        if (!val && v.toLowerCase() === 'first name') val = (lead.data?.['Name'] || lead.data?.['first_name'] || '').split(/\s+/)[0] || "";
+        if (!val && v.toLowerCase() === 'first name') val = lead.data?.['Name'] || lead.data?.['first_name'] || "";
         initialData[v] = val;
       });
       setModalData(initialData);
@@ -1948,18 +1948,29 @@ function App() {
                         {savedLeads.filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup).map((lead) => (
                           <tr key={lead._id}>
                             <td style={{ fontWeight: '600' }}>
-                              {lead.name}
+                              {inlineEditLeadId === lead._id ? (
+                                <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} value={inlineEditData.name || ''} onChange={e => setInlineEditData({ ...inlineEditData, name: e.target.value })} />
+                              ) : lead.name}
                               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px' }}>{lead.keyword}</div>
                             </td>
                             <td>
-                              <div style={{ color: 'var(--success)', fontWeight: '500' }}>{lead.phone}</div>
-                              {lead.phone !== 'N/A' && (
-                                <a href={`https://wa.me/${lead.phone.replace(/[^\d+]/g, '')}`} target="_blank" rel="noreferrer" style={{ color: '#10b981', fontSize: '0.75rem', textDecoration: 'none', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}><MessageSquare size={12} /> WhatsApp</a>
-                              )}
-                              {lead.emailFound && (
-                                <div style={{ marginTop: '4px' }}>
-                                  <a href={`mailto:${lead.email}`} style={{ color: '#6366f1', fontSize: '0.75rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={12} /> {lead.email}</a>
-                                </div>
+                              {inlineEditLeadId === lead._id ? (
+                                <>
+                                  <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%', marginBottom: '4px' }} placeholder="Phone" value={inlineEditData.phone || ''} onChange={e => setInlineEditData({ ...inlineEditData, phone: e.target.value })} />
+                                  <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} placeholder="Email" value={inlineEditData.email || ''} onChange={e => setInlineEditData({ ...inlineEditData, email: e.target.value })} />
+                                </>
+                              ) : (
+                                <>
+                                  <div style={{ color: 'var(--success)', fontWeight: '500' }}>{lead.phone}</div>
+                                  {lead.phone !== 'N/A' && (
+                                    <a href={`https://wa.me/${lead.phone.replace(/[^\d+]/g, '')}`} target="_blank" rel="noreferrer" style={{ color: '#10b981', fontSize: '0.75rem', textDecoration: 'none', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}><MessageSquare size={12} /> WhatsApp</a>
+                                  )}
+                                  {lead.emailFound && (
+                                    <div style={{ marginTop: '4px' }}>
+                                      <a href={`mailto:${lead.email}`} style={{ color: '#6366f1', fontSize: '0.75rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={12} /> {lead.email}</a>
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </td>
                             <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{lead.address}<br />{lead.city}</td>
@@ -1969,9 +1980,19 @@ function App() {
                               </button>
                             </td>
                             <td>
-                              <div style={{ display: 'flex', gap: '6px' }}>
-                                <a href={lead.mapsLink} target="_blank" rel="noreferrer" className="btn-icon btn-restart" style={{ textDecoration: 'none' }}>Map</a>
-                                <button onClick={async () => { await axios.delete(`/api/saved-leads/${lead._id}`); fetchSavedLeads(); }} className="btn-icon btn-stop">Del</button>
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                {inlineEditLeadId === lead._id ? (
+                                  <>
+                                    <button className="btn-icon" style={{ borderColor: '#10b981', color: '#10b981', fontSize: '0.78rem' }} onClick={handleSaveInlineEdit}>Save</button>
+                                    <button className="btn-icon" style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)', fontSize: '0.78rem' }} onClick={() => setInlineEditLeadId(null)}>Cancel</button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button className="btn-icon" style={{ borderColor: '#6366f1', color: '#6366f1', fontSize: '0.78rem' }} onClick={() => { setInlineEditLeadId(lead._id); setInlineEditData({ name: lead.name, phone: lead.phone, email: lead.email, address: lead.address, city: lead.city }); }}>Edit</button>
+                                    <a href={lead.mapsLink} target="_blank" rel="noreferrer" className="btn-icon btn-restart" style={{ textDecoration: 'none' }}>Map</a>
+                                    <button onClick={async () => { await axios.delete(`/api/saved-leads/${lead._id}`); fetchSavedLeads(); }} className="btn-icon btn-stop">Del</button>
+                                  </>
+                                )}
                               </div>
                             </td>
                           </tr>

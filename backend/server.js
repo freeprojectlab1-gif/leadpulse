@@ -156,8 +156,18 @@ const isGenericEmail = (email) => {
 };
 
 // ─── EMAIL EXTRACTOR UTILITY ────────────────────────────────────────────────
-const extractEmailsFromText = (text) => {
-  if (!text) return [];
+const extractEmailsFromText = (rawText) => {
+  if (!rawText) return [];
+  
+  // High Read Power: Deobfuscate hidden emails
+  const text = rawText
+    .replace(/\[at\]/gi, '@')
+    .replace(/\(at\)/gi, '@')
+    .replace(/\[dot\]/gi, '.')
+    .replace(/\(dot\)/gi, '.')
+    .replace(/ at /gi, '@')
+    .replace(/ dot /gi, '.');
+
   const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
   const found = text.match(emailRegex) || [];
   // Filter common false positives
@@ -836,13 +846,21 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
 
         sendData({ type: 'status', message: `${source.toUpperCase()} • Query ${queries.indexOf(query) + 1} • Page ${pageNum + 1}` });
 
-        // Try Bing → DuckDuckGo → Yahoo, accumulate links
+        // PARALLEL SEARCH: Try Bing + DuckDuckGo + Yahoo at the exact same time
         let allHrefs = [];
-        for (const url of [bingUrl, ddgUrl, yahooUrl]) {
+        await Promise.all([bingUrl, ddgUrl, yahooUrl].map(async (url) => {
+          let tempPage;
           try {
-            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 12000 });
-            await new Promise(r => setTimeout(r, 800));
-            const hrefs = await page.evaluate(() => {
+            tempPage = await browser.newPage();
+            await tempPage.setRequestInterception(true);
+            tempPage.on('request', (req) => {
+              const t = req.resourceType();
+              if (t === 'image' || t === 'media' || t === 'font' || t === 'stylesheet') req.abort();
+              else req.continue();
+            });
+            await tempPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 8000 });
+            await new Promise(r => setTimeout(r, 400));
+            const hrefs = await tempPage.evaluate(() => {
               return Array.from(document.querySelectorAll('a[href]'))
                 .map(a => a.href)
                 .map(href => {
@@ -859,7 +877,8 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
             });
             allHrefs.push(...hrefs);
           } catch (e) { }
-        }
+          finally { if (tempPage) await tempPage.close().catch(()=>{}); }
+        }));
 
         const uniqueLinks = [...new Set(allHrefs)].filter(href => {
            if (source === 'ig') return href.includes('instagram.com/') && !href.includes('/explore/');
@@ -874,8 +893,8 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
         }
 
         // PARALLEL link processing — open multiple worker pages concurrently
-        const CONCURRENCY = 1; // Reduced from 4 to 1 to prevent OOM crashes on Render
-        sendData({ type: 'status', message: `Found ${uniqueLinks.length} ${source} links — sequential scanning...` });
+        const CONCURRENCY = 14; 
+        sendData({ type: 'status', message: `Found ${uniqueLinks.length} ${source} links — parallel scanning (14x)...` });
 
         const visitLink = async (link) => {
           if (getCancelled()) return;
@@ -908,7 +927,7 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
 
             const data = await workerPage.evaluate(() => ({
               text: document.documentElement.outerHTML,
-              name: document.querySelector('h1')?.innerText || document.querySelector('h2')?.innerText || document.title.split('|')[0].split('-')[0].trim() || 'Unknown',
+              name: document.querySelector('meta[property="og:title"]')?.content || document.title.split('|')[0].split('-')[0].trim() || document.querySelector('h1')?.innerText || 'Unknown',
               mailtos: Array.from(document.querySelectorAll('a[href^="mailto:"]')).map(a => a.href.replace('mailto:', '').split('?')[0])
             }));
 
@@ -1211,7 +1230,7 @@ app.post('/api/enricher-enroll', async (req, res) => {
       const rawName = (lead.name || '').trim();
       const isJunk = !rawName || junkNames.includes(rawName.toLowerCase());
       const businessVal = isJunk ? (lead.keyword || rawName || '') : rawName;
-      const firstNameVal = isJunk ? (lead.keyword || '') : (rawName.split(/\s+/)[0] || '');
+      const firstNameVal = businessVal; // User requested full business name instead of first name split
 
       const data = {
         'Name': businessVal,
