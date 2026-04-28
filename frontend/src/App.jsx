@@ -192,7 +192,7 @@ function App() {
   const handleSaveCookie = async (field, value) => {
     try {
       await axios.post('/api/settings', { [field]: value });
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const fetchCustomFields = async () => {
@@ -848,33 +848,33 @@ function App() {
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
                     <strong>Pro Tip:</strong> For deep Instagram/LinkedIn/Facebook email extraction on a live server, paste your session cookies below (they save automatically).
                   </p>
-                  
+
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <div className="field" style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
-                      <label style={{ fontSize: '0.75rem' }}><Instagram size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> IG sessionid</label>
+                      <label style={{ fontSize: '0.75rem' }}><Instagram size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> IG sessionid</label>
                       <input type={showCookies ? "text" : "password"} placeholder="sessionid cookie" value={igSession} onChange={e => { setIgSession(e.target.value); localStorage.setItem('saved_igSession', e.target.value); }} onBlur={() => handleSaveCookie('igSession', igSession)} style={{ paddingRight: '35px' }} />
-                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '34px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '42px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
                         {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                     <div className="field" style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
-                      <label style={{ fontSize: '0.75rem' }}><Linkedin size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> LI li_at</label>
+                      <label style={{ fontSize: '0.75rem' }}><Linkedin size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> LI li_at</label>
                       <input type={showCookies ? "text" : "password"} placeholder="li_at cookie" value={liAt} onChange={e => { setLiAt(e.target.value); localStorage.setItem('saved_liAt', e.target.value); }} onBlur={() => handleSaveCookie('liAt', liAt)} style={{ paddingRight: '35px' }} />
-                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '34px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '42px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
                         {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                     <div className="field" style={{ flex: 1, minWidth: '150px', position: 'relative' }}>
-                      <label style={{ fontSize: '0.75rem' }}><Facebook size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> FB c_user</label>
+                      <label style={{ fontSize: '0.75rem' }}><Facebook size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> FB c_user</label>
                       <input type={showCookies ? "text" : "password"} placeholder="c_user" value={fbCUser} onChange={e => { setFbCUser(e.target.value); localStorage.setItem('saved_fbCUser', e.target.value); }} onBlur={() => handleSaveCookie('fbCUser', fbCUser)} style={{ paddingRight: '35px' }} />
-                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '34px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '42px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
                         {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                     <div className="field" style={{ flex: 1, minWidth: '150px', position: 'relative' }}>
-                      <label style={{ fontSize: '0.75rem' }}><Facebook size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> FB xs</label>
+                      <label style={{ fontSize: '0.75rem' }}><Facebook size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> FB xs</label>
                       <input type={showCookies ? "text" : "password"} placeholder="xs cookie" value={fbXs} onChange={e => { setFbXs(e.target.value); localStorage.setItem('saved_fbXs', e.target.value); }} onBlur={() => handleSaveCookie('fbXs', fbXs)} style={{ paddingRight: '35px' }} />
-                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '34px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '42px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
                         {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
@@ -1696,185 +1696,185 @@ function App() {
                     <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No emails enriched yet. Use "Find Emails" above to start enriching scraped leads.</p>
                   ) : (
                     <div style={{ overflowX: 'auto', width: '100%' }}>
-                    <table className="pro-table" style={{ minWidth: '950px' }}>
-                      <thead>
-                        <tr>
-                          {enricherEditMode && (
-                            <th style={{ width: '40px' }}>
-                              <input
-                                type="checkbox"
-                                checked={uniqueEmailLeads.length > 0 && uniqueEmailLeads.every(l => selectedIds.includes(l._id))}
-                                onChange={() => {
-                                  const allSelected = uniqueEmailLeads.every(l => selectedIds.includes(l._id));
-                                  if (allSelected) setSelectedIds(prev => prev.filter(id => !uniqueEmailLeads.some(l => l._id === id)));
-                                  else setSelectedIds(prev => [...new Set([...prev, ...uniqueEmailLeads.map(l => l._id)])]);
-                                }}
-                              />
-                            </th>
-                          )}
-                          <th style={{ width: '50px' }}>#</th>
-                          <th style={{ minWidth: '220px' }}><Mail size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Email</th>
-                          <th style={{ minWidth: '160px' }}>Business</th>
-                          <th style={{ minWidth: '120px' }}>Phone</th>
-                          <th style={{ minWidth: '90px' }}>Source</th>
-                          <th style={{ minWidth: '120px' }}>Location</th>
-                          <th style={{ minWidth: '230px' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {uniqueEmailLeads.map((lead, idx) => {
-                          const recipient = recipientByEmail[lead.email.trim().toLowerCase()];
-                          const autoActive = recipient && isAutoActive(recipient.status);
-                          const rowClass = (enricherEditMode && selectedIds.includes(lead._id)) ? 'row-selected' : '';
-                          const rowStyle = autoActive ? { background: 'rgba(16, 185, 129, 0.08)' } : (recipient ? { background: 'rgba(99, 102, 241, 0.05)' } : {});
-                          return (
-                          <tr key={lead._id} className={rowClass} style={rowStyle}>
+                      <table className="pro-table" style={{ minWidth: '950px' }}>
+                        <thead>
+                          <tr>
                             {enricherEditMode && (
-                              <td>
+                              <th style={{ width: '40px' }}>
                                 <input
                                   type="checkbox"
-                                  checked={selectedIds.includes(lead._id)}
-                                  onChange={() => toggleSelectOne(lead._id)}
+                                  checked={uniqueEmailLeads.length > 0 && uniqueEmailLeads.every(l => selectedIds.includes(l._id))}
+                                  onChange={() => {
+                                    const allSelected = uniqueEmailLeads.every(l => selectedIds.includes(l._id));
+                                    if (allSelected) setSelectedIds(prev => prev.filter(id => !uniqueEmailLeads.some(l => l._id === id)));
+                                    else setSelectedIds(prev => [...new Set([...prev, ...uniqueEmailLeads.map(l => l._id)])]);
+                                  }}
                                 />
-                              </td>
+                              </th>
                             )}
-                            <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{idx + 1}</td>
-                             <td>
-                               {inlineEditLeadId === lead._id ? (
-                                 <input
-                                   className="pro-input"
-                                   style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }}
-                                   value={inlineEditData.email || ''}
-                                   onChange={e => setInlineEditData({ ...inlineEditData, email: e.target.value })}
-                                 />
-                               ) : recipient ? (
-                                 <span
-                                   onClick={() => setIntelLead(recipient)}
-                                   style={{ color: autoActive ? '#10b981' : '#6366f1', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                   title="Click to view delivery logs"
-                                 >
-                                   <Mail size={14} /> {lead.email}
-                                   {autoActive && (
-                                     <span style={{ marginLeft: '6px', padding: '2px 8px', background: '#10b981', color: 'white', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 700 }}>
-                                       AUTO • Step {recipient.step}
-                                     </span>
-                                   )}
-                                   {!autoActive && recipient && (
-                                     <span style={{ marginLeft: '6px', padding: '2px 8px', background: 'var(--text-muted)', color: 'white', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 700 }}>
-                                       {(recipient.status || '').toUpperCase()}
-                                     </span>
-                                   )}
-                                 </span>
-                               ) : (
-                                 <a href={`mailto:${lead.email}`} style={{ color: '#6366f1', fontWeight: '600', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={14} /> {lead.email}</a>
-                               )}
-                             </td>
-                            <td style={{ fontWeight: '600' }}>
-                              {inlineEditLeadId === lead._id ? (
-                                <input
-                                  className="pro-input"
-                                  style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }}
-                                  value={inlineEditData.name || ''}
-                                  onChange={e => setInlineEditData({ ...inlineEditData, name: e.target.value })}
-                                />
-                              ) : lead.name}
-                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px' }}>{lead.keyword}</div>
-                            </td>
-                            <td style={{ color: 'var(--success)', fontWeight: '500' }}>
-                              {inlineEditLeadId === lead._id ? (
-                                <input
-                                  className="pro-input"
-                                  style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%', color: 'var(--success)' }}
-                                  value={inlineEditData.phone || ''}
-                                  onChange={e => setInlineEditData({ ...inlineEditData, phone: e.target.value })}
-                                />
-                              ) : (lead.phone || '—')}
-                            </td>
-                            <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{(() => {
-                              const map = { ig: 'Instagram', instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', website: 'Website', search_engine: 'Search Engine', google_dork: 'Google Search', google: 'Google' };
-                              const s = (lead.emailSource || '').toLowerCase();
-                              return map[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—');
-                            })()}</td>
-                            <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{lead.city}</td>
-                            <td>
-                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                {inlineEditLeadId === lead._id ? (
-                                  <>
-                                    <button
-                                      className="btn-icon"
-                                      style={{ borderColor: '#10b981', color: '#10b981', fontSize: '0.78rem' }}
-                                      onClick={handleSaveInlineEdit}
-                                    >Save</button>
-                                    <button
-                                      className="btn-icon"
-                                      style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)', fontSize: '0.78rem' }}
-                                      onClick={() => setInlineEditLeadId(null)}
-                                    >Cancel</button>
-                                  </>
-                                ) : selectedLeadForTpl === lead._id ? (
-                                  <select
-                                    className="pro-select"
-                                    style={{ appearance: 'none', background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px 25px 4px 10px', fontSize: '0.8rem' }}
-                                    onChange={(e) => {
-                                      if (e.target.value) handleSendCustomTemplate(lead._id, e.target.value);
-                                      setSelectedLeadForTpl(null);
-                                    }}
-                                  >
-                                    <option value="">Pick Template...</option>
-                                    <optgroup label="Auto Sequence">
-                                      <option value="step1">Sequence: Step 1 (Intro)</option>
-                                      <option value="step2">Sequence: Step 2 (Follow-up)</option>
-                                      <option value="step3">Sequence: Step 3 (Final)</option>
-                                    </optgroup>
-                                    <optgroup label="Custom Templates">
-                                      {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
-                                    </optgroup>
-                                    <option value="">Cancel</option>
-                                  </select>
-                                ) : (
-                                  <>
-                                    <button
-                                      className="btn-icon"
-                                      style={{ borderColor: '#10b981', color: '#10b981', fontSize: '0.78rem' }}
-                                      onClick={() => setSelectedLeadForTpl(lead._id)}
-                                      title="Send email"
-                                    >Send</button>
-                                    <button
-                                      className="btn-icon"
-                                      style={{ borderColor: '#6366f1', color: '#6366f1', fontSize: '0.78rem' }}
-                                      onClick={() => {
-                                        setInlineEditLeadId(lead._id);
-                                        setInlineEditData({ email: lead.email, name: lead.name, phone: lead.phone });
-                                      }}
-                                      title="Edit lead"
-                                    >Edit</button>
-                                  </>
-                                )}
-                                <button 
-                                  onClick={() => { 
-                                    setConfirmModal({
-                                      open: true,
-                                      title: `Delete this lead (${lead.email})?`,
-                                      onConfirm: async () => {
-                                        try {
-                                          await axios.delete(`/api/saved-leads/${lead._id}`); 
-                                          showToast("Lead Deleted!", "success");
-                                          fetchSavedLeads(); 
-                                        } catch(e) {
-                                          showToast("Delete failed", "error");
-                                        }
-                                      }
-                                    });
-                                  }} 
-                                  className="btn-icon btn-stop"
-                                >Del</button>
-                              </div>
-                            </td>
+                            <th style={{ width: '50px' }}>#</th>
+                            <th style={{ minWidth: '220px' }}><Mail size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Email</th>
+                            <th style={{ minWidth: '160px' }}>Business</th>
+                            <th style={{ minWidth: '120px' }}>Phone</th>
+                            <th style={{ minWidth: '90px' }}>Source</th>
+                            <th style={{ minWidth: '120px' }}>Location</th>
+                            <th style={{ minWidth: '230px' }}>Actions</th>
                           </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {uniqueEmailLeads.map((lead, idx) => {
+                            const recipient = recipientByEmail[lead.email.trim().toLowerCase()];
+                            const autoActive = recipient && isAutoActive(recipient.status);
+                            const rowClass = (enricherEditMode && selectedIds.includes(lead._id)) ? 'row-selected' : '';
+                            const rowStyle = autoActive ? { background: 'rgba(16, 185, 129, 0.08)' } : (recipient ? { background: 'rgba(99, 102, 241, 0.05)' } : {});
+                            return (
+                              <tr key={lead._id} className={rowClass} style={rowStyle}>
+                                {enricherEditMode && (
+                                  <td>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedIds.includes(lead._id)}
+                                      onChange={() => toggleSelectOne(lead._id)}
+                                    />
+                                  </td>
+                                )}
+                                <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{idx + 1}</td>
+                                <td>
+                                  {inlineEditLeadId === lead._id ? (
+                                    <input
+                                      className="pro-input"
+                                      style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }}
+                                      value={inlineEditData.email || ''}
+                                      onChange={e => setInlineEditData({ ...inlineEditData, email: e.target.value })}
+                                    />
+                                  ) : recipient ? (
+                                    <span
+                                      onClick={() => setIntelLead(recipient)}
+                                      style={{ color: autoActive ? '#10b981' : '#6366f1', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                      title="Click to view delivery logs"
+                                    >
+                                      <Mail size={14} /> {lead.email}
+                                      {autoActive && (
+                                        <span style={{ marginLeft: '6px', padding: '2px 8px', background: '#10b981', color: 'white', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 700 }}>
+                                          AUTO • Step {recipient.step}
+                                        </span>
+                                      )}
+                                      {!autoActive && recipient && (
+                                        <span style={{ marginLeft: '6px', padding: '2px 8px', background: 'var(--text-muted)', color: 'white', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 700 }}>
+                                          {(recipient.status || '').toUpperCase()}
+                                        </span>
+                                      )}
+                                    </span>
+                                  ) : (
+                                    <a href={`mailto:${lead.email}`} style={{ color: '#6366f1', fontWeight: '600', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={14} /> {lead.email}</a>
+                                  )}
+                                </td>
+                                <td style={{ fontWeight: '600' }}>
+                                  {inlineEditLeadId === lead._id ? (
+                                    <input
+                                      className="pro-input"
+                                      style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }}
+                                      value={inlineEditData.name || ''}
+                                      onChange={e => setInlineEditData({ ...inlineEditData, name: e.target.value })}
+                                    />
+                                  ) : lead.name}
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px' }}>{lead.keyword}</div>
+                                </td>
+                                <td style={{ color: 'var(--success)', fontWeight: '500' }}>
+                                  {inlineEditLeadId === lead._id ? (
+                                    <input
+                                      className="pro-input"
+                                      style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%', color: 'var(--success)' }}
+                                      value={inlineEditData.phone || ''}
+                                      onChange={e => setInlineEditData({ ...inlineEditData, phone: e.target.value })}
+                                    />
+                                  ) : (lead.phone || '—')}
+                                </td>
+                                <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{(() => {
+                                  const map = { ig: 'Instagram', instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', website: 'Website', search_engine: 'Search Engine', google_dork: 'Google Search', google: 'Google' };
+                                  const s = (lead.emailSource || '').toLowerCase();
+                                  return map[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—');
+                                })()}</td>
+                                <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{lead.city}</td>
+                                <td>
+                                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                    {inlineEditLeadId === lead._id ? (
+                                      <>
+                                        <button
+                                          className="btn-icon"
+                                          style={{ borderColor: '#10b981', color: '#10b981', fontSize: '0.78rem' }}
+                                          onClick={handleSaveInlineEdit}
+                                        >Save</button>
+                                        <button
+                                          className="btn-icon"
+                                          style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)', fontSize: '0.78rem' }}
+                                          onClick={() => setInlineEditLeadId(null)}
+                                        >Cancel</button>
+                                      </>
+                                    ) : selectedLeadForTpl === lead._id ? (
+                                      <select
+                                        className="pro-select"
+                                        style={{ appearance: 'none', background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px 25px 4px 10px', fontSize: '0.8rem' }}
+                                        onChange={(e) => {
+                                          if (e.target.value) handleSendCustomTemplate(lead._id, e.target.value);
+                                          setSelectedLeadForTpl(null);
+                                        }}
+                                      >
+                                        <option value="">Pick Template...</option>
+                                        <optgroup label="Auto Sequence">
+                                          <option value="step1">Sequence: Step 1 (Intro)</option>
+                                          <option value="step2">Sequence: Step 2 (Follow-up)</option>
+                                          <option value="step3">Sequence: Step 3 (Final)</option>
+                                        </optgroup>
+                                        <optgroup label="Custom Templates">
+                                          {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                                        </optgroup>
+                                        <option value="">Cancel</option>
+                                      </select>
+                                    ) : (
+                                      <>
+                                        <button
+                                          className="btn-icon"
+                                          style={{ borderColor: '#10b981', color: '#10b981', fontSize: '0.78rem' }}
+                                          onClick={() => setSelectedLeadForTpl(lead._id)}
+                                          title="Send email"
+                                        >Send</button>
+                                        <button
+                                          className="btn-icon"
+                                          style={{ borderColor: '#6366f1', color: '#6366f1', fontSize: '0.78rem' }}
+                                          onClick={() => {
+                                            setInlineEditLeadId(lead._id);
+                                            setInlineEditData({ email: lead.email, name: lead.name, phone: lead.phone });
+                                          }}
+                                          title="Edit lead"
+                                        >Edit</button>
+                                      </>
+                                    )}
+                                    <button
+                                      onClick={() => {
+                                        setConfirmModal({
+                                          open: true,
+                                          title: `Delete this lead (${lead.email})?`,
+                                          onConfirm: async () => {
+                                            try {
+                                              await axios.delete(`/api/saved-leads/${lead._id}`);
+                                              showToast("Lead Deleted!", "success");
+                                              fetchSavedLeads();
+                                            } catch (e) {
+                                              showToast("Delete failed", "error");
+                                            }
+                                          }
+                                        });
+                                      }}
+                                      className="btn-icon btn-stop"
+                                    >Del</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>
