@@ -818,7 +818,7 @@ function App() {
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
                     <strong>Pro Tip:</strong> For deep Instagram/LinkedIn email extraction, you need to be logged in!
                   </p>
-                  <button type="button" className="btn-icon" style={{ background: 'var(--secondary)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: '600', transition: 'all 0.2s' }} onClick={async () => {
+                  <button type="button" className="btn-icon" style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: '600', transition: 'all 0.2s' }} onClick={async () => {
                     showToast("Opening Browser for Login...", "success");
                     try {
                       await axios.get('/api/open-browser');
