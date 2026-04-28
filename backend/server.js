@@ -874,8 +874,8 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
         }
 
         // PARALLEL link processing — open multiple worker pages concurrently
-        const CONCURRENCY = 4;
-        sendData({ type: 'status', message: `Found ${uniqueLinks.length} ${source} links — parallel scanning (${CONCURRENCY}x)...` });
+        const CONCURRENCY = 1; // Reduced from 4 to 1 to prevent OOM crashes on Render
+        sendData({ type: 'status', message: `Found ${uniqueLinks.length} ${source} links — sequential scanning...` });
 
         const visitLink = async (link) => {
           if (getCancelled()) return;
