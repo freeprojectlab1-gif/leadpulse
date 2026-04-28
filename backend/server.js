@@ -118,6 +118,14 @@ const scrapedLeadSchema = new mongoose.Schema({
 });
 const ScrapedLead = mongoose.models.ScrapedLead || mongoose.model('ScrapedLead', scrapedLeadSchema);
 
+const settingsSchema = new mongoose.Schema({
+  igSession: { type: String, default: '' },
+  liAt: { type: String, default: '' },
+  fbCUser: { type: String, default: '' },
+  fbXs: { type: String, default: '' }
+});
+const Settings = mongoose.models.Settings || mongoose.model('Settings', settingsSchema);
+
 const upload = multer({ dest: 'uploads/' });
 
 // SPINTAX ENGINE (Support {Hi|Hello|Hey} format - MUST contain a pipe |)
@@ -1149,6 +1157,28 @@ app.put('/api/saved-leads/:id', async (req, res) => {
   try {
     const updated = await ScrapedLead.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(updated);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// --- SETTINGS API ---
+app.get('/api/settings', async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) settings = await Settings.create({});
+    res.json(settings);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/settings', async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) settings = new Settings();
+    if (req.body.igSession !== undefined) settings.igSession = req.body.igSession;
+    if (req.body.liAt !== undefined) settings.liAt = req.body.liAt;
+    if (req.body.fbCUser !== undefined) settings.fbCUser = req.body.fbCUser;
+    if (req.body.fbXs !== undefined) settings.fbXs = req.body.fbXs;
+    await settings.save();
+    res.json(settings);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

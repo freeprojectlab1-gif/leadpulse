@@ -156,6 +156,7 @@ function App() {
       fetchRecipients();
       fetchCustomTemplates();
       fetchCustomFields();
+      fetchSettings();
       const interval = setInterval(() => {
         fetchStats();
         fetchRecipients();
@@ -174,6 +175,24 @@ function App() {
   const showToast = (msg, type = 'success') => {
     setNotification({ msg, type });
     setTimeout(() => setNotification(null), 3000);
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const res = await axios.get('/api/settings');
+      if (res.data) {
+        if (res.data.igSession) setIgSession(res.data.igSession);
+        if (res.data.liAt) setLiAt(res.data.liAt);
+        if (res.data.fbCUser) setFbCUser(res.data.fbCUser);
+        if (res.data.fbXs) setFbXs(res.data.fbXs);
+      }
+    } catch (e) { console.error("Error fetching settings:", e); }
+  };
+
+  const handleSaveCookie = async (field, value) => {
+    try {
+      await axios.post('/api/settings', { [field]: value });
+    } catch (e) {}
   };
 
   const fetchCustomFields = async () => {
@@ -833,28 +852,28 @@ function App() {
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <div className="field" style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
                       <label style={{ fontSize: '0.75rem' }}><Instagram size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> IG sessionid</label>
-                      <input type={showCookies ? "text" : "password"} placeholder="sessionid cookie" value={igSession} onChange={e => { setIgSession(e.target.value); localStorage.setItem('saved_igSession', e.target.value); }} style={{ paddingRight: '35px' }} />
+                      <input type={showCookies ? "text" : "password"} placeholder="sessionid cookie" value={igSession} onChange={e => { setIgSession(e.target.value); localStorage.setItem('saved_igSession', e.target.value); }} onBlur={() => handleSaveCookie('igSession', igSession)} style={{ paddingRight: '35px' }} />
                       <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '34px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
                         {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                     <div className="field" style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
                       <label style={{ fontSize: '0.75rem' }}><Linkedin size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> LI li_at</label>
-                      <input type={showCookies ? "text" : "password"} placeholder="li_at cookie" value={liAt} onChange={e => { setLiAt(e.target.value); localStorage.setItem('saved_liAt', e.target.value); }} style={{ paddingRight: '35px' }} />
+                      <input type={showCookies ? "text" : "password"} placeholder="li_at cookie" value={liAt} onChange={e => { setLiAt(e.target.value); localStorage.setItem('saved_liAt', e.target.value); }} onBlur={() => handleSaveCookie('liAt', liAt)} style={{ paddingRight: '35px' }} />
                       <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '34px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
                         {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                     <div className="field" style={{ flex: 1, minWidth: '150px', position: 'relative' }}>
                       <label style={{ fontSize: '0.75rem' }}><Facebook size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> FB c_user</label>
-                      <input type={showCookies ? "text" : "password"} placeholder="c_user" value={fbCUser} onChange={e => { setFbCUser(e.target.value); localStorage.setItem('saved_fbCUser', e.target.value); }} style={{ paddingRight: '35px' }} />
+                      <input type={showCookies ? "text" : "password"} placeholder="c_user" value={fbCUser} onChange={e => { setFbCUser(e.target.value); localStorage.setItem('saved_fbCUser', e.target.value); }} onBlur={() => handleSaveCookie('fbCUser', fbCUser)} style={{ paddingRight: '35px' }} />
                       <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '34px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
                         {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </div>
                     <div className="field" style={{ flex: 1, minWidth: '150px', position: 'relative' }}>
                       <label style={{ fontSize: '0.75rem' }}><Facebook size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> FB xs</label>
-                      <input type={showCookies ? "text" : "password"} placeholder="xs cookie" value={fbXs} onChange={e => { setFbXs(e.target.value); localStorage.setItem('saved_fbXs', e.target.value); }} style={{ paddingRight: '35px' }} />
+                      <input type={showCookies ? "text" : "password"} placeholder="xs cookie" value={fbXs} onChange={e => { setFbXs(e.target.value); localStorage.setItem('saved_fbXs', e.target.value); }} onBlur={() => handleSaveCookie('fbXs', fbXs)} style={{ paddingRight: '35px' }} />
                       <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '34px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
                         {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
