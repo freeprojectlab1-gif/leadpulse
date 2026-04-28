@@ -28,7 +28,9 @@ import {
   Loader2,
   Phone,
   Flame,
-  Globe
+  Globe,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 // --- ICONS (SVG) ---
@@ -88,6 +90,7 @@ function App() {
   const [liAt, setLiAt] = useState(localStorage.getItem('saved_liAt') || '');
   const [fbCUser, setFbCUser] = useState(localStorage.getItem('saved_fbCUser') || '');
   const [fbXs, setFbXs] = useState(localStorage.getItem('saved_fbXs') || '');
+  const [showCookies, setShowCookies] = useState(false);
   const [stats, setStats] = useState([]);
   const [recipients, setRecipients] = useState([]);
   const [savedLeads, setSavedLeads] = useState([]);
@@ -828,21 +831,33 @@ function App() {
                   </p>
                   
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <div className="field" style={{ flex: 1, minWidth: '200px' }}>
+                    <div className="field" style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
                       <label style={{ fontSize: '0.75rem' }}><Instagram size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> IG sessionid</label>
-                      <input type="password" placeholder="sessionid cookie" value={igSession} onChange={e => { setIgSession(e.target.value); localStorage.setItem('saved_igSession', e.target.value); }} />
+                      <input type={showCookies ? "text" : "password"} placeholder="sessionid cookie" value={igSession} onChange={e => { setIgSession(e.target.value); localStorage.setItem('saved_igSession', e.target.value); }} style={{ paddingRight: '35px' }} />
+                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '34px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                        {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </div>
-                    <div className="field" style={{ flex: 1, minWidth: '200px' }}>
+                    <div className="field" style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
                       <label style={{ fontSize: '0.75rem' }}><Linkedin size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> LI li_at</label>
-                      <input type="password" placeholder="li_at cookie" value={liAt} onChange={e => { setLiAt(e.target.value); localStorage.setItem('saved_liAt', e.target.value); }} />
+                      <input type={showCookies ? "text" : "password"} placeholder="li_at cookie" value={liAt} onChange={e => { setLiAt(e.target.value); localStorage.setItem('saved_liAt', e.target.value); }} style={{ paddingRight: '35px' }} />
+                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '34px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                        {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </div>
-                    <div className="field" style={{ flex: 1, minWidth: '150px' }}>
+                    <div className="field" style={{ flex: 1, minWidth: '150px', position: 'relative' }}>
                       <label style={{ fontSize: '0.75rem' }}><Facebook size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> FB c_user</label>
-                      <input type="password" placeholder="c_user" value={fbCUser} onChange={e => { setFbCUser(e.target.value); localStorage.setItem('saved_fbCUser', e.target.value); }} />
+                      <input type={showCookies ? "text" : "password"} placeholder="c_user" value={fbCUser} onChange={e => { setFbCUser(e.target.value); localStorage.setItem('saved_fbCUser', e.target.value); }} style={{ paddingRight: '35px' }} />
+                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '34px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                        {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </div>
-                    <div className="field" style={{ flex: 1, minWidth: '150px' }}>
+                    <div className="field" style={{ flex: 1, minWidth: '150px', position: 'relative' }}>
                       <label style={{ fontSize: '0.75rem' }}><Facebook size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> FB xs</label>
-                      <input type="password" placeholder="xs cookie" value={fbXs} onChange={e => { setFbXs(e.target.value); localStorage.setItem('saved_fbXs', e.target.value); }} />
+                      <input type={showCookies ? "text" : "password"} placeholder="xs cookie" value={fbXs} onChange={e => { setFbXs(e.target.value); localStorage.setItem('saved_fbXs', e.target.value); }} style={{ paddingRight: '35px' }} />
+                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '34px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                        {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
                     </div>
                   </div>
                 </div>
