@@ -824,25 +824,25 @@ function App() {
 
                 <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                    <strong>Pro Tip:</strong> For deep Instagram/LinkedIn/Facebook email extraction on a live server, paste your session cookies below and click "Save Templates" in the campaigns tab to persist them.
+                    <strong>Pro Tip:</strong> For deep Instagram/LinkedIn/Facebook email extraction on a live server, paste your session cookies below (they save automatically).
                   </p>
                   
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                     <div className="field" style={{ flex: 1, minWidth: '200px' }}>
                       <label style={{ fontSize: '0.75rem' }}><Instagram size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> IG sessionid</label>
-                      <input type="password" placeholder="sessionid cookie" value={igSession} onChange={e => setIgSession(e.target.value)} />
+                      <input type="password" placeholder="sessionid cookie" value={igSession} onChange={e => { setIgSession(e.target.value); localStorage.setItem('saved_igSession', e.target.value); }} />
                     </div>
                     <div className="field" style={{ flex: 1, minWidth: '200px' }}>
                       <label style={{ fontSize: '0.75rem' }}><Linkedin size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> LI li_at</label>
-                      <input type="password" placeholder="li_at cookie" value={liAt} onChange={e => setLiAt(e.target.value)} />
+                      <input type="password" placeholder="li_at cookie" value={liAt} onChange={e => { setLiAt(e.target.value); localStorage.setItem('saved_liAt', e.target.value); }} />
                     </div>
                     <div className="field" style={{ flex: 1, minWidth: '150px' }}>
                       <label style={{ fontSize: '0.75rem' }}><Facebook size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> FB c_user</label>
-                      <input type="password" placeholder="c_user" value={fbCUser} onChange={e => setFbCUser(e.target.value)} />
+                      <input type="password" placeholder="c_user" value={fbCUser} onChange={e => { setFbCUser(e.target.value); localStorage.setItem('saved_fbCUser', e.target.value); }} />
                     </div>
                     <div className="field" style={{ flex: 1, minWidth: '150px' }}>
                       <label style={{ fontSize: '0.75rem' }}><Facebook size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}/> FB xs</label>
-                      <input type="password" placeholder="xs cookie" value={fbXs} onChange={e => setFbXs(e.target.value)} />
+                      <input type="password" placeholder="xs cookie" value={fbXs} onChange={e => { setFbXs(e.target.value); localStorage.setItem('saved_fbXs', e.target.value); }} />
                     </div>
                   </div>
                 </div>
