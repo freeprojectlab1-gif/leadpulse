@@ -155,6 +155,96 @@ const isGenericEmail = (email) => {
   return GENERIC_PROVIDERS.includes(domain);
 };
 
+const cleanSocialName = (rawName, link) => {
+   if (!rawName) return 'Unknown';
+   let name = rawName.split('|')[0].split('-')[0].trim();
+   const lower = name.toLowerCase();
+   
+   const junkWords = [
+     'facebook', 'instagram', 'linkedin', 'chats', 'notifications', 'messenger',
+     'log in', 'sign in', 'sign up', 'home', 'about', 'menu', 'profile', 'page',
+     'unknown', 'untitled', 'search', 'feed', 'watch', 'reels', 'stories',
+     'marketplace', 'groups', 'friends', 'gaming'
+   ];
+   
+   const isJunk = (t) => !t || t.length < 2 || junkWords.some(w => t.toLowerCase().includes(w));
+
+   // For Facebook/Instagram: ALWAYS try URL first — most reliable since login session pollutes og:title
+   if (link && (link.includes('facebook.com') || link.includes('instagram.com'))) {
+      try {
+         const url = new URL(link);
+         const pathParts = url.pathname.split('/').filter(p =>
+           p.length > 1 && !['p', 'reel', 'reels', 'profile.php', 'pages', 'photo', 'video', 'posts'].includes(p)
+         );
+         if (pathParts.length > 0) {
+            let slug = pathParts[0];
+            // Split CamelCase: "OpenLatteCafe" → "Open Latte Cafe"
+            slug = slug.replace(/([a-z])([A-Z])/g, '$1 $2');
+            // Replace hyphens/underscores/dots with spaces
+            slug = slug.replace(/[-_.]/g, ' ').trim();
+
+            // Smart keyword splitting for all-lowercase slugs
+            // e.g. "bigeasycafetx" → "big easy cafe tx"
+            const bizKeywords = [
+              'cafe', 'coffee', 'bakery', 'catering', 'kitchen', 'grill', 'bistro',
+              'restaurant', 'diner', 'bar', 'lounge', 'shop', 'store', 'salon',
+              'barbershop', 'spa', 'studio', 'garage', 'auto', 'repair', 'cleaning',
+              'plumbing', 'electric', 'hvac', 'roofing', 'landscaping', 'photography',
+              'photography', 'design', 'media', 'agency', 'consulting', 'services',
+              'solutions', 'group', 'company', 'co', 'inc', 'llc', 'corp'
+            ];
+            const keywordRegex = new RegExp(`(${bizKeywords.join('|')})`, 'gi');
+            slug = slug.replace(keywordRegex, ' $1 ').replace(/\s+/g, ' ').trim();
+
+            // Title case each word
+            slug = slug.split(' ').filter(w => w.length > 0)
+                       .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                       .join(' ');
+            if (slug && slug.length > 1) return slug;
+         }
+      } catch(e) {}
+   }
+
+   // Fallback: use rawName if it's not junk
+   if (!isJunk(rawName)) {
+      let name = rawName.replace(/^\(\d+\)\s*/, '').split('|')[0].split('-')[0].trim();
+      if (!isJunk(name)) return name;
+   }
+
+   return 'Unknown';
+};
+
+const hasCustomWebsite = (text) => {
+   if (!text) return false;
+   const domainRegex = /(?:[a-zA-Z0-9-]+\.)+(com|net|org|co|us|info|biz|io|me|tv|shop|store|online|site|tech|website|agency)\b/gi;
+   const matches = text.match(domainRegex) || [];
+   
+   const ignoreDomains = [
+     'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com', 'msn.com',
+     'facebook.com', 'instagram.com', 'linkedin.com', 'twitter.com', 'tiktok.com', 'youtube.com',
+     'pinterest.com', 'snapchat.com', 'reddit.com', 'tumblr.com', 'whatsapp.com', 't.me', 'telegram.me',
+     'linktr.ee', 'campsite.bio', 'apple.com', 'google.com', 'bing.com', 'yelp.com', 'tripadvisor.com', 
+     'foursquare.com', 'yellowpages.com', 'bbb.org', 'trustpilot.com', 'wix.com', 'wordpress.com', 
+     'weebly.com', 'squarespace.com', 'shopify.com', 'mail.com', 'amazon.com', 'ebay.com', 'etsy.com', 
+     'doordash.com', 'ubereats.com', 'grubhub.com', 'postmates.com', 'zomato.com', 'swiggy.com', 
+     'foodpanda.com', 'deliveroo.co', 'just-eat.com', 'booking.com', 'fbcdn.net', 'akamaihd.net', 
+     'schema.org', 'w3.org', 'ogp.me', 'gstatic.com', 'googleusercontent.com', 'wixpress.com', 
+     'sentry.io', 'stripe.com', 'paypal.com', 'github.com', 'gitlab.com', 'bitbucket.org'
+   ];
+   
+   for (const match of matches) {
+      const lower = match.toLowerCase();
+      let isIgnored = false;
+      for (const idom of ignoreDomains) {
+         if (lower === idom || lower.endsWith('.' + idom)) {
+             isIgnored = true; break;
+         }
+      }
+      if (!isIgnored) return true; // Found a custom domain!
+   }
+   return false;
+};
+
 // ─── EMAIL EXTRACTOR UTILITY ────────────────────────────────────────────────
 const extractEmailsFromText = (rawText) => {
   if (!rawText) return [];
@@ -860,46 +950,74 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
             });
             await tempPage.goto(url, { waitUntil: 'domcontentloaded', timeout: 8000 });
             await new Promise(r => setTimeout(r, 400));
-            const hrefs = await tempPage.evaluate(() => {
-              return Array.from(document.querySelectorAll('a[href]'))
-                .map(a => a.href)
-                .map(href => {
-                  if (href.includes('RU=')) {
-                    try { return decodeURIComponent(href.split('RU=')[1].split('/RK=')[0]); }
-                    catch (e) { return href; }
-                  }
-                  if (href.includes('uddg=')) {
-                    try { return decodeURIComponent(href.split('uddg=')[1].split('&')[0]); }
-                    catch (e) { return href; }
-                  }
-                  return href;
-                });
+            const resultData = await tempPage.evaluate(() => {
+              const blocks = Array.from(document.querySelectorAll('.b_algo, .result, .algo, .g, li.b_algo, div.algo-sr'));
+              let items = [];
+              if (blocks.length > 0) {
+                 blocks.forEach(b => {
+                   const a = b.querySelector('a');
+                   if (a) items.push({ href: a.href, snippet: b.innerText, title: a.innerText });
+                 });
+              } else {
+                 Array.from(document.querySelectorAll('a[href]')).forEach(a => {
+                   items.push({ href: a.href, snippet: '', title: a.innerText });
+                 });
+              }
+              return items.map(item => {
+                  let h = item.href;
+                  if (h.includes('RU=')) try { h = decodeURIComponent(h.split('RU=')[1].split('/RK=')[0]); } catch (e) { }
+                  if (h.includes('uddg=')) try { h = decodeURIComponent(h.split('uddg=')[1].split('&')[0]); } catch (e) { }
+                  return { href: h, snippet: item.snippet, title: item.title };
+              });
             });
-            allHrefs.push(...hrefs);
+            allHrefs.push(...resultData);
           } catch (e) { }
           finally { if (tempPage) await tempPage.close().catch(()=>{}); }
         }));
 
-        const uniqueLinks = [...new Set(allHrefs)].filter(href => {
-           if (source === 'ig') return href.includes('instagram.com/') && !href.includes('/explore/');
-           if (source === 'facebook') return href.includes('facebook.com/') && !href.includes('/sharer') && !href.includes('/login') && !href.includes('/help');
-           if (source === 'linkedin') return href.includes('linkedin.com/') && !href.includes('/login');
-           return false;
-        });
+        const uniqueItems = [];
+        const seenUrls = new Set();
+        for (const item of allHrefs) {
+           const href = item.href;
+           if (seenUrls.has(href)) continue;
+           seenUrls.add(href);
+           
+           if (source === 'ig' && (!href.includes('instagram.com/') || href.includes('/explore/'))) continue;
+           if (source === 'facebook' && (!href.includes('facebook.com/') || href.includes('/sharer') || href.includes('/login') || href.includes('/help'))) continue;
+           if (source === 'linkedin' && (!href.includes('linkedin.com/') || href.includes('/login'))) continue;
+           
+           uniqueItems.push(item);
+        }
 
-        if (uniqueLinks.length === 0) {
+        if (uniqueItems.length === 0) {
           if (pageNum > 2) break;
           continue;
         }
 
         // PARALLEL link processing — open multiple worker pages concurrently
         const CONCURRENCY = 14; 
-        sendData({ type: 'status', message: `Found ${uniqueLinks.length} ${source} links — parallel scanning (14x)...` });
+        sendData({ type: 'status', message: `Found ${uniqueItems.length} ${source} links — parallel scanning (14x)...` });
 
-        const visitLink = async (link) => {
+        const visitLink = async (item) => {
           if (getCancelled()) return;
+          const link = item.href;
+          const snippetText = item.snippet + " " + item.title;
           
-          sendData({ type: 'status', message: `🔍 Scanning: ${link}` });
+          // Skip if they already have a website!
+          if (hasCustomWebsite(snippetText)) {
+             sendData({ type: 'status', message: `⏭️ Skipped ${link} (Already has a custom website in snippet)` });
+             return;
+          }
+          
+          // PRE-FETCH EMAIL FROM SNIPPET
+          const snippetEmails = extractEmailsFromText(snippetText).filter(isGenericEmail);
+          let preFoundEmail = snippetEmails.length > 0 ? snippetEmails[0] : null;
+          
+          if (preFoundEmail) {
+              sendData({ type: 'status', message: `⚡ Pre-found email in snippet, fetching real name...` });
+          }
+
+          sendData({ type: 'status', message: `🔍 Deep Scanning: ${link}` });
           
           let workerPage;
           try {
@@ -922,16 +1040,41 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
               if (t === 'image' || t === 'media' || t === 'font' || t === 'stylesheet') req.abort();
               else req.continue();
             });
-            await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 10000 });
-            await new Promise(r => setTimeout(r, 1200));
+            const isFacebook = link.includes('facebook.com');
+            await workerPage.goto(link, { waitUntil: isFacebook ? 'networkidle2' : 'domcontentloaded', timeout: 15000 });
+            await new Promise(r => setTimeout(r, isFacebook ? 3000 : 1200));
 
-            const data = await workerPage.evaluate(() => ({
-              text: document.documentElement.outerHTML,
-              name: document.querySelector('meta[property="og:title"]')?.content || document.title.split('|')[0].split('-')[0].trim() || document.querySelector('h1')?.innerText || 'Unknown',
-              mailtos: Array.from(document.querySelectorAll('a[href^="mailto:"]')).map(a => a.href.replace('mailto:', '').split('?')[0])
-            }));
+            const data = await workerPage.evaluate(() => {
+              const ogTitle = document.querySelector('meta[property="og:title"]')?.content || '';
+              const h1Text = document.querySelector('h1')?.innerText?.replace(/^\(\d+\)\s*/, '').trim() || '';
+              const titleText = document.title.replace(/^\(\d+\)\s*/, '').split('|')[0].split('-')[0].trim();
+              
+              // Prefer og:title if it doesn't say generic words
+              const genericWords = ['facebook', 'instagram', 'linkedin', 'log in', 'sign in', 'sign up', 'notifications'];
+              const isGenericTitle = (t) => !t || genericWords.some(w => t.toLowerCase().includes(w));
+              
+              const rawName = (!isGenericTitle(ogTitle) ? ogTitle : null)
+                || (!isGenericTitle(h1Text) ? h1Text : null)
+                || (!isGenericTitle(titleText) ? titleText : null)
+                || ogTitle || titleText || 'Unknown';
+              
+              return {
+                text: document.documentElement.outerHTML,
+                rawName,
+                bioLinks: Array.from(document.querySelectorAll('a[href]')).map(a => a.href).join(' '),
+                mailtos: Array.from(document.querySelectorAll('a[href^="mailto:"]')).map(a => a.href.replace('mailto:', '').split('?')[0])
+              };
+            });
+
+            // Skip if they already have a website in their bio links!
+            if (hasCustomWebsite(data.bioLinks)) {
+               sendData({ type: 'status', message: `⏭️ Skipped ${link} (Already has a custom website in bio)` });
+               return;
+            }
 
             const candidates = [...data.mailtos, ...extractEmailsFromText(data.text)];
+            if (preFoundEmail) candidates.push(preFoundEmail);
+            
             const validEmails = candidates.filter(isGenericEmail);
 
             if (validEmails.length > 0) {
@@ -940,7 +1083,7 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
               foundEmailsSet.add(finalEmail.toLowerCase());
 
               const leadData = {
-                name: data.name,
+                name: cleanSocialName(data.rawName, link),
                 phone: 'N/A', address: 'N/A',
                 email: finalEmail,
                 emailFound: true,
@@ -958,9 +1101,9 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
         };
 
         // Process in chunks of CONCURRENCY
-        for (let i = 0; i < uniqueLinks.length; i += CONCURRENCY) {
+        for (let i = 0; i < uniqueItems.length; i += CONCURRENCY) {
           if (getCancelled()) break;
-          const chunk = uniqueLinks.slice(i, i + CONCURRENCY);
+          const chunk = uniqueItems.slice(i, i + CONCURRENCY);
           await Promise.all(chunk.map(visitLink));
         }
 
