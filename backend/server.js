@@ -791,7 +791,7 @@ app.get('/api/open-browser', async (req, res) => {
 });
 
 // --- SOCIAL SCRAPING ENGINE ---
-const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, foundEmailsSet, getCancelled) => {
+const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, foundEmailsSet, getCancelled, cookies = {}) => {
   const page = await browser.newPage();
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
   // Block heavy resources on the search-results page itself for speed
@@ -872,6 +872,17 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
           try {
             workerPage = await browser.newPage();
             await workerPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+            
+            // Inject Cookies for Deep Scraping
+            if (source === 'ig' && cookies.igSession) {
+              await workerPage.setCookie({ name: 'sessionid', value: cookies.igSession, domain: '.instagram.com' });
+            } else if (source === 'linkedin' && cookies.liAt) {
+              await workerPage.setCookie({ name: 'li_at', value: cookies.liAt, domain: '.linkedin.com' });
+            } else if (source === 'facebook' && cookies.fbCUser && cookies.fbXs) {
+              await workerPage.setCookie({ name: 'c_user', value: cookies.fbCUser, domain: '.facebook.com' });
+              await workerPage.setCookie({ name: 'xs', value: cookies.fbXs, domain: '.facebook.com' });
+            }
+
             await workerPage.setRequestInterception(true);
             workerPage.on('request', (req) => {
               const t = req.resourceType();
@@ -932,7 +943,7 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
 
 // --- LEAD SCRAPER API (STREAMING VERSION) ---
 app.get('/api/scrape-leads', async (req, res) => {
-  const { keyword, city, mode, sources } = req.query;
+  const { keyword, city, mode, sources, igSession, liAt, fbCUser, fbXs } = req.query;
   if (!keyword || !city) return res.status(400).json({ error: 'Keyword and City are required' });
 
   const sourceList = sources ? sources.split(',') : ['map'];
@@ -1092,7 +1103,7 @@ app.get('/api/scrape-leads', async (req, res) => {
     for (let src of ['ig', 'facebook', 'linkedin']) {
       if (isCancelled) break;
       if (sourceList.includes(src)) {
-        await scrapeSocialDirectly(src, keyword, city, browser, sendData, foundEmailsInThisRun, () => isCancelled);
+        await scrapeSocialDirectly(src, keyword, city, browser, sendData, foundEmailsInThisRun, () => isCancelled, { igSession, liAt, fbCUser, fbXs });
       }
     }
 
