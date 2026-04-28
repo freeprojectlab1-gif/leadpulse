@@ -1019,8 +1019,8 @@ app.get('/api/scrape-leads', async (req, res) => {
 
         if (newLinks.length === 0) {
           consecutiveNoResults++;
-          sendData({ type: 'status', message: `Iteration ${loop + 1}: Scrolling for more... (${consecutiveNoResults}/30)` });
-          if (consecutiveNoResults >= 30) break; // Increased retry to 30 for "unlimited" feel
+          sendData({ type: 'status', message: `Iteration ${loop + 1}: Scrolling for more... (${consecutiveNoResults}/100)` });
+          if (consecutiveNoResults >= 100) break; // Increased retry to 100 for deep scraping
           continue;
         }
 
