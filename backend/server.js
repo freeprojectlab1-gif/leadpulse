@@ -862,13 +862,16 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
         }
 
         const uniqueLinks = [...new Set(allHrefs)].filter(href => {
-           if (source === 'ig') return href.includes('instagram.com/') && !href.includes('/p/') && !href.includes('/explore/') && !href.includes('/reel/');
+           if (source === 'ig') return href.includes('instagram.com/') && !href.includes('/explore/');
            if (source === 'facebook') return href.includes('facebook.com/') && !href.includes('/sharer') && !href.includes('/login') && !href.includes('/help');
-           if (source === 'linkedin') return href.includes('linkedin.com/') && !href.includes('/jobs/') && !href.includes('/login');
+           if (source === 'linkedin') return href.includes('linkedin.com/') && !href.includes('/login');
            return false;
         });
 
-        if (uniqueLinks.length === 0) break;
+        if (uniqueLinks.length === 0) {
+          if (pageNum > 2) break;
+          continue;
+        }
 
         // PARALLEL link processing — open multiple worker pages concurrently
         const CONCURRENCY = 4;
