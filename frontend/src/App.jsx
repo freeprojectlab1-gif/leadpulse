@@ -1931,22 +1931,81 @@ function App() {
                 ) : (
                   <>
                     <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <button className="btn-icon btn-continue" onClick={() => setSelectedGroup(null)} style={{ fontSize: '0.8rem' }}>← Back</button>
+                      <button className="btn-icon btn-continue" onClick={() => { setSelectedGroup(null); setSelectedIds([]); }} style={{ fontSize: '0.8rem' }}>← Back</button>
                       <span style={{ fontWeight: '600', color: 'var(--text-main)', flex: 1 }}>{selectedGroup}</span>
                     </div>
-                    <table className="pro-table">
-                      <thead>
-                        <tr>
-                          <th>Business Name</th>
-                          <th>Contact / Link</th>
-                          <th>Location</th>
-                          <th>Status</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
+                    {selectedIds.length > 0 && savedLeads.some(l => selectedIds.includes(l._id)) && (
+                      <div className="bulk-bar" style={{ margin: '1rem 1.5rem', borderRadius: '12px' }}>
+                        <div className="bulk-info"><InfoIcon /> {selectedIds.filter(id => savedLeads.some(l => l._id === id)).length} leads selected</div>
+                        <div className="bulk-actions">
+                          <button
+                            className="bulk-btn"
+                            style={{ background: 'linear-gradient(135deg,#10b981,#059669)', color: 'white', fontWeight: 600 }}
+                            disabled={isEnricherSending}
+                            onClick={() => {
+                              const ids = selectedIds.filter(id => savedLeads.some(l => l._id === id));
+                              if (!emailUser || !emailPass) return showToast('SMTP credentials missing — Campaign tab pe set karo!', 'error');
+                              if (!subject || !body1) return showToast('Campaign subject & Step 1 body missing — Campaign tab pe set karo!', 'error');
+                              setConfirmModal({
+                                open: true,
+                                title: `Start 3-step Email Marketing for ${ids.length} selected leads?`,
+                                onConfirm: async () => {
+                                  setIsEnricherSending(true);
+                                  try {
+                                    const res = await axios.post('/api/enricher-enroll', {
+                                      leadIds: ids, emailUser, emailPass, subject, body1, body2, body3
+                                    });
+                                    showToast(res.data.message, 'success');
+                                    setSelectedIds([]);
+                                    fetchSavedLeads();
+                                    fetchRecipients();
+                                    fetchStats();
+                                  } catch (err) {
+                                    showToast('Enroll failed: ' + (err.response?.data?.error || err.message), 'error');
+                                  } finally { setIsEnricherSending(false); }
+                                }
+                              });
+                            }}
+                          >
+                            {isEnricherSending ? <><Loader2 size={14} className="animate-spin" style={{ display: 'inline', marginRight: '4px' }} /> Queuing...</> : <>🚀 Start Email Marketing (3-Step Auto)</>}
+                          </button>
+                          <button className="bulk-btn" style={{ backgroundColor: 'var(--danger)' }} onClick={() => setSelectedIds([])}>Cancel</button>
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ overflowX: 'auto', width: '100%' }}>
+                      <table className="pro-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: '40px' }}>
+                              <input
+                                type="checkbox"
+                                checked={savedLeads.filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup).length > 0 && savedLeads.filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup).every(l => selectedIds.includes(l._id))}
+                                onChange={() => {
+                                  const groupLeads = savedLeads.filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup);
+                                  const allSelected = groupLeads.every(l => selectedIds.includes(l._id));
+                                  if (allSelected) setSelectedIds(prev => prev.filter(id => !groupLeads.some(l => l._id === id)));
+                                  else setSelectedIds(prev => [...new Set([...prev, ...groupLeads.map(l => l._id)])]);
+                                }}
+                              />
+                            </th>
+                            <th>Business Name</th>
+                            <th>Contact / Link</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
                       <tbody>
                         {savedLeads.filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup).map((lead) => (
-                          <tr key={lead._id}>
+                          <tr key={lead._id} className={selectedIds.includes(lead._id) ? 'row-selected' : ''}>
+                            <td>
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.includes(lead._id)}
+                                onChange={() => toggleSelectOne(lead._id)}
+                              />
+                            </td>
                             <td style={{ fontWeight: '600' }}>
                               {inlineEditLeadId === lead._id ? (
                                 <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} value={inlineEditData.name || ''} onChange={e => setInlineEditData({ ...inlineEditData, name: e.target.value })} />
@@ -1999,6 +2058,7 @@ function App() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
                   </>
                 )}
               </div>
