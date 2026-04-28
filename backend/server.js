@@ -748,6 +748,9 @@ cron.schedule('*/10 * * * *', async () => {
   if (sample) {
     const cleanPass = sample.emailPass.replace(/\s+/g, '');
     const client = new ImapFlow({ host: 'imap.gmail.com', port: 993, secure: true, auth: { user: sample.emailUser.trim(), pass: cleanPass }, logger: false });
+    client.on('error', err => {
+      console.error("ImapFlow Error (Background Check):", err.message);
+    });
     try {
       await client.connect();
       let lock = await client.getMailboxLock('INBOX');
@@ -1028,7 +1031,8 @@ app.get('/api/scrape-leads', async (req, res) => {
           try {
             // SCRAPE USING WORKER PAGE (DOES NOT DISTURB MAIN FEED)
             await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            await new Promise(r => setTimeout(r, 1200));
+            await workerPage.waitForSelector('h1', { timeout: 5000 }).catch(() => {});
+            await new Promise(r => setTimeout(r, 500));
 
             const details = await workerPage.evaluate(() => {
               let name = document.querySelector('h1')?.innerText;
@@ -1036,7 +1040,8 @@ app.get('/api/scrape-leads', async (req, res) => {
                 const title = document.title || '';
                 name = title.split('- Google')[0].trim() || 'Unknown';
               }
-              if (name === 'Unknown' || name === '') return null; // Skip junk leads
+              if (name === 'Unknown' || name === '' || name === 'Google Maps') return null; // Skip junk leads
+
 
               const websiteBtn = document.querySelector('[data-item-id="authority"]');
 
