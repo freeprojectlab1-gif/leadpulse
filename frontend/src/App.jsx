@@ -7,6 +7,7 @@ import {
   Linkedin,
   Lock,
   Search,
+  Info,
   CheckCircle,
   AlertTriangle,
   Users,
@@ -30,7 +31,14 @@ import {
   Flame,
   Globe,
   Eye,
-  EyeOff
+  EyeOff,
+  Briefcase,
+  User,
+  Building2,
+  Clock,
+  Target,
+  ShieldCheck,
+  Check
 } from 'lucide-react';
 
 // --- ICONS (SVG) ---
@@ -56,6 +64,9 @@ const AlertIcon = () => <AlertTriangle size={48} color="#eab308" />;
 const CheckIcon = () => <CheckCircle size={18} />;
 const SearchIcon = () => <Search size={18} />;
 const UsersIcon = () => <Users size={18} />;
+const BusinessIcon = ({ size = 20, ...props }) => <Building2 size={size} {...props} />;
+const ContactIcon = ({ size = 20, ...props }) => <User size={size} {...props} />;
+const LocationIcon = ({ size = 20, ...props }) => <MapPin size={size} {...props} />;
 
 const StatusBadge = ({ status }) => {
   const s = status.toLowerCase();
@@ -261,7 +272,7 @@ function App() {
     if (!ids || ids.length === 0) return showToast('Leads select karo pehle!', 'error');
     setIsBulkFinding(true);
     setEmailFindLog('');
-    showToast(`🚀 ${ids.length} leads ke liye email dhundh raha hai...`, 'success');
+    showToast(`${ids.length} leads ke liye email dhundh raha hai...`, 'success');
     const es = new EventSource(`/api/bulk-find-emails?ids=${ids.join(',')}`);
     es.onmessage = (event) => {
       try {
@@ -271,7 +282,7 @@ function App() {
           setSavedLeads(prev => prev.map(l => l._id === d.leadId
             ? { ...l, email: d.email, emailFound: !!d.email, emailSource: d.emailSource, socialLinks: d.socialLinks }
             : l));
-          if (d.email) showToast(`✅ ${d.name}: ${d.email}`, 'success');
+          if (d.email) showToast(`${d.name}: ${d.email}`, 'success');
         }
         if (d.type === 'done') {
           setIsBulkFinding(false);
@@ -1638,7 +1649,7 @@ function App() {
                             });
                           }}
                         >
-                          {isEnricherSending ? <><Loader2 size={14} className="animate-spin" style={{ display: 'inline', marginRight: '4px' }} /> Starting...</> : <>🚀 Start Email Marketing (3-Step Auto)</>}
+                          {isEnricherSending ? <><Loader2 size={14} className="animate-spin" style={{ display: 'inline', marginRight: '4px' }} /> Starting...</> : <><Rocket size={14} /> Start Email Marketing (3-Step Auto)</>}
                         </button>
                         <select
                           className="pro-select"
@@ -1918,7 +1929,7 @@ function App() {
                             onClick={(e) => { e.stopPropagation(); handleDeleteGroup(sample.keyword, sample.city); }}
                             style={{ position: 'absolute', top: '10px', right: '10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}
                             title="Delete Folder"
-                          >✕</button>
+                          ><X size={14} /></button>
                           <div onClick={() => setSelectedGroup(groupName)}>
                             <div style={{ marginBottom: '1rem', color: 'var(--primary)' }}><FolderIcon /></div>
                             <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)', fontSize: '1rem' }}>{groupName}</h4>
@@ -1931,66 +1942,195 @@ function App() {
                 ) : (
                   <>
                     <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <button className="btn-icon btn-continue" onClick={() => setSelectedGroup(null)} style={{ fontSize: '0.8rem' }}>← Back</button>
+                      <button className="btn-icon btn-continue" onClick={() => { setSelectedGroup(null); setSelectedIds([]); }} style={{ fontSize: '0.8rem' }}>← Back</button>
                       <span style={{ fontWeight: '600', color: 'var(--text-main)', flex: 1 }}>{selectedGroup}</span>
                     </div>
-                    <table className="pro-table">
-                      <thead>
-                        <tr>
-                          <th>Business Name</th>
-                          <th>Contact / Link</th>
-                          <th>Location</th>
+
+                    {(() => {
+                      const groupLeads = savedLeads.filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup);
+                      const allSelected = groupLeads.length > 0 && groupLeads.every(l => selectedIds.includes(l._id));
+                      const someSelected = groupLeads.some(l => selectedIds.includes(l._id));
+
+                      return (
+                        <>
+                          {someSelected && (
+                            <div className="bulk-bar" style={{ margin: '1rem 1.5rem', borderRadius: '12px', background: 'var(--primary)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', boxShadow: '0 10px 15px -3px rgba(79, 102, 241, 0.3)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontWeight: '600' }}>
+                                <Info size={18} />
+                                {selectedIds.filter(id => groupLeads.some(l => l._id === id)).length} leads selected from this folder
+                              </div>
+                              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <button 
+                                  className="bulk-btn"
+                                  style={{ background: 'white', color: 'var(--primary)', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                                  onClick={() => {
+                                    const ids = selectedIds.filter(id => groupLeads.some(l => l._id === id && l.email && l.emailFound));
+                                    if (ids.length === 0) return showToast('No leads with emails selected!', 'error');
+                                    if (!emailUser || !emailPass) return showToast('SMTP credentials missing — Campaign tab pe set karo!', 'error');
+                                    if (!subject || !body1) return showToast('Campaign subject & Step 1 body missing — Campaign tab pe set karo!', 'error');
+
+                                    setConfirmModal({
+                                      open: true,
+                                      title: `Start 3-step Email Automation for ${ids.length} selected leads?`,
+                                      onConfirm: async () => {
+                                        setIsEnricherSending(true);
+                                        try {
+                                          const res = await axios.post('/api/enricher-enroll', {
+                                            leadIds: ids, emailUser, emailPass, subject, body1, body2, body3
+                                          });
+                                          showToast(res.data.message, 'success');
+                                          setSelectedIds([]);
+                                          fetchSavedLeads();
+                                          fetchRecipients();
+                                          fetchStats();
+                                        } catch (err) {
+                                          showToast('Enroll failed: ' + (err.response?.data?.error || err.message), 'error');
+                                        } finally { setIsEnricherSending(false); }
+                                      }
+                                    });
+                                  }}
+                                >
+                                  {isEnricherSending ? <><Loader2 size={16} className="animate-spin" /> Starting...</> : <><Rocket size={16} /> Start Automation</>}
+                                </button>
+                                <button 
+                                  style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.4)', padding: '8px 16px', borderRadius: '8px', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer' }}
+                                  onClick={() => setSelectedIds([])}
+                                >Cancel</button>
+                              </div>
+                            </div>
+                          )}
+                          <table className="pro-table">
+                            <thead>
+                              <tr>
+                                <th style={{ width: '50px', textAlign: 'center', paddingLeft: '1.5rem' }}>
+                                  <input 
+                                    type="checkbox" 
+                                    checked={allSelected}
+                                    ref={el => { if (el) el.indeterminated = someSelected && !allSelected; }}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        const newIds = Array.from(new Set([...selectedIds, ...groupLeads.map(l => l._id)]));
+                                        setSelectedIds(newIds);
+                                      } else {
+                                        const idsToKeep = selectedIds.filter(id => !groupLeads.some(l => l._id === id));
+                                        setSelectedIds(idsToKeep);
+                                      }
+                                    }}
+                                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                  />
+                                </th>
+                                <th>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <BusinessIcon size={14} /> Business Name
+                                  </div>
+                                </th>
+                          <th>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <ContactIcon size={14} /> Contact / Link
+                            </div>
+                          </th>
+                          <th>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <LocationIcon size={14} /> Location
+                            </div>
+                          </th>
                           <th>Status</th>
-                          <th>Actions</th>
+                          <th style={{ paddingRight: '1.5rem' }}>Actions</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {savedLeads.filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup).map((lead) => (
-                          <tr key={lead._id}>
-                            <td style={{ fontWeight: '600' }}>
+                              <tbody>
+                                {groupLeads.map((lead) => (
+                                  <tr key={lead._id} style={{ borderBottom: '1px solid var(--border)', background: selectedIds.includes(lead._id) ? 'rgba(79, 102, 241, 0.04)' : 'transparent' }}>
+                                    <td style={{ textAlign: 'center', paddingLeft: '1.5rem' }}>
+                                      <input 
+                                        type="checkbox" 
+                                        checked={selectedIds.includes(lead._id)}
+                                        onChange={() => {
+                                          if (selectedIds.includes(lead._id)) setSelectedIds(selectedIds.filter(id => id !== lead._id));
+                                          else setSelectedIds([...selectedIds, lead._id]);
+                                        }}
+                                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: '1.25rem 1.5rem' }}>
                               {inlineEditLeadId === lead._id ? (
                                 <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} value={inlineEditData.name || ''} onChange={e => setInlineEditData({ ...inlineEditData, name: e.target.value })} />
-                              ) : lead.name}
-                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px' }}>{lead.keyword}</div>
-                            </td>
-                            <td>
-                              {inlineEditLeadId === lead._id ? (
-                                <>
-                                  <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%', marginBottom: '4px' }} placeholder="Phone" value={inlineEditData.phone || ''} onChange={e => setInlineEditData({ ...inlineEditData, phone: e.target.value })} />
-                                  <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} placeholder="Email" value={inlineEditData.email || ''} onChange={e => setInlineEditData({ ...inlineEditData, email: e.target.value })} />
-                                </>
                               ) : (
-                                <>
-                                  <div style={{ color: 'var(--success)', fontWeight: '500' }}>{lead.phone}</div>
-                                  {lead.phone !== 'N/A' && (
-                                    <a href={`https://wa.me/${lead.phone.replace(/[^\d+]/g, '')}`} target="_blank" rel="noreferrer" style={{ color: '#10b981', fontSize: '0.75rem', textDecoration: 'none', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}><MessageSquare size={12} /> WhatsApp</a>
-                                  )}
-                                  {lead.emailFound && (
-                                    <div style={{ marginTop: '4px' }}>
-                                      <a href={`mailto:${lead.email}`} style={{ color: '#6366f1', fontSize: '0.75rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={12} /> {lead.email}</a>
-                                    </div>
-                                  )}
-                                </>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  <span style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.95rem' }}>{lead.name}</span>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--primary)', background: 'rgba(79, 102, 241, 0.1)', padding: '2px 8px', borderRadius: '4px', width: 'fit-content', fontWeight: '600', textTransform: 'uppercase' }}>{lead.keyword || 'Lead'}</span>
+                                </div>
                               )}
                             </td>
-                            <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{lead.address}<br />{lead.city}</td>
-                            <td>
-                              <button onClick={async () => { await axios.put(`/api/saved-leads/${lead._id}/contacted`); fetchSavedLeads(); }} className={`status-badge ${lead.isContacted ? 'status-finished' : 'status-pending'}`} style={{ cursor: 'pointer', border: 'none' }}>
-                                {lead.isContacted ? 'Contacted' : 'Pending'}
+                            <td style={{ padding: '1.25rem 1.5rem' }}>
+                              {inlineEditLeadId === lead._id ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} placeholder="Phone" value={inlineEditData.phone || ''} onChange={e => setInlineEditData({ ...inlineEditData, phone: e.target.value })} />
+                                  <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} placeholder="Email" value={inlineEditData.email || ''} onChange={e => setInlineEditData({ ...inlineEditData, email: e.target.value })} />
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  {lead.phone && lead.phone !== 'N/A' ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <span style={{ color: 'var(--success)', fontWeight: '600', fontSize: '0.9rem' }}>{lead.phone}</span>
+                                      <a href={`https://wa.me/${lead.phone.replace(/[^\d+]/g, '')}`} target="_blank" rel="noreferrer" style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }} title="WhatsApp"><MessageSquare size={14} /></a>
+                                    </div>
+                                  ) : <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>}
+                                  
+                                  {lead.emailFound ? (
+                                    <a href={`mailto:${lead.email}`} style={{ color: 'var(--primary)', fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
+                                      <Mail size={12} /> {lead.email}
+                                    </a>
+                                  ) : lead.email ? (
+                                    <a href={`mailto:${lead.email}`} style={{ color: 'var(--primary)', fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
+                                      <Mail size={12} /> {lead.email}
+                                    </a>
+                                  ) : null}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '1.25rem 1.5rem' }}>
+                               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: '500' }}>{lead.city || 'Unknown'}</span>
+                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{lead.address && lead.address !== 'N/A' ? lead.address : 'Address not found'}</span>
+                               </div>
+                            </td>
+                            <td style={{ padding: '1.25rem 1.5rem' }}>
+                              <button 
+                                onClick={async () => { await axios.put(`/api/saved-leads/${lead._id}/contacted`); fetchSavedLeads(); }} 
+                                className={`status-badge ${lead.isContacted ? 'status-sent' : 'status-pending'}`} 
+                                style={{ cursor: 'pointer', border: 'none', padding: '6px 12px', borderRadius: '20px', fontWeight: '600', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                              >
+                                {lead.isContacted ? <><Check size={14} /> Contacted</> : <><Clock size={14} /> Pending</>}
                               </button>
                             </td>
-                            <td>
-                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <td style={{ padding: '1.25rem 1.5rem' }}>
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                 {inlineEditLeadId === lead._id ? (
                                   <>
-                                    <button className="btn-icon" style={{ borderColor: '#10b981', color: '#10b981', fontSize: '0.78rem' }} onClick={handleSaveInlineEdit}>Save</button>
-                                    <button className="btn-icon" style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)', fontSize: '0.78rem' }} onClick={() => setInlineEditLeadId(null)}>Cancel</button>
+                                    <button className="btn-icon" style={{ borderColor: 'var(--success)', color: 'var(--success)', fontSize: '0.75rem' }} onClick={handleSaveInlineEdit}>Save</button>
+                                    <button className="btn-icon" style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)', fontSize: '0.75rem' }} onClick={() => setInlineEditLeadId(null)}>Cancel</button>
                                   </>
                                 ) : (
                                   <>
-                                    <button className="btn-icon" style={{ borderColor: '#6366f1', color: '#6366f1', fontSize: '0.78rem' }} onClick={() => { setInlineEditLeadId(lead._id); setInlineEditData({ name: lead.name, phone: lead.phone, email: lead.email, address: lead.address, city: lead.city }); }}>Edit</button>
-                                    <a href={lead.mapsLink} target="_blank" rel="noreferrer" className="btn-icon btn-restart" style={{ textDecoration: 'none' }}>Map</a>
-                                    <button onClick={async () => { await axios.delete(`/api/saved-leads/${lead._id}`); fetchSavedLeads(); }} className="btn-icon btn-stop">Del</button>
+                                    <button className="btn-icon" style={{ borderColor: 'var(--primary)', color: 'var(--primary)', fontSize: '0.75rem', padding: '6px 12px' }} onClick={() => { setInlineEditLeadId(lead._id); setInlineEditData({ name: lead.name, phone: lead.phone, email: lead.email, address: lead.address, city: lead.city }); }}>Edit</button>
+                                    {lead.mapsLink && (
+                                      <a href={lead.mapsLink} target="_blank" rel="noreferrer" className="btn-icon" style={{ borderColor: 'var(--warning)', color: 'var(--warning)', textDecoration: 'none', fontSize: '0.75rem', padding: '6px 12px' }}>Map</a>
+                                    )}
+                                    <button 
+                                      onClick={() => {
+                                        setConfirmModal({
+                                          open: true,
+                                          title: `Delete ${lead.name}?`,
+                                          onConfirm: async () => {
+                                            await axios.delete(`/api/saved-leads/${lead._id}`);
+                                            fetchSavedLeads();
+                                          }
+                                        });
+                                      }} 
+                                      className="btn-icon" 
+                                      style={{ borderColor: 'var(--danger)', color: 'var(--danger)', fontSize: '0.75rem', padding: '6px 12px' }}
+                                    >Del</button>
                                   </>
                                 )}
                               </div>
@@ -1999,11 +2139,14 @@ function App() {
                         ))}
                       </tbody>
                     </table>
-                  </>
-                )}
+                          </>
+                        );
+                      })()}
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
         </section>
       </main>
 

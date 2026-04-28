@@ -23,7 +23,7 @@ mongoose.connect(process.env.MONGO_URI)
     const db = mongoose.connection.db;
     try {
       await db.collection('recipients').createIndex({ email: 1 }, { unique: true });
-      console.log("Unique Lock Active! 🔒");
+      console.log("Unique Lock Active!");
     } catch (e) {
       console.log("Database Ready.");
     }
@@ -46,7 +46,7 @@ mongoose.connect(process.env.MONGO_URI)
       if (!exists) await CustomField.create({ name: v, active: true });
     }
 
-    console.log("Credentials Synced & Core Variables Initialized! ✅");
+    console.log("Credentials Synced & Core Variables Initialized!");
 
     const PORT = process.env.PORT || 5001;
     app.listen(PORT, () => {
@@ -613,7 +613,7 @@ app.post('/api/add-recipient', async (req, res) => {
     await nr.save();
     // INSTANT DISPATCH only if not archived
     if (initialStatus !== 'archived') sendEmail(nr._id);
-    res.json({ message: initialStatus === 'archived' ? "Lead Archived! ✅" : "Lead Added & Email Dispatched! " });
+    res.json({ message: initialStatus === 'archived' ? "Lead Archived!" : "Lead Added & Email Dispatched!" });
   } catch (e) {
     res.status(400).json({ error: "Lead already exists in database! Target blocked for safety." });
   }
