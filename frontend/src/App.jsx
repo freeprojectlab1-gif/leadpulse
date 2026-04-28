@@ -123,6 +123,8 @@ function App() {
   const [addEmailModal, setAddEmailModal] = useState(false);
   const [addEmailForm, setAddEmailForm] = useState({ email: '', name: '', phone: '', city: '', keyword: '' });
   const [isAddingEmail, setIsAddingEmail] = useState(false);
+  const [inlineEditLeadId, setInlineEditLeadId] = useState(null);
+  const [inlineEditData, setInlineEditData] = useState({});
   const [keywordHistory, setKeywordHistory] = useState(JSON.parse(localStorage.getItem('keyword_history') || '[]'));
   const [cityHistory, setCityHistory] = useState(JSON.parse(localStorage.getItem('city_history') || '[]'));
 
@@ -335,6 +337,17 @@ function App() {
         } catch (e) { showToast("Delete failed", "error"); }
       }
     });
+  };
+
+  const handleSaveInlineEdit = async () => {
+    try {
+      await axios.put(`/api/saved-leads/${inlineEditLeadId}`, inlineEditData);
+      showToast("Lead updated successfully!", "success");
+      setInlineEditLeadId(null);
+      fetchSavedLeads();
+    } catch (err) {
+      showToast("Failed to update lead", "error");
+    }
   };
 
   const handleDeleteTemplate = async (id) => {
@@ -559,9 +572,8 @@ function App() {
           muted
           loop
           playsInline
-          poster="https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=2070"
         >
-          <source src="https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-binary-code-and-data-24018-large.mp4" type="video/mp4" />
+          <source src="/bg-video.mp4" type="video/mp4" />
         </video>
         <div className="hero-overlay"></div>
         <div className="cyber-scanner"></div>
@@ -1676,34 +1688,57 @@ function App() {
                               </td>
                             )}
                             <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{idx + 1}</td>
-                            <td>
-                              {recipient ? (
-                                <span
-                                  onClick={() => setIntelLead(recipient)}
-                                  style={{ color: autoActive ? '#10b981' : '#6366f1', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                  title="Click to view delivery logs"
-                                >
-                                  <Mail size={14} /> {lead.email}
-                                  {autoActive && (
-                                    <span style={{ marginLeft: '6px', padding: '2px 8px', background: '#10b981', color: 'white', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 700 }}>
-                                      AUTO • Step {recipient.step}
-                                    </span>
-                                  )}
-                                  {!autoActive && recipient && (
-                                    <span style={{ marginLeft: '6px', padding: '2px 8px', background: 'var(--text-muted)', color: 'white', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 700 }}>
-                                      {(recipient.status || '').toUpperCase()}
-                                    </span>
-                                  )}
-                                </span>
-                              ) : (
-                                <a href={`mailto:${lead.email}`} style={{ color: '#6366f1', fontWeight: '600', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={14} /> {lead.email}</a>
-                              )}
-                            </td>
+                             <td>
+                               {inlineEditLeadId === lead._id ? (
+                                 <input
+                                   className="pro-input"
+                                   style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }}
+                                   value={inlineEditData.email || ''}
+                                   onChange={e => setInlineEditData({ ...inlineEditData, email: e.target.value })}
+                                 />
+                               ) : recipient ? (
+                                 <span
+                                   onClick={() => setIntelLead(recipient)}
+                                   style={{ color: autoActive ? '#10b981' : '#6366f1', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                   title="Click to view delivery logs"
+                                 >
+                                   <Mail size={14} /> {lead.email}
+                                   {autoActive && (
+                                     <span style={{ marginLeft: '6px', padding: '2px 8px', background: '#10b981', color: 'white', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 700 }}>
+                                       AUTO • Step {recipient.step}
+                                     </span>
+                                   )}
+                                   {!autoActive && recipient && (
+                                     <span style={{ marginLeft: '6px', padding: '2px 8px', background: 'var(--text-muted)', color: 'white', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 700 }}>
+                                       {(recipient.status || '').toUpperCase()}
+                                     </span>
+                                   )}
+                                 </span>
+                               ) : (
+                                 <a href={`mailto:${lead.email}`} style={{ color: '#6366f1', fontWeight: '600', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={14} /> {lead.email}</a>
+                               )}
+                             </td>
                             <td style={{ fontWeight: '600' }}>
-                              {lead.name}
+                              {inlineEditLeadId === lead._id ? (
+                                <input
+                                  className="pro-input"
+                                  style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }}
+                                  value={inlineEditData.name || ''}
+                                  onChange={e => setInlineEditData({ ...inlineEditData, name: e.target.value })}
+                                />
+                              ) : lead.name}
                               <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px' }}>{lead.keyword}</div>
                             </td>
-                            <td style={{ color: 'var(--success)', fontWeight: '500' }}>{lead.phone || '—'}</td>
+                            <td style={{ color: 'var(--success)', fontWeight: '500' }}>
+                              {inlineEditLeadId === lead._id ? (
+                                <input
+                                  className="pro-input"
+                                  style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%', color: 'var(--success)' }}
+                                  value={inlineEditData.phone || ''}
+                                  onChange={e => setInlineEditData({ ...inlineEditData, phone: e.target.value })}
+                                />
+                              ) : (lead.phone || '—')}
+                            </td>
                             <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{(() => {
                               const map = { ig: 'Instagram', instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', website: 'Website', search_engine: 'Search Engine', google_dork: 'Google Search', google: 'Google' };
                               const s = (lead.emailSource || '').toLowerCase();
@@ -1712,7 +1747,20 @@ function App() {
                             <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{lead.city}</td>
                             <td>
                               <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                {selectedLeadForTpl === lead._id ? (
+                                {inlineEditLeadId === lead._id ? (
+                                  <>
+                                    <button
+                                      className="btn-icon"
+                                      style={{ borderColor: '#10b981', color: '#10b981', fontSize: '0.78rem' }}
+                                      onClick={handleSaveInlineEdit}
+                                    >Save</button>
+                                    <button
+                                      className="btn-icon"
+                                      style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)', fontSize: '0.78rem' }}
+                                      onClick={() => setInlineEditLeadId(null)}
+                                    >Cancel</button>
+                                  </>
+                                ) : selectedLeadForTpl === lead._id ? (
                                   <select
                                     className="pro-select"
                                     style={{ appearance: 'none', background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px 25px 4px 10px', fontSize: '0.8rem' }}
@@ -1733,19 +1781,42 @@ function App() {
                                     <option value="">Cancel</option>
                                   </select>
                                 ) : (
-                                  <button
-                                    className="btn-icon"
-                                    style={{ borderColor: '#10b981', color: '#10b981', fontSize: '0.78rem' }}
-                                    onClick={() => setSelectedLeadForTpl(lead._id)}
-                                    title="Send email"
-                                  >Send</button>
+                                  <>
+                                    <button
+                                      className="btn-icon"
+                                      style={{ borderColor: '#10b981', color: '#10b981', fontSize: '0.78rem' }}
+                                      onClick={() => setSelectedLeadForTpl(lead._id)}
+                                      title="Send email"
+                                    >Send</button>
+                                    <button
+                                      className="btn-icon"
+                                      style={{ borderColor: '#6366f1', color: '#6366f1', fontSize: '0.78rem' }}
+                                      onClick={() => {
+                                        setInlineEditLeadId(lead._id);
+                                        setInlineEditData({ email: lead.email, name: lead.name, phone: lead.phone });
+                                      }}
+                                      title="Edit lead"
+                                    >Edit</button>
+                                  </>
                                 )}
-                                <button
-                                  onClick={() => { navigator.clipboard.writeText(lead.email); }}
-                                  className="btn-icon btn-restart"
-                                  title="Copy email"
-                                >Copy</button>
-                                <button onClick={async () => { await axios.delete(`/api/saved-leads/${lead._id}`); fetchSavedLeads(); }} className="btn-icon btn-stop">Del</button>
+                                <button 
+                                  onClick={() => { 
+                                    setConfirmModal({
+                                      open: true,
+                                      title: `Delete this lead (${lead.email})?`,
+                                      onConfirm: async () => {
+                                        try {
+                                          await axios.delete(`/api/saved-leads/${lead._id}`); 
+                                          showToast("Lead Deleted!", "success");
+                                          fetchSavedLeads(); 
+                                        } catch(e) {
+                                          showToast("Delete failed", "error");
+                                        }
+                                      }
+                                    });
+                                  }} 
+                                  className="btn-icon btn-stop"
+                                >Del</button>
                               </div>
                             </td>
                           </tr>

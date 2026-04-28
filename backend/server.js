@@ -1129,6 +1129,13 @@ app.delete('/api/saved-leads/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.put('/api/saved-leads/:id', async (req, res) => {
+  try {
+    const updated = await ScrapedLead.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updated);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── ENROLL ENRICHER LEADS into the auto-sequence (creates Recipients) ──
 app.post('/api/enricher-enroll', async (req, res) => {
   const { leadIds, emailUser, emailPass, subject, body1, body2, body3 } = req.body;
