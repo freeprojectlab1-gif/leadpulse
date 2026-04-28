@@ -593,11 +593,11 @@ app.post('/api/start-campaign', upload.single('file'), async (req, res) => {
     try {
       await Recipient.create({
         email, campaignId: 'CAMP_' + Date.now(), emailUser, emailPass, subject, body1, body2, body3, data: contact,
-        nextSendAt: new Date() // Queue sequentially via cron
+        nextSendAt: new Date(Date.now() + 5000) // 5 sec automation start
       });
     } catch (e) { /* Skip duplicates */ }
   }
-  res.json({ message: "Campaign Processed & Queued!" });
+  res.json({ message: "Campaign Processed!" });
 });
 
 app.post('/api/add-recipient', async (req, res) => {
@@ -608,10 +608,12 @@ app.post('/api/add-recipient', async (req, res) => {
       status: initialStatus || 'pending',
       campaignId: 'MANUAL_' + Date.now(),
       emailUser, emailPass, subject, body1, body2, body3, data,
-      nextSendAt: initialStatus === 'archived' ? null : new Date()
+      nextSendAt: initialStatus === 'archived' ? null : new Date(Date.now() + 5000)
     });
     await nr.save();
-    res.json({ message: initialStatus === 'archived' ? "Lead Archived! ✅" : "Lead Added to Sequence Queue! " });
+    // INSTANT DISPATCH only if not archived
+    if (initialStatus !== 'archived') sendEmail(nr._id);
+    res.json({ message: initialStatus === 'archived' ? "Lead Archived! ✅" : "Lead Added & Email Dispatched! " });
   } catch (e) {
     res.status(400).json({ error: "Lead already exists in database! Target blocked for safety." });
   }
@@ -1392,9 +1394,10 @@ app.post('/api/enricher-enroll', async (req, res) => {
           step: 1,
           campaignId: 'ENRICHER_' + Date.now(),
           emailUser, emailPass, subject, body1, body2, body3, data,
-          nextSendAt: new Date()
+          nextSendAt: new Date(Date.now() + 5000)
         });
         await nr.save();
+        sendEmail(nr._id); // instant dispatch of Step 1
         lead.isContacted = true;
         await lead.save();
         results.enrolled++;
