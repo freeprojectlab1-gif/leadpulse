@@ -10,3 +10,5 @@ frontend/dist/
 *.html
 !backend/ddg_*.html
 !backend/yahoo_*.html
+backend/wa_session/
+backend/.cache/
