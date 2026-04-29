@@ -18,6 +18,7 @@ import {
   History,
   Archive,
   Settings,
+  HelpCircle,
   Edit,
   Save,
   Rocket,
@@ -26,6 +27,9 @@ import {
   Menu,
   Square,
   MessageSquare,
+  ChevronDown,
+  Calendar,
+  Reply,
   Loader2,
   Phone,
   Flame,
@@ -141,6 +145,9 @@ function App() {
   const [addEmailModal, setAddEmailModal] = useState(false);
   const [addEmailForm, setAddEmailForm] = useState({ email: '', name: '', phone: '', city: '', keyword: '' });
   const [isAddingEmail, setIsAddingEmail] = useState(false);
+  const [viewReplyModal, setViewReplyModal] = useState({ open: false, lead: null });
+  const [expandedLeadId, setExpandedLeadId] = useState(null);
+  const [expandedReplyIdx, setExpandedReplyIdx] = useState(null);
   const [inlineEditLeadId, setInlineEditLeadId] = useState(null);
   const [inlineEditData, setInlineEditData] = useState({});
   const [keywordHistory, setKeywordHistory] = useState(JSON.parse(localStorage.getItem('keyword_history') || '[]'));
@@ -683,6 +690,9 @@ function App() {
           <div className={`nav-item ${activeTab === 'archive' ? 'active' : ''}`} onClick={() => { switchTab('archive'); setIsMobileMenuOpen(false); }}>
             <ArchiveIcon /> Archive
           </div>
+          <div className={`nav-item ${activeTab === 'replied_leads' ? 'active' : ''}`} onClick={() => { switchTab('replied_leads'); setIsMobileMenuOpen(false); }}>
+            <MessageSquare size={16} /> Replied Leads
+          </div>
           <div className={`nav-item ${activeTab === 'scraper' ? 'active' : ''}`} onClick={() => { switchTab('scraper'); setIsMobileMenuOpen(false); }}>
             <SearchIcon /> Lead Scraper
           </div>
@@ -701,7 +711,7 @@ function App() {
         <header className="top-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)}><MenuIcon /></button>
-            <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'variables' ? 'Variable Manager' : activeTab === 'logs' ? 'Delivery Logs' : activeTab === 'scraper' ? 'Lead Scraper' : activeTab === 'email_finder' ? 'Email Enricher' : activeTab === 'saved_leads' ? 'Lead Automation CRM' : 'Archive'}</h2>
+            <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'variables' ? 'Variable Manager' : activeTab === 'logs' ? 'Delivery Logs' : activeTab === 'replied_leads' ? 'Replied Leads' : activeTab === 'scraper' ? 'Lead Scraper' : activeTab === 'email_finder' ? 'Email Enricher' : activeTab === 'saved_leads' ? 'Lead Automation CRM' : 'Archive'}</h2>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <select
@@ -735,7 +745,7 @@ function App() {
                   <span className="stat-value" style={{ color: 'var(--primary)' }}>{getStatCount('pending') + getStatCount('Step 1 Sent') + getStatCount('Step 2 Sent')}</span>
                 </div>
                 <div className="stat-card">
-                  <span className="stat-label">Replied</span>
+                  <span className="stat-label">Active Replied</span>
                   <span className="stat-value" style={{ color: 'var(--success)' }}>{getStatCount('replied')}</span>
                 </div>
                 <div className="stat-card">
@@ -760,6 +770,7 @@ function App() {
                         <th>CURRENT STEP</th>
                         <th>STATUS</th>
                         <th>LAST ACTIVITY</th>
+                        <th>REPLY</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -769,6 +780,33 @@ function App() {
                           <td>{r.step > 3 ? 'Completed' : `Step ${r.step}`}</td>
                           <td><span className={`status-badge status-${r.status.replace(/ /g, '-').toLowerCase()}`}>{r.status}</span></td>
                           <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{r.lastSentAt ? new Date(r.lastSentAt).toLocaleString() : 'Queued'}</td>
+                          <td>
+                            {r.status === 'replied' && (
+                              <button
+                                className="reply-view-btn"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '5px 12px',
+                                  fontSize: '0.75rem',
+                                  background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                                  border: 'none',
+                                  borderRadius: '20px',
+                                  color: 'white',
+                                  cursor: 'pointer',
+                                  fontWeight: '600',
+                                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                                  transition: 'transform 0.2s'
+                                }}
+                                onClick={() => setViewReplyModal({ open: true, lead: r })}
+                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                              >
+                                <MessageSquare size={12} /> View Reply
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                       {recipients.length === 0 && (
@@ -1491,6 +1529,168 @@ function App() {
               </table>
             </div>
           )}
+          {activeTab === 'replied_leads' && (
+            <div className="content-area">
+              <div className="log-card">
+                <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
+                  <h3 style={{ margin: 0 }}>Replied Leads</h3>
+                  <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>All leads who have responded to your emails.</p>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="pro-table">
+                    <thead>
+                      <tr>
+                        <th>RECIPIENT</th>
+                        <th>LATEST REPLY</th>
+                        <th>REPLIES</th>
+                        <th>ACTION</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recipients.filter(r => r.status === 'replied').length > 0 ? (
+                        recipients.filter(r => r.status === 'replied')
+                          .sort((a, b) => {
+                            const dateA = a.replies && a.replies.length > 0 ? new Date(a.replies[a.replies.length - 1].receivedAt) : 0;
+                            const dateB = b.replies && b.replies.length > 0 ? new Date(b.replies[b.replies.length - 1].receivedAt) : 0;
+                            return dateB - dateA;
+                          })
+                          .map((r, i) => (
+                          <React.Fragment key={i}>
+                            <tr 
+                              onClick={() => setExpandedLeadId(expandedLeadId === r._id ? null : r._id)}
+                              style={{ 
+                                cursor: 'pointer', 
+                                background: expandedLeadId === r._id ? 'linear-gradient(90deg, rgba(99, 102, 241, 0.08) 0%, transparent 100%)' : 'transparent',
+                                transition: 'all 0.3s ease',
+                                borderLeft: expandedLeadId === r._id ? '4px solid var(--primary)' : '4px solid transparent'
+                              }}
+                              className="lead-row-hover"
+                            >
+                              <td style={{ padding: '1.2rem 1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '1rem', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)' }}>
+                                    {r.email.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <div style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--text)' }}>{r.email}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      <MessageSquare size={10} /> {(r.replies || []).length} interactions
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ maxWidth: '280px' }}>
+                                <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {r.replies && r.replies.length > 0 ? r.replies[r.replies.length - 1].subject : 'No content'}
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {r.replies && r.replies.length > 0 ? (r.replies[r.replies.length - 1].body || '').substring(0, 60) + '...' : ''}
+                                </div>
+                              </td>
+                              <td>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>
+                                    {r.replies && r.replies.length > 0 ? new Date(r.replies[r.replies.length - 1].receivedAt).toLocaleDateString() : 'N/A'}
+                                  </span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                    {r.replies && r.replies.length > 0 ? new Date(r.replies[r.replies.length - 1].receivedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                  </span>
+                                </div>
+                              </td>
+                              <td style={{ textAlign: 'right', paddingRight: '1.5rem' }}>
+                                <div style={{ 
+                                  display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', 
+                                  background: expandedLeadId === r._id ? 'var(--text)' : 'rgba(99, 102, 241, 0.1)',
+                                  color: expandedLeadId === r._id ? 'white' : 'var(--primary)',
+                                  fontSize: '0.75rem', fontWeight: '700', transition: 'all 0.3s ease'
+                                }}>
+                                  {expandedLeadId === r._id ? 'Close' : 'View Thread'} <ChevronDown size={14} style={{ transform: expandedLeadId === r._id ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+                                </div>
+                              </td>
+                            </tr>
+                            {expandedLeadId === r._id && (
+                              <tr>
+                                <td colSpan="4" style={{ padding: '0 1.5rem 2rem 1.5rem', background: 'rgba(99, 102, 241, 0.02)' }}>
+                                  <div style={{ padding: '2rem', border: '1px solid var(--border)', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(10px)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'relative' }}>
+                                      {/* Vertical Line Connector */}
+                                      <div style={{ position: 'absolute', left: '20px', top: '20px', bottom: '20px', width: '2px', background: 'linear-gradient(to bottom, var(--primary) 0%, transparent 100%)', opacity: 0.2 }}></div>
+                                      
+                                      {[...(r.replies || [])].sort((a,b) => new Date(b.receivedAt) - new Date(a.receivedAt)).map((reply, idx) => (
+                                        <div key={idx} style={{ position: 'relative', paddingLeft: '45px' }}>
+                                          {/* Message Node */}
+                                          <div style={{ position: 'absolute', left: '13px', top: '0', width: '16px', height: '16px', borderRadius: '50%', background: idx === 0 ? 'var(--primary)' : 'white', border: '3px solid var(--primary)', zIndex: 2 }}></div>
+                                          
+                                          <div style={{ 
+                                            background: 'white', borderRadius: '12px', border: '1px solid var(--border)', 
+                                            boxShadow: idx === 0 ? '0 10px 25px rgba(99, 102, 241, 0.1)' : '0 4px 12px rgba(0,0,0,0.03)',
+                                            overflow: 'hidden', animation: `slideIn 0.3s ease-out ${idx * 0.1}s both`
+                                          }}>
+                                            <div 
+                                              style={{ 
+                                                padding: '12px 20px', background: idx === 0 ? 'linear-gradient(90deg, #6366f1 0%, #818cf8 100%)' : '#f8fafc', 
+                                                color: idx === 0 ? 'white' : 'var(--text)', cursor: 'pointer', 
+                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                              }}
+                                              onClick={() => setExpandedReplyIdx(expandedReplyIdx === idx ? null : idx)}
+                                            >
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                {idx === 0 && <span style={{ background: 'white', color: 'var(--primary)', fontSize: '0.65rem', fontWeight: '900', padding: '2px 8px', borderRadius: '10px', textTransform: 'uppercase' }}>Latest</span>}
+                                                <span style={{ fontWeight: '700', fontSize: '0.9rem' }}>{reply.subject}</span>
+                                              </div>
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', opacity: 0.8 }}>
+                                                <Calendar size={12} /> {new Date(reply.receivedAt).toLocaleString()}
+                                              </div>
+                                            </div>
+                                            {expandedReplyIdx === idx && (
+                                              <div style={{ padding: '25px', background: 'white', position: 'relative' }}>
+                                                <div style={{ 
+                                                  whiteSpace: 'pre-wrap', fontSize: '0.95rem', lineHeight: '1.7', color: 'var(--text)',
+                                                  fontFamily: 'Inter, system-ui, sans-serif'
+                                                }}>
+                                                  {reply.body}
+                                                </div>
+                                                <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)', display: 'flex', gap: '10px' }}>
+                                                  <button style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <Reply size={14} /> Direct Reply
+                                                  </button>
+                                                  <button style={{ background: 'white', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}>
+                                                    Mark as Important
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4" style={{ padding: '4rem', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+                              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <MessageSquare size={30} />
+                              </div>
+                              <div>
+                                <h4 style={{ margin: '0 0 5px 0' }}>No replies detected yet</h4>
+                                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>Your leads will appear here as soon as they respond to your emails.</p>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
           {activeTab === 'email_finder' && (() => {
             const seen = new Set();
@@ -1960,7 +2160,7 @@ function App() {
                                 {selectedIds.filter(id => groupLeads.some(l => l._id === id)).length} leads selected from this folder
                               </div>
                               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                <button 
+                                <button
                                   className="bulk-btn"
                                   style={{ background: 'white', color: 'var(--primary)', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
                                   onClick={() => {
@@ -1992,7 +2192,7 @@ function App() {
                                 >
                                   {isEnricherSending ? <><Loader2 size={16} className="animate-spin" /> Starting...</> : <><Rocket size={16} /> Start Automation</>}
                                 </button>
-                                <button 
+                                <button
                                   style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.4)', padding: '8px 16px', borderRadius: '8px', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer' }}
                                   onClick={() => setSelectedIds([])}
                                 >Cancel</button>
@@ -2003,8 +2203,8 @@ function App() {
                             <thead>
                               <tr>
                                 <th style={{ width: '50px', textAlign: 'center', paddingLeft: '1.5rem' }}>
-                                  <input 
-                                    type="checkbox" 
+                                  <input
+                                    type="checkbox"
                                     checked={allSelected}
                                     ref={el => { if (el) el.indeterminated = someSelected && !allSelected; }}
                                     onChange={(e) => {
@@ -2024,129 +2224,129 @@ function App() {
                                     <BusinessIcon size={14} /> Business Name
                                   </div>
                                 </th>
-                          <th>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <ContactIcon size={14} /> Contact / Link
-                            </div>
-                          </th>
-                          <th>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <LocationIcon size={14} /> Location
-                            </div>
-                          </th>
-                          <th>Status</th>
-                          <th style={{ paddingRight: '1.5rem' }}>Actions</th>
-                        </tr>
-                      </thead>
-                              <tbody>
-                                {groupLeads.map((lead) => (
-                                  <tr key={lead._id} style={{ borderBottom: '1px solid var(--border)', background: selectedIds.includes(lead._id) ? 'rgba(79, 102, 241, 0.04)' : 'transparent' }}>
-                                    <td style={{ textAlign: 'center', paddingLeft: '1.5rem' }}>
-                                      <input 
-                                        type="checkbox" 
-                                        checked={selectedIds.includes(lead._id)}
-                                        onChange={() => {
-                                          if (selectedIds.includes(lead._id)) setSelectedIds(selectedIds.filter(id => id !== lead._id));
-                                          else setSelectedIds([...selectedIds, lead._id]);
-                                        }}
-                                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                                      />
-                                    </td>
-                                    <td style={{ padding: '1.25rem 1.5rem' }}>
-                              {inlineEditLeadId === lead._id ? (
-                                <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} value={inlineEditData.name || ''} onChange={e => setInlineEditData({ ...inlineEditData, name: e.target.value })} />
-                              ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                  <span style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.95rem' }}>{lead.name}</span>
-                                  <span style={{ fontSize: '0.7rem', color: 'var(--primary)', background: 'rgba(79, 102, 241, 0.1)', padding: '2px 8px', borderRadius: '4px', width: 'fit-content', fontWeight: '600', textTransform: 'uppercase' }}>{lead.keyword || 'Lead'}</span>
-                                </div>
-                              )}
-                            </td>
-                            <td style={{ padding: '1.25rem 1.5rem' }}>
-                              {inlineEditLeadId === lead._id ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                  <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} placeholder="Phone" value={inlineEditData.phone || ''} onChange={e => setInlineEditData({ ...inlineEditData, phone: e.target.value })} />
-                                  <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} placeholder="Email" value={inlineEditData.email || ''} onChange={e => setInlineEditData({ ...inlineEditData, email: e.target.value })} />
-                                </div>
-                              ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                  {lead.phone && lead.phone !== 'N/A' ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <span style={{ color: 'var(--success)', fontWeight: '600', fontSize: '0.9rem' }}>{lead.phone}</span>
-                                      <a href={`https://wa.me/${lead.phone.replace(/[^\d+]/g, '')}`} target="_blank" rel="noreferrer" style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }} title="WhatsApp"><MessageSquare size={14} /></a>
-                                    </div>
-                                  ) : <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>}
-                                  
-                                  {lead.emailFound ? (
-                                    <a href={`mailto:${lead.email}`} style={{ color: 'var(--primary)', fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
-                                      <Mail size={12} /> {lead.email}
-                                    </a>
-                                  ) : lead.email ? (
-                                    <a href={`mailto:${lead.email}`} style={{ color: 'var(--primary)', fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
-                                      <Mail size={12} /> {lead.email}
-                                    </a>
-                                  ) : null}
-                                </div>
-                              )}
-                            </td>
-                            <td style={{ padding: '1.25rem 1.5rem' }}>
-                               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                  <span style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: '500' }}>{lead.city || 'Unknown'}</span>
-                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{lead.address && lead.address !== 'N/A' ? lead.address : 'Address not found'}</span>
-                               </div>
-                            </td>
-                            <td style={{ padding: '1.25rem 1.5rem' }}>
-                              <button 
-                                onClick={async () => { await axios.put(`/api/saved-leads/${lead._id}/contacted`); fetchSavedLeads(); }} 
-                                className={`status-badge ${lead.isContacted ? 'status-sent' : 'status-pending'}`} 
-                                style={{ cursor: 'pointer', border: 'none', padding: '6px 12px', borderRadius: '20px', fontWeight: '600', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                              >
-                                {lead.isContacted ? <><Check size={14} /> Contacted</> : <><Clock size={14} /> Pending</>}
-                              </button>
-                            </td>
-                            <td style={{ padding: '1.25rem 1.5rem' }}>
-                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                {inlineEditLeadId === lead._id ? (
-                                  <>
-                                    <button className="btn-icon" style={{ borderColor: 'var(--success)', color: 'var(--success)', fontSize: '0.75rem' }} onClick={handleSaveInlineEdit}>Save</button>
-                                    <button className="btn-icon" style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)', fontSize: '0.75rem' }} onClick={() => setInlineEditLeadId(null)}>Cancel</button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button className="btn-icon" style={{ borderColor: 'var(--primary)', color: 'var(--primary)', fontSize: '0.75rem', padding: '6px 12px' }} onClick={() => { setInlineEditLeadId(lead._id); setInlineEditData({ name: lead.name, phone: lead.phone, email: lead.email, address: lead.address, city: lead.city }); }}>Edit</button>
-                                    {lead.mapsLink && (
-                                      <a href={lead.mapsLink} target="_blank" rel="noreferrer" className="btn-icon" style={{ borderColor: 'var(--warning)', color: 'var(--warning)', textDecoration: 'none', fontSize: '0.75rem', padding: '6px 12px' }}>Map</a>
+                                <th>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <ContactIcon size={14} /> Contact / Link
+                                  </div>
+                                </th>
+                                <th>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <LocationIcon size={14} /> Location
+                                  </div>
+                                </th>
+                                <th>Status</th>
+                                <th style={{ paddingRight: '1.5rem' }}>Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {groupLeads.map((lead) => (
+                                <tr key={lead._id} style={{ borderBottom: '1px solid var(--border)', background: selectedIds.includes(lead._id) ? 'rgba(79, 102, 241, 0.04)' : 'transparent' }}>
+                                  <td style={{ textAlign: 'center', paddingLeft: '1.5rem' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedIds.includes(lead._id)}
+                                      onChange={() => {
+                                        if (selectedIds.includes(lead._id)) setSelectedIds(selectedIds.filter(id => id !== lead._id));
+                                        else setSelectedIds([...selectedIds, lead._id]);
+                                      }}
+                                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                    />
+                                  </td>
+                                  <td style={{ padding: '1.25rem 1.5rem' }}>
+                                    {inlineEditLeadId === lead._id ? (
+                                      <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} value={inlineEditData.name || ''} onChange={e => setInlineEditData({ ...inlineEditData, name: e.target.value })} />
+                                    ) : (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <span style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.95rem' }}>{lead.name}</span>
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--primary)', background: 'rgba(79, 102, 241, 0.1)', padding: '2px 8px', borderRadius: '4px', width: 'fit-content', fontWeight: '600', textTransform: 'uppercase' }}>{lead.keyword || 'Lead'}</span>
+                                      </div>
                                     )}
-                                    <button 
-                                      onClick={() => {
-                                        setConfirmModal({
-                                          open: true,
-                                          title: `Delete ${lead.name}?`,
-                                          onConfirm: async () => {
-                                            await axios.delete(`/api/saved-leads/${lead._id}`);
-                                            fetchSavedLeads();
-                                          }
-                                        });
-                                      }} 
-                                      className="btn-icon" 
-                                      style={{ borderColor: 'var(--danger)', color: 'var(--danger)', fontSize: '0.75rem', padding: '6px 12px' }}
-                                    >Del</button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                          </>
-                        );
-                      })()}
-                    </>
-                  )}
-                </div>
+                                  </td>
+                                  <td style={{ padding: '1.25rem 1.5rem' }}>
+                                    {inlineEditLeadId === lead._id ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} placeholder="Phone" value={inlineEditData.phone || ''} onChange={e => setInlineEditData({ ...inlineEditData, phone: e.target.value })} />
+                                        <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} placeholder="Email" value={inlineEditData.email || ''} onChange={e => setInlineEditData({ ...inlineEditData, email: e.target.value })} />
+                                      </div>
+                                    ) : (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                        {lead.phone && lead.phone !== 'N/A' ? (
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span style={{ color: 'var(--success)', fontWeight: '600', fontSize: '0.9rem' }}>{lead.phone}</span>
+                                            <a href={`https://wa.me/${lead.phone.replace(/[^\d+]/g, '')}`} target="_blank" rel="noreferrer" style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }} title="WhatsApp"><MessageSquare size={14} /></a>
+                                          </div>
+                                        ) : <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>}
+
+                                        {lead.emailFound ? (
+                                          <a href={`mailto:${lead.email}`} style={{ color: 'var(--primary)', fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
+                                            <Mail size={12} /> {lead.email}
+                                          </a>
+                                        ) : lead.email ? (
+                                          <a href={`mailto:${lead.email}`} style={{ color: 'var(--primary)', fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
+                                            <Mail size={12} /> {lead.email}
+                                          </a>
+                                        ) : null}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '1.25rem 1.5rem' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                      <span style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: '500' }}>{lead.city || 'Unknown'}</span>
+                                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{lead.address && lead.address !== 'N/A' ? lead.address : 'Address not found'}</span>
+                                    </div>
+                                  </td>
+                                  <td style={{ padding: '1.25rem 1.5rem' }}>
+                                    <button
+                                      onClick={async () => { await axios.put(`/api/saved-leads/${lead._id}/contacted`); fetchSavedLeads(); }}
+                                      className={`status-badge ${lead.isContacted ? 'status-sent' : 'status-pending'}`}
+                                      style={{ cursor: 'pointer', border: 'none', padding: '6px 12px', borderRadius: '20px', fontWeight: '600', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                                    >
+                                      {lead.isContacted ? <><Check size={14} /> Contacted</> : <><Clock size={14} /> Pending</>}
+                                    </button>
+                                  </td>
+                                  <td style={{ padding: '1.25rem 1.5rem' }}>
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                      {inlineEditLeadId === lead._id ? (
+                                        <>
+                                          <button className="btn-icon" style={{ borderColor: 'var(--success)', color: 'var(--success)', fontSize: '0.75rem' }} onClick={handleSaveInlineEdit}>Save</button>
+                                          <button className="btn-icon" style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)', fontSize: '0.75rem' }} onClick={() => setInlineEditLeadId(null)}>Cancel</button>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <button className="btn-icon" style={{ borderColor: 'var(--primary)', color: 'var(--primary)', fontSize: '0.75rem', padding: '6px 12px' }} onClick={() => { setInlineEditLeadId(lead._id); setInlineEditData({ name: lead.name, phone: lead.phone, email: lead.email, address: lead.address, city: lead.city }); }}>Edit</button>
+                                          {lead.mapsLink && (
+                                            <a href={lead.mapsLink} target="_blank" rel="noreferrer" className="btn-icon" style={{ borderColor: 'var(--warning)', color: 'var(--warning)', textDecoration: 'none', fontSize: '0.75rem', padding: '6px 12px' }}>Map</a>
+                                          )}
+                                          <button
+                                            onClick={() => {
+                                              setConfirmModal({
+                                                open: true,
+                                                title: `Delete ${lead.name}?`,
+                                                onConfirm: async () => {
+                                                  await axios.delete(`/api/saved-leads/${lead._id}`);
+                                                  fetchSavedLeads();
+                                                }
+                                              });
+                                            }}
+                                            className="btn-icon"
+                                            style={{ borderColor: 'var(--danger)', color: 'var(--danger)', fontSize: '0.75rem', padding: '6px 12px' }}
+                                          >Del</button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
               </div>
-            )}
+            </div>
+          )}
         </section>
       </main>
 
@@ -2335,6 +2535,38 @@ function App() {
         <div className={`toast toast-${notification.type}`}>
           {notification.type === 'success' ? <SuccessIcon /> : <ErrorIcon />}
           {notification.msg}
+        </div>
+      )}
+      {viewReplyModal.open && (
+        <div className="modal-overlay" style={{ zIndex: 10000 }}>
+          <div className="modal-content" style={{ maxWidth: '700px' }}>
+            <div className="modal-header">
+              <h3>Replies from {viewReplyModal.lead?.email}</h3>
+              <button className="close-btn" onClick={() => setViewReplyModal({ open: false, lead: null })}>&times;</button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              {(viewReplyModal.lead?.replies || []).length > 0 ? (
+                viewReplyModal.lead.replies.map((reply, idx) => (
+                  <div key={idx} style={{ marginBottom: '2rem', padding: '1.5rem', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '12px' }}>
+                    <div style={{ marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
+                      <div style={{ fontWeight: '700', fontSize: '1rem' }}>Subject: {reply.subject}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Received: {new Date(reply.receivedAt).toLocaleString()}</div>
+                    </div>
+                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.95rem', lineHeight: '1.6', color: 'var(--text)' }}>
+                      {reply.body}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                  No reply content found.
+                </div>
+              )}
+            </div>
+            <div className="modal-footer" style={{ marginTop: '2rem', textAlign: 'right' }}>
+              <button className="bulk-btn" onClick={() => setViewReplyModal({ open: false, lead: null })}>Close</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

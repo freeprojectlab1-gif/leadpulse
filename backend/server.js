@@ -59,6 +59,7 @@ mongoose.connect(process.env.MONGO_URI)
   });
 
 // Schema
+const { simpleParser } = require('mailparser');
 const recipientSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, index: true },
   campaignId: String,
@@ -74,6 +75,7 @@ const recipientSchema = new mongoose.Schema({
   body3: String,
   data: mongoose.Schema.Types.Mixed,
   history: [{ sentAt: Date, event: String, subject: String }],
+  replies: [{ receivedAt: { type: Date, default: Date.now }, subject: String, body: String }],
   isArchived: { type: Boolean, default: false }
 });
 const Recipient = mongoose.models.Recipient || mongoose.model('Recipient', recipientSchema);
@@ -139,7 +141,7 @@ const applySpintax = (text) => {
 
 // --- GENERIC EMAIL PROVIDERS ---
 const GENERIC_PROVIDERS = [
-  'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com', 
+  'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com',
   'aol.com', 'mail.com', 'zoho.com', 'protonmail.com', 'yandex.com',
   'gmx.com', 'live.com', 'msn.com', 'me.com', 'rocketmail.com', 'rediffmail.com',
   'mac.com', 'googlemail.com', 'mail.ru', 'att.net', 'comcast.net', 'verizon.net',
@@ -156,99 +158,99 @@ const isGenericEmail = (email) => {
 };
 
 const cleanSocialName = (rawName, link) => {
-   if (!rawName) return 'Unknown';
-   let name = rawName.split('|')[0].split('-')[0].trim();
-   const lower = name.toLowerCase();
-   
-   const junkWords = [
-     'facebook', 'instagram', 'linkedin', 'chats', 'notifications', 'messenger',
-     'log in', 'sign in', 'sign up', 'home', 'about', 'menu', 'profile', 'page',
-     'unknown', 'untitled', 'search', 'feed', 'watch', 'reels', 'stories',
-     'marketplace', 'groups', 'friends', 'gaming'
-   ];
-   
-   const isJunk = (t) => !t || t.length < 2 || junkWords.some(w => t.toLowerCase().includes(w));
+  if (!rawName) return 'Unknown';
+  let name = rawName.split('|')[0].split('-')[0].trim();
+  const lower = name.toLowerCase();
 
-   // For Facebook/Instagram: ALWAYS try URL first — most reliable since login session pollutes og:title
-   if (link && (link.includes('facebook.com') || link.includes('instagram.com'))) {
-      try {
-         const url = new URL(link);
-         const pathParts = url.pathname.split('/').filter(p =>
-           p.length > 1 && !['p', 'reel', 'reels', 'profile.php', 'pages', 'photo', 'video', 'posts'].includes(p)
-         );
-         if (pathParts.length > 0) {
-            let slug = pathParts[0];
-            // Split CamelCase: "OpenLatteCafe" → "Open Latte Cafe"
-            slug = slug.replace(/([a-z])([A-Z])/g, '$1 $2');
-            // Replace hyphens/underscores/dots with spaces
-            slug = slug.replace(/[-_.]/g, ' ').trim();
+  const junkWords = [
+    'facebook', 'instagram', 'linkedin', 'chats', 'notifications', 'messenger',
+    'log in', 'sign in', 'sign up', 'home', 'about', 'menu', 'profile', 'page',
+    'unknown', 'untitled', 'search', 'feed', 'watch', 'reels', 'stories',
+    'marketplace', 'groups', 'friends', 'gaming'
+  ];
 
-            // Smart keyword splitting for all-lowercase slugs
-            // e.g. "bigeasycafetx" → "big easy cafe tx"
-            const bizKeywords = [
-              'cafe', 'coffee', 'bakery', 'catering', 'kitchen', 'grill', 'bistro',
-              'restaurant', 'diner', 'bar', 'lounge', 'shop', 'store', 'salon',
-              'barbershop', 'spa', 'studio', 'garage', 'auto', 'repair', 'cleaning',
-              'plumbing', 'electric', 'hvac', 'roofing', 'landscaping', 'photography',
-              'photography', 'design', 'media', 'agency', 'consulting', 'services',
-              'solutions', 'group', 'company', 'co', 'inc', 'llc', 'corp'
-            ];
-            const keywordRegex = new RegExp(`(${bizKeywords.join('|')})`, 'gi');
-            slug = slug.replace(keywordRegex, ' $1 ').replace(/\s+/g, ' ').trim();
+  const isJunk = (t) => !t || t.length < 2 || junkWords.some(w => t.toLowerCase().includes(w));
 
-            // Title case each word
-            slug = slug.split(' ').filter(w => w.length > 0)
-                       .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-                       .join(' ');
-            if (slug && slug.length > 1) return slug;
-         }
-      } catch(e) {}
-   }
+  // For Facebook/Instagram: ALWAYS try URL first — most reliable since login session pollutes og:title
+  if (link && (link.includes('facebook.com') || link.includes('instagram.com'))) {
+    try {
+      const url = new URL(link);
+      const pathParts = url.pathname.split('/').filter(p =>
+        p.length > 1 && !['p', 'reel', 'reels', 'profile.php', 'pages', 'photo', 'video', 'posts'].includes(p)
+      );
+      if (pathParts.length > 0) {
+        let slug = pathParts[0];
+        // Split CamelCase: "OpenLatteCafe" → "Open Latte Cafe"
+        slug = slug.replace(/([a-z])([A-Z])/g, '$1 $2');
+        // Replace hyphens/underscores/dots with spaces
+        slug = slug.replace(/[-_.]/g, ' ').trim();
 
-   // Fallback: use rawName if it's not junk
-   if (!isJunk(rawName)) {
-      let name = rawName.replace(/^\(\d+\)\s*/, '').split('|')[0].split('-')[0].trim();
-      if (!isJunk(name)) return name;
-   }
+        // Smart keyword splitting for all-lowercase slugs
+        // e.g. "bigeasycafetx" → "big easy cafe tx"
+        const bizKeywords = [
+          'cafe', 'coffee', 'bakery', 'catering', 'kitchen', 'grill', 'bistro',
+          'restaurant', 'diner', 'bar', 'lounge', 'shop', 'store', 'salon',
+          'barbershop', 'spa', 'studio', 'garage', 'auto', 'repair', 'cleaning',
+          'plumbing', 'electric', 'hvac', 'roofing', 'landscaping', 'photography',
+          'photography', 'design', 'media', 'agency', 'consulting', 'services',
+          'solutions', 'group', 'company', 'co', 'inc', 'llc', 'corp'
+        ];
+        const keywordRegex = new RegExp(`(${bizKeywords.join('|')})`, 'gi');
+        slug = slug.replace(keywordRegex, ' $1 ').replace(/\s+/g, ' ').trim();
 
-   return 'Unknown';
+        // Title case each word
+        slug = slug.split(' ').filter(w => w.length > 0)
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(' ');
+        if (slug && slug.length > 1) return slug;
+      }
+    } catch (e) { }
+  }
+
+  // Fallback: use rawName if it's not junk
+  if (!isJunk(rawName)) {
+    let name = rawName.replace(/^\(\d+\)\s*/, '').split('|')[0].split('-')[0].trim();
+    if (!isJunk(name)) return name;
+  }
+
+  return 'Unknown';
 };
 
 const hasCustomWebsite = (text) => {
-   if (!text) return false;
-   const domainRegex = /(?:[a-zA-Z0-9-]+\.)+(com|net|org|co|us|info|biz|io|me|tv|shop|store|online|site|tech|website|agency)\b/gi;
-   const matches = text.match(domainRegex) || [];
-   
-   const ignoreDomains = [
-     'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com', 'msn.com',
-     'facebook.com', 'instagram.com', 'linkedin.com', 'twitter.com', 'tiktok.com', 'youtube.com',
-     'pinterest.com', 'snapchat.com', 'reddit.com', 'tumblr.com', 'whatsapp.com', 't.me', 'telegram.me',
-     'linktr.ee', 'campsite.bio', 'apple.com', 'google.com', 'bing.com', 'yelp.com', 'tripadvisor.com', 
-     'foursquare.com', 'yellowpages.com', 'bbb.org', 'trustpilot.com', 'wix.com', 'wordpress.com', 
-     'weebly.com', 'squarespace.com', 'shopify.com', 'mail.com', 'amazon.com', 'ebay.com', 'etsy.com', 
-     'doordash.com', 'ubereats.com', 'grubhub.com', 'postmates.com', 'zomato.com', 'swiggy.com', 
-     'foodpanda.com', 'deliveroo.co', 'just-eat.com', 'booking.com', 'fbcdn.net', 'akamaihd.net', 
-     'schema.org', 'w3.org', 'ogp.me', 'gstatic.com', 'googleusercontent.com', 'wixpress.com', 
-     'sentry.io', 'stripe.com', 'paypal.com', 'github.com', 'gitlab.com', 'bitbucket.org'
-   ];
-   
-   for (const match of matches) {
-      const lower = match.toLowerCase();
-      let isIgnored = false;
-      for (const idom of ignoreDomains) {
-         if (lower === idom || lower.endsWith('.' + idom)) {
-             isIgnored = true; break;
-         }
+  if (!text) return false;
+  const domainRegex = /(?:[a-zA-Z0-9-]+\.)+(com|net|org|co|us|info|biz|io|me|tv|shop|store|online|site|tech|website|agency)\b/gi;
+  const matches = text.match(domainRegex) || [];
+
+  const ignoreDomains = [
+    'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'aol.com', 'icloud.com', 'msn.com',
+    'facebook.com', 'instagram.com', 'linkedin.com', 'twitter.com', 'tiktok.com', 'youtube.com',
+    'pinterest.com', 'snapchat.com', 'reddit.com', 'tumblr.com', 'whatsapp.com', 't.me', 'telegram.me',
+    'linktr.ee', 'campsite.bio', 'apple.com', 'google.com', 'bing.com', 'yelp.com', 'tripadvisor.com',
+    'foursquare.com', 'yellowpages.com', 'bbb.org', 'trustpilot.com', 'wix.com', 'wordpress.com',
+    'weebly.com', 'squarespace.com', 'shopify.com', 'mail.com', 'amazon.com', 'ebay.com', 'etsy.com',
+    'doordash.com', 'ubereats.com', 'grubhub.com', 'postmates.com', 'zomato.com', 'swiggy.com',
+    'foodpanda.com', 'deliveroo.co', 'just-eat.com', 'booking.com', 'fbcdn.net', 'akamaihd.net',
+    'schema.org', 'w3.org', 'ogp.me', 'gstatic.com', 'googleusercontent.com', 'wixpress.com',
+    'sentry.io', 'stripe.com', 'paypal.com', 'github.com', 'gitlab.com', 'bitbucket.org'
+  ];
+
+  for (const match of matches) {
+    const lower = match.toLowerCase();
+    let isIgnored = false;
+    for (const idom of ignoreDomains) {
+      if (lower === idom || lower.endsWith('.' + idom)) {
+        isIgnored = true; break;
       }
-      if (!isIgnored) return true; // Found a custom domain!
-   }
-   return false;
+    }
+    if (!isIgnored) return true; // Found a custom domain!
+  }
+  return false;
 };
 
 // ─── EMAIL EXTRACTOR UTILITY ────────────────────────────────────────────────
 const extractEmailsFromText = (rawText) => {
   if (!rawText) return [];
-  
+
   // High Read Power: Deobfuscate hidden emails
   const text = rawText
     .replace(/\[at\]/gi, '@')
@@ -851,25 +853,56 @@ cron.schedule('*/1 * * * *', async () => {
   }
 });
 
-cron.schedule('*/2 * * * *', async () => {
-  const sample = await Recipient.findOne({ status: { $nin: ['finished', 'replied', 'stopped', 'archived'] } });
-  if (sample) {
-    const cleanPass = sample.emailPass.replace(/\s+/g, '');
-    const client = new ImapFlow({ host: 'imap.gmail.com', port: 993, secure: true, auth: { user: sample.emailUser.trim(), pass: cleanPass }, logger: false });
-    client.on('error', err => {
-      console.error("ImapFlow Error (Background Check):", err.message);
+cron.schedule('*/1 * * * *', async () => {
+  console.log("[IMAP Check] Starting Deep Scan...");
+  const accounts = await Recipient.aggregate([
+    { $match: { emailUser: { $exists: true, $ne: '' } } },
+    { $group: { _id: "$emailUser", pass: { $first: "$emailPass" } } }
+  ]);
+
+  for (const acc of accounts) {
+    const cleanPass = acc.pass.replace(/\s+/g, '');
+    const client = new ImapFlow({
+      host: 'imap.gmail.com', port: 993, secure: true,
+      auth: { user: acc._id.trim(), pass: cleanPass },
+      logger: false
     });
+    client.on('error', err => console.error("ImapFlow Error:", err.message));
+
     try {
       await client.connect();
       let lock = await client.getMailboxLock('INBOX');
       try {
-        for await (let msg of client.fetch({ seen: false }, { envelope: true })) {
+        const mailbox = await client.status('INBOX', { messages: true });
+        const totalMsg = mailbox.messages || 0;
+        const startRange = Math.max(1, totalMsg - 50);
+
+        for await (let msg of client.fetch(`${startRange}:*`, { envelope: true, source: true, uid: true })) {
           const senderEmail = msg.envelope.from[0].address;
-          const exists = await Recipient.findOne({ email: senderEmail, isArchived: { $ne: true }, status: { $nin: ['finished', 'stopped', 'replied'] } });
-          if (exists) { 
-            exists.status = 'replied'; 
-            await exists.save(); 
-            console.log(`Lead detected as replied: ${senderEmail}`);
+          const messageId = msg.envelope.messageId;
+          const exists = await Recipient.findOne({ email: senderEmail, isArchived: { $ne: true }, status: { $nin: ['finished', 'stopped'] } });
+
+          if (exists) {
+            const parsed = await simpleParser(msg.source);
+            const subject = parsed.subject || 'No Subject';
+            const body = parsed.text || parsed.html || 'No Content';
+
+            const isDuplicate = (exists.replies || []).some(r => {
+              if (r.messageId && messageId && r.messageId === messageId) return true;
+              return r.subject === subject && (r.body || '').substring(0, 100) === body.substring(0, 100);
+            });
+
+            if (!isDuplicate) {
+              exists.status = 'replied';
+              exists.replies.push({
+                messageId,
+                receivedAt: msg.envelope.date || new Date(),
+                subject,
+                body
+              });
+              await exists.save();
+              console.log(`[IMAP Check] NEW REPLY captured from: ${senderEmail}`);
+            }
           }
         }
       } finally { lock.release(); }
@@ -917,7 +950,7 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
   let siteDomain = '';
   if (source === 'ig') siteDomain = 'instagram.com';
   else if (source === 'facebook') siteDomain = 'facebook.com';
-  else if (source === 'linkedin') siteDomain = 'linkedin.com'; 
+  else if (source === 'linkedin') siteDomain = 'linkedin.com';
 
   const queries = [
     `site:${siteDomain} "${keyword}" "${city}"`,
@@ -929,10 +962,10 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
   try {
     for (const query of queries) {
       if (getCancelled()) break;
-      
+
       for (let pageNum = 0; pageNum < 1000; pageNum++) {
         if (getCancelled()) break;
-        
+
         const start = pageNum * 10 + 1;
         const bingUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}&first=${start}`;
         const ddgUrl = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}&s=${start}`;
@@ -958,39 +991,39 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
               const blocks = Array.from(document.querySelectorAll('.b_algo, .result, .algo, .g, li.b_algo, div.algo-sr'));
               let items = [];
               if (blocks.length > 0) {
-                 blocks.forEach(b => {
-                   const a = b.querySelector('a');
-                   if (a) items.push({ href: a.href, snippet: b.innerText, title: a.innerText });
-                 });
+                blocks.forEach(b => {
+                  const a = b.querySelector('a');
+                  if (a) items.push({ href: a.href, snippet: b.innerText, title: a.innerText });
+                });
               } else {
-                 Array.from(document.querySelectorAll('a[href]')).forEach(a => {
-                   items.push({ href: a.href, snippet: '', title: a.innerText });
-                 });
+                Array.from(document.querySelectorAll('a[href]')).forEach(a => {
+                  items.push({ href: a.href, snippet: '', title: a.innerText });
+                });
               }
               return items.map(item => {
-                  let h = item.href;
-                  if (h.includes('RU=')) try { h = decodeURIComponent(h.split('RU=')[1].split('/RK=')[0]); } catch (e) { }
-                  if (h.includes('uddg=')) try { h = decodeURIComponent(h.split('uddg=')[1].split('&')[0]); } catch (e) { }
-                  return { href: h, snippet: item.snippet, title: item.title };
+                let h = item.href;
+                if (h.includes('RU=')) try { h = decodeURIComponent(h.split('RU=')[1].split('/RK=')[0]); } catch (e) { }
+                if (h.includes('uddg=')) try { h = decodeURIComponent(h.split('uddg=')[1].split('&')[0]); } catch (e) { }
+                return { href: h, snippet: item.snippet, title: item.title };
               });
             });
             allHrefs.push(...resultData);
           } catch (e) { }
-          finally { if (tempPage) await tempPage.close().catch(()=>{}); }
+          finally { if (tempPage) await tempPage.close().catch(() => { }); }
         }));
 
         const uniqueItems = [];
         const seenUrls = new Set();
         for (const item of allHrefs) {
-           const href = item.href;
-           if (seenUrls.has(href)) continue;
-           seenUrls.add(href);
-           
-           if (source === 'ig' && (!href.includes('instagram.com/') || href.includes('/explore/'))) continue;
-           if (source === 'facebook' && (!href.includes('facebook.com/') || href.includes('/sharer') || href.includes('/login') || href.includes('/help'))) continue;
-           if (source === 'linkedin' && (!href.includes('linkedin.com/') || href.includes('/login'))) continue;
-           
-           uniqueItems.push(item);
+          const href = item.href;
+          if (seenUrls.has(href)) continue;
+          seenUrls.add(href);
+
+          if (source === 'ig' && (!href.includes('instagram.com/') || href.includes('/explore/'))) continue;
+          if (source === 'facebook' && (!href.includes('facebook.com/') || href.includes('/sharer') || href.includes('/login') || href.includes('/help'))) continue;
+          if (source === 'linkedin' && (!href.includes('linkedin.com/') || href.includes('/login'))) continue;
+
+          uniqueItems.push(item);
         }
 
         if (uniqueItems.length === 0) {
@@ -999,35 +1032,35 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
         }
 
         // PARALLEL link processing — open multiple worker pages concurrently
-        const CONCURRENCY = 14; 
+        const CONCURRENCY = 14;
         sendData({ type: 'status', message: `Found ${uniqueItems.length} ${source} links — parallel scanning (14x)...` });
 
         const visitLink = async (item) => {
           if (getCancelled()) return;
           const link = item.href;
           const snippetText = item.snippet + " " + item.title;
-          
+
           // Skip if they already have a website!
           if (hasCustomWebsite(snippetText)) {
-             sendData({ type: 'status', message: `⏭️ Skipped ${link} (Already has a custom website in snippet)` });
-             return;
+            sendData({ type: 'status', message: `⏭️ Skipped ${link} (Already has a custom website in snippet)` });
+            return;
           }
-          
+
           // PRE-FETCH EMAIL FROM SNIPPET
           const snippetEmails = extractEmailsFromText(snippetText).filter(isGenericEmail);
           let preFoundEmail = snippetEmails.length > 0 ? snippetEmails[0] : null;
-          
+
           if (preFoundEmail) {
-              sendData({ type: 'status', message: `⚡ Pre-found email in snippet, fetching real name...` });
+            sendData({ type: 'status', message: `⚡ Pre-found email in snippet, fetching real name...` });
           }
 
           sendData({ type: 'status', message: `🔍 Deep Scanning: ${link}` });
-          
+
           let workerPage;
           try {
             workerPage = await browser.newPage();
             await workerPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-            
+
             // Inject Cookies for Deep Scraping
             if (source === 'ig' && cookies.igSession) {
               await workerPage.setCookie({ name: 'sessionid', value: cookies.igSession, domain: '.instagram.com' });
@@ -1052,16 +1085,16 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
               const ogTitle = document.querySelector('meta[property="og:title"]')?.content || '';
               const h1Text = document.querySelector('h1')?.innerText?.replace(/^\(\d+\)\s*/, '').trim() || '';
               const titleText = document.title.replace(/^\(\d+\)\s*/, '').split('|')[0].split('-')[0].trim();
-              
+
               // Prefer og:title if it doesn't say generic words
               const genericWords = ['facebook', 'instagram', 'linkedin', 'log in', 'sign in', 'sign up', 'notifications'];
               const isGenericTitle = (t) => !t || genericWords.some(w => t.toLowerCase().includes(w));
-              
+
               const rawName = (!isGenericTitle(ogTitle) ? ogTitle : null)
                 || (!isGenericTitle(h1Text) ? h1Text : null)
                 || (!isGenericTitle(titleText) ? titleText : null)
                 || ogTitle || titleText || 'Unknown';
-              
+
               return {
                 text: document.documentElement.outerHTML,
                 rawName,
@@ -1072,13 +1105,13 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
 
             // Skip if they already have a website in their bio links!
             if (hasCustomWebsite(data.bioLinks)) {
-               sendData({ type: 'status', message: `⏭️ Skipped ${link} (Already has a custom website in bio)` });
-               return;
+              sendData({ type: 'status', message: `⏭️ Skipped ${link} (Already has a custom website in bio)` });
+              return;
             }
 
             const candidates = [...data.mailtos, ...extractEmailsFromText(data.text)];
             if (preFoundEmail) candidates.push(preFoundEmail);
-            
+
             const validEmails = candidates.filter(isGenericEmail);
 
             if (validEmails.length > 0) {
@@ -1222,7 +1255,7 @@ app.get('/api/scrape-leads', async (req, res) => {
           try {
             // SCRAPE USING WORKER PAGE (DOES NOT DISTURB MAIN FEED)
             await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            await workerPage.waitForSelector('h1', { timeout: 5000 }).catch(() => {});
+            await workerPage.waitForSelector('h1', { timeout: 5000 }).catch(() => { });
             await new Promise(r => setTimeout(r, 500));
 
             const details = await workerPage.evaluate(() => {
@@ -1261,7 +1294,7 @@ app.get('/api/scrape-leads', async (req, res) => {
                   continue;
                 }
                 if (emailResult.email) foundEmailsInThisRun.add(emailResult.email.toLowerCase());
-                
+
                 leadData.email = emailResult.email;
                 leadData.emailFound = !!emailResult.email;
                 leadData.emailSource = emailResult.emailSource;
