@@ -47,16 +47,16 @@ mongoose.connect(process.env.MONGO_URI)
     }
 
     console.log("Credentials Synced & Core Variables Initialized!");
-
-    const PORT = process.env.PORT || 5001;
-    app.listen(PORT, () => {
-      console.log(`Bulletproof Server running on port ${PORT}`);
-    });
   })
   .catch(err => {
     console.error("MongoDB Connection Error:", err);
     process.exit(1);
   });
+
+const { Client, LocalAuth } = require('whatsapp-web.js');
+let waClient;
+let waQr = "";
+let waStatus = "disconnected";
 
 // Schema
 const { simpleParser } = require('mailparser');
@@ -75,10 +75,122 @@ const recipientSchema = new mongoose.Schema({
   body3: String,
   data: mongoose.Schema.Types.Mixed,
   history: [{ sentAt: Date, event: String, subject: String }],
-  replies: [{ receivedAt: { type: Date, default: Date.now }, subject: String, body: String }],
+  replies: [{ 
+    receivedAt: { type: Date, default: Date.now }, 
+    subject: String, 
+    body: String,
+    type: { type: String, default: 'email' } // 'email' or 'whatsapp'
+  }],
   isArchived: { type: Boolean, default: false }
 });
 const Recipient = mongoose.models.Recipient || mongoose.model('Recipient', recipientSchema);
+
+// --- WhatsApp Client Logic ---
+const initWhatsapp = () => {
+  waClient = new Client({
+    authStrategy: new LocalAuth({ dataPath: path.join(__dirname, 'wa_session') }),
+    puppeteer: {
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu'
+      ]
+    },
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'
+  });
+
+  waClient.on('qr', (qr) => {
+    waQr = qr;
+    waStatus = "qr-ready";
+    console.log('[WhatsApp] QR Received. Waiting for scan...');
+  });
+
+  waClient.on('authenticated', () => {
+    waQr = "";
+    waStatus = "connected";
+    console.log('[WhatsApp] Authenticated!');
+  });
+
+  waClient.on('ready', () => {
+    waQr = "";
+    waStatus = "connected";
+    console.log('[WhatsApp] Client is READY!');
+  });
+
+  waClient.on('message', async (msg) => {
+    if (!msg.from.includes('@c.us')) return;
+    const phone = msg.from.split('@')[0];
+    
+    // Match lead by phone (last 10 digits to be safe)
+    const lead = await Recipient.findOne({
+      $or: [
+        { 'data.Phone': { $regex: phone + '$' } },
+        { 'data.phone': { $regex: phone + '$' } },
+        { 'data.Phone': { $regex: phone.slice(-10) } }
+      ]
+    });
+
+    if (lead) {
+      const isDup = (lead.replies || []).some(r => r.type === 'whatsapp' && r.body === msg.body && (Date.now() - new Date(r.receivedAt).getTime()) < 10000);
+      if (!isDup) {
+        lead.status = 'replied';
+        lead.replies.push({
+          receivedAt: new Date(),
+          subject: 'WhatsApp Message',
+          body: msg.body,
+          type: 'whatsapp'
+        });
+        await lead.save();
+        console.log(`[WhatsApp] Captured reply from ${phone}`);
+      }
+    }
+  });
+
+  waClient.on('disconnected', () => {
+    waStatus = "disconnected";
+    console.log('[WhatsApp] Client disconnected.');
+    setTimeout(() => initWhatsapp(), 3000);
+  });
+
+  waClient.initialize().catch(err => {
+    console.error("[WhatsApp] Init Error:", err.message);
+    waStatus = "disconnected";
+    waQr = "";
+  });
+
+  // Fallback: poll client state every 3s in case ready event doesn't fire
+  let pollCount = 0;
+  let openingCount = 0;
+  const statusPoll = setInterval(async () => {
+    pollCount++;
+    if (pollCount > 60) { clearInterval(statusPoll); return; } // stop after 3 min
+    try {
+      const state = await waClient.getState();
+      if (state === 'CONNECTED') {
+        waStatus = 'connected';
+        waQr = '';
+        console.log('[WhatsApp] State CONNECTED detected via poll.');
+        clearInterval(statusPoll);
+      } else if (state === 'OPENING') {
+        openingCount++;
+        // If stuck in OPENING for 30s with no QR, destroy and reinit
+        if (openingCount > 10 && !waQr) {
+          console.log('[WhatsApp] Stuck in OPENING, destroying and reiniting...');
+          clearInterval(statusPoll);
+          try { await waClient.destroy(); } catch(e) {}
+          setTimeout(() => initWhatsapp(), 2000);
+        }
+      } else {
+        openingCount = 0; // reset if state changed
+      }
+    } catch(e) {}
+  }, 3000);
+};
+
+initWhatsapp();
 
 // Custom Email Templates Schema
 const emailTemplateSchema = new mongoose.Schema({
@@ -1751,4 +1863,50 @@ app.get('/api/bulk-find-emails', async (req, res) => {
     if (browser) { try { await browser.close(); } catch (e) { } }
     res.end();
   }
+});
+
+const PORT = process.env.PORT || 5001;
+app.get('/api/whatsapp/status', (req, res) => {
+  console.log(`[API] Status requested: ${waStatus}, hasQr: ${!!waQr}`);
+  res.json({ status: waStatus, hasQr: !!waQr });
+});
+
+app.get('/api/whatsapp/qr', (req, res) => {
+  console.log(`[API] QR requested. Ready: ${!!waQr}`);
+  if (!waQr) return res.status(404).json({ error: "QR not ready" });
+  res.json({ qr: waQr });
+});
+
+app.post('/api/whatsapp/logout', async (req, res) => {
+  try {
+    if (waClient) {
+      await waClient.logout();
+      waStatus = "disconnected";
+      waQr = "";
+      res.json({ success: true });
+    } else {
+      res.json({ success: true });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/whatsapp/restart', async (req, res) => {
+  try {
+    waStatus = "disconnected";
+    waQr = "";
+    if (waClient) {
+      try { await waClient.destroy(); } catch(e) {}
+    }
+    setTimeout(() => initWhatsapp(), 1000);
+    res.json({ success: true, message: "WhatsApp restarting..." });
+    console.log('[WhatsApp] Manual restart triggered.');
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Bulletproof Server running on port ${PORT}`);
 });
