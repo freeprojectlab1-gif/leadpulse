@@ -851,7 +851,7 @@ cron.schedule('*/1 * * * *', async () => {
   }
 });
 
-cron.schedule('*/10 * * * *', async () => {
+cron.schedule('*/2 * * * *', async () => {
   const sample = await Recipient.findOne({ status: { $nin: ['finished', 'replied', 'stopped', 'archived'] } });
   if (sample) {
     const cleanPass = sample.emailPass.replace(/\s+/g, '');
@@ -863,10 +863,14 @@ cron.schedule('*/10 * * * *', async () => {
       await client.connect();
       let lock = await client.getMailboxLock('INBOX');
       try {
-        for await (let msg of client.listMessages('INBOX', { seen: false })) {
+        for await (let msg of client.fetch({ seen: false }, { envelope: true })) {
           const senderEmail = msg.envelope.from[0].address;
           const exists = await Recipient.findOne({ email: senderEmail, isArchived: { $ne: true }, status: { $nin: ['finished', 'stopped', 'replied'] } });
-          if (exists) { exists.status = 'replied'; await exists.save(); }
+          if (exists) { 
+            exists.status = 'replied'; 
+            await exists.save(); 
+            console.log(`Lead detected as replied: ${senderEmail}`);
+          }
         }
       } finally { lock.release(); }
       await client.logout();
