@@ -83,7 +83,178 @@ const StatusBadge = ({ status }) => {
   );
 };
 
+// ==================== WhatsApp Inbox Tab ====================
+const WhatsAppInboxTab = ({ waStatus }) => {
+  const [conversations, setConversations] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [msgInput, setMsgInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const chatEndRef = React.useRef(null);
+
+  const fetchConversations = async () => {
+    try {
+      const res = await axios.get('/api/recipients?limit=200');
+      const all = (res.data.recipients || res.data || []);
+      const waLeads = all.filter(r => r.replies && r.replies.some(x => x.type === 'whatsapp'));
+      waLeads.sort((a, b) => {
+        const aLast = Math.max(...a.replies.filter(x=>x.type==='whatsapp').map(x=>new Date(x.receivedAt)));
+        const bLast = Math.max(...b.replies.filter(x=>x.type==='whatsapp').map(x=>new Date(x.receivedAt)));
+        return bLast - aLast;
+      });
+      setConversations(waLeads);
+      if (selected) {
+        const updated = waLeads.find(r => r._id === selected._id);
+        if (updated) setSelected(updated);
+      }
+    } catch(e) {}
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchConversations(); }, []);
+  useEffect(() => { const t = setInterval(fetchConversations, 15000); return () => clearInterval(t); }, []);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [selected]);
+
+  const sendMessage = async () => {
+    if (!msgInput.trim() || !selected || sending) return;
+    const phone = selected.data?.Phone || selected.email?.replace('@whatsapp.com','');
+    if (!phone) return;
+    setSending(true);
+    try {
+      await axios.post('/api/whatsapp/send', { phone, message: msgInput.trim() });
+      setMsgInput('');
+      setTimeout(fetchConversations, 2000);
+    } catch(e) { alert('Failed to send: ' + (e.response?.data?.error || e.message)); }
+    setSending(false);
+  };
+
+  const getName = (r) => r.data?.['First Name'] || r.data?.name || r.email?.replace('@whatsapp.com','') || 'Unknown';
+  const getPhone = (r) => r.data?.Phone || r.email?.replace('@whatsapp.com','') || '';
+  const getWaMsgs = (r) => (r.replies || []).filter(x => x.type === 'whatsapp').sort((a,b) => new Date(a.receivedAt)-new Date(b.receivedAt));
+  const getLastMsg = (r) => { const msgs = getWaMsgs(r); return msgs[msgs.length-1]; };
+  const formatTime = (d) => { if (!d) return ''; const dt = new Date(d); const now = new Date(); const diff = now - dt; if (diff < 86400000) return dt.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}); return dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}); };
+  const filtered = conversations.filter(r => getName(r).toLowerCase().includes(search.toLowerCase()) || getPhone(r).includes(search));
+
+  return (
+    <div style={{ display: 'flex', height: 'calc(100vh - 80px)', background: 'var(--surface)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+
+      {/* LEFT: Conversation List */}
+      <div style={{ width: '340px', minWidth: '280px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+        {/* Header */}
+        <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: waStatus === 'connected' ? '#25D366' : '#ef4444', flexShrink: 0 }} />
+            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>WhatsApp Inbox</h3>
+            <span style={{ marginLeft: 'auto', background: '#25D366', color: '#fff', borderRadius: '20px', padding: '2px 10px', fontSize: '0.75rem', fontWeight: 700 }}>{conversations.length}</span>
+          </div>
+          <div style={{ position: 'relative' }}>
+            <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search conversations..." style={{ width: '100%', padding: '8px 10px 8px 32px', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--surface)', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }} />
+          </div>
+        </div>
+
+        {/* Conversations */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><Loader2 size={24} className="animate-spin" style={{ color: '#25D366' }} /></div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+              <MessageSquare size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
+              <p style={{ margin: 0, fontSize: '0.9rem' }}>No WhatsApp conversations yet</p>
+            </div>
+          ) : filtered.map(r => {
+            const lastMsg = getLastMsg(r);
+            const isActive = selected?._id === r._id;
+            return (
+              <div key={r._id} onClick={() => setSelected(r)} style={{ padding: '14px 16px', display: 'flex', gap: '12px', alignItems: 'center', cursor: 'pointer', background: isActive ? 'rgba(37,211,102,0.08)' : 'transparent', borderLeft: isActive ? '3px solid #25D366' : '3px solid transparent', transition: 'all 0.15s' }}>
+                {/* Avatar */}
+                <div style={{ width: 46, height: 46, borderRadius: '50%', background: `hsl(${getName(r).charCodeAt(0)*7 % 360},60%,65%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '1.1rem', flexShrink: 0 }}>
+                  {getName(r)[0]?.toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '160px' }}>{getName(r)}</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flexShrink: 0 }}>{formatTime(lastMsg?.receivedAt)}</span>
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lastMsg?.body || <em>Media message</em>}</div>
+                </div>
+                <div style={{ background: '#25D366', color: '#fff', borderRadius: '50%', width: 20, height: 20, fontSize: '0.7rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {getWaMsgs(r).length}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* RIGHT: Chat View */}
+      {selected ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#e5ddd5' }}>
+          {/* Chat Header */}
+          <div style={{ background: '#075E54', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: 42, height: 42, borderRadius: '50%', background: `hsl(${getName(selected).charCodeAt(0)*7 % 360},60%,65%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '1.1rem' }}>
+              {getName(selected)[0]?.toUpperCase()}
+            </div>
+            <div>
+              <div style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>{getName(selected)}</div>
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.78rem' }}>+{getPhone(selected)}</div>
+            </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+              <button onClick={() => window.open(`https://wa.me/${getPhone(selected)}`, '_blank')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: '10px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>Open in WA ↗</button>
+              <button onClick={() => setSelected(null)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: '10px', padding: '6px 10px', cursor: 'pointer' }}><X size={16} /></button>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px', backgroundImage: 'url("https://web.whatsapp.com/img/bg-chat-tile-dark_04fcacde539c58cca6745483d4858c52.png")', backgroundSize: '320px' }}>
+            {getWaMsgs(selected).map((msg, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: msg.fromMe ? 'flex-end' : 'flex-start' }}>
+                <div style={{ maxWidth: '65%', background: msg.fromMe ? '#dcf8c6' : '#fff', borderRadius: msg.fromMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px', padding: '8px 14px 6px', boxShadow: '0 1px 2px rgba(0,0,0,0.12)' }}>
+                  {!msg.fromMe && <div style={{ fontSize: '0.72rem', color: '#25D366', fontWeight: 700, marginBottom: 2 }}>+{getPhone(selected)}</div>}
+                  <div style={{ fontSize: '0.88rem', color: '#111', lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{msg.body || <em style={{color:'#888'}}>Media</em>}</div>
+                  <div style={{ fontSize: '0.68rem', color: '#888', textAlign: 'right', marginTop: 3 }}>{formatTime(msg.receivedAt)}</div>
+                </div>
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          {/* Send Box */}
+          <div style={{ background: '#f0f0f0', padding: '12px 16px', display: 'flex', gap: '10px', alignItems: 'center', borderTop: '1px solid #ddd' }}>
+            <input
+              value={msgInput}
+              onChange={e => setMsgInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+              placeholder={waStatus === 'connected' ? "Type a message..." : "⚠️ WhatsApp not connected"}
+              disabled={waStatus !== 'connected'}
+              style={{ flex: 1, padding: '12px 16px', borderRadius: '24px', border: '1px solid #ddd', outline: 'none', fontSize: '0.9rem', background: '#fff', resize: 'none' }}
+            />
+            <button
+              onClick={sendMessage}
+              disabled={!msgInput.trim() || sending || waStatus !== 'connected'}
+              style={{ width: 46, height: 46, borderRadius: '50%', background: msgInput.trim() && waStatus === 'connected' ? '#25D366' : '#ccc', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s', flexShrink: 0 }}
+            >
+              {sending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0', gap: '16px', color: 'var(--text-muted)' }}>
+          <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(37,211,102,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <MessageSquare size={36} style={{ color: '#25D366' }} />
+          </div>
+          <h3 style={{ margin: 0, color: '#555' }}>Select a conversation</h3>
+          <p style={{ margin: 0, fontSize: '0.85rem' }}>Click any chat on the left to open it</p>
+        </div>
+      )}
+    </div>
+  );
+};
+// ============================================================
+
 function App() {
+
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [passcode, setPasscode] = useState('');
   const [activeTab, setActiveTab] = useState(localStorage.getItem('activeTab') || 'dashboard');
@@ -787,7 +958,7 @@ function App() {
             <TemplateIcon /> Email Templates
           </div>
           <div className={`nav-item ${activeTab === 'custom_templates' ? 'active' : ''}`} onClick={() => { switchTab('custom_templates'); setIsMobileMenuOpen(false); }}>
-            <FolderIcon /> WhatsApp Templates
+            <FolderIcon /> Chat Templates
           </div>
           <div className={`nav-item ${activeTab === 'whatsapp_settings' ? 'active' : ''}`} onClick={() => { switchTab('whatsapp_settings'); setIsMobileMenuOpen(false); }}>
             <Phone size={20} /> <span>WhatsApp Settings</span>
@@ -820,6 +991,10 @@ function App() {
               }} />
             </div>
             <span>WhatsApp Linker</span>
+          </div>
+          <div className={`nav-item ${activeTab === 'whatsapp_inbox' ? 'active' : ''}`} onClick={() => { switchTab('whatsapp_inbox'); setIsMobileMenuOpen(false); }}>
+            <MessageSquare size={20} />
+            <span>WhatsApp Inbox</span>
           </div>
           <div className={`nav-item ${activeTab === 'saved_leads' ? 'active' : ''}`} onClick={() => { switchTab('saved_leads'); setIsMobileMenuOpen(false); fetchSavedLeads(); }}>
             <UsersIcon /> Lead Automation CRM
@@ -1911,8 +2086,8 @@ function App() {
             <div className="tab-content" style={{ animation: 'fadeIn 0.5s ease-out' }}>
               <div className="log-card" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '3rem 2rem' }}>
                 <div style={{ marginBottom: '2rem' }}>
-                  <div style={{ 
-                    width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(37, 211, 102, 0.1)', 
+                  <div style={{
+                    width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(37, 211, 102, 0.1)',
                     color: '#25D366', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem'
                   }}>
                     <Phone size={40} />
@@ -1921,7 +2096,7 @@ function App() {
                   <p style={{ color: 'var(--text-muted)' }}>Scan the QR code to sync your WhatsApp and start receiving replies directly here.</p>
                 </div>
 
-                <div style={{ 
+                <div style={{
                   background: '#f8fafc', padding: '2rem', borderRadius: '24px', border: '2px dashed #e2e8f0',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem'
                 }}>
@@ -1930,17 +2105,17 @@ function App() {
                       <CheckCircle size={60} />
                       <h3 style={{ margin: 0 }}>WhatsApp Connected!</h3>
                       <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>System is now monitoring your messages for lead replies.</p>
-                      <button 
-                        onClick={async () => { try { await axios.post('/api/whatsapp/logout'); fetchWaStatus(); } catch(e){} }}
+                      <button
+                        onClick={async () => { try { await axios.post('/api/whatsapp/logout'); fetchWaStatus(); } catch (e) { } }}
                         style={{ marginTop: '1rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: '600' }}
                       >Disconnect WhatsApp</button>
                     </div>
                   ) : waStatus === 'qr-ready' && waQr ? (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
                       <div style={{ background: 'white', padding: '15px', borderRadius: '15px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
-                        <img 
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(waQr)}`} 
-                          alt="WhatsApp QR Code" 
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(waQr)}`}
+                          alt="WhatsApp QR Code"
                           style={{ width: '250px', height: '250px' }}
                         />
                       </div>
@@ -1955,7 +2130,7 @@ function App() {
                       <p>Initializing WhatsApp Engine...</p>
                       <button
                         onClick={async () => {
-                          try { await axios.post('/api/whatsapp/restart'); } catch(e) {}
+                          try { await axios.post('/api/whatsapp/restart'); } catch (e) { }
                           setTimeout(fetchWaStatus, 2000);
                         }}
                         style={{ background: 'rgba(99,102,241,0.1)', color: 'var(--primary)', border: '1px solid rgba(99,102,241,0.3)', padding: '8px 18px', borderRadius: '12px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}
@@ -1963,7 +2138,7 @@ function App() {
                     </div>
                   )}
                 </div>
-                
+
                 <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', textAlign: 'left' }}>
                   <div style={{ padding: '15px', background: 'white', borderRadius: '15px', border: '1px solid var(--border)' }}>
                     <h4 style={{ margin: '0 0 5px 0', fontSize: '0.9rem' }}>Real-time Sync</h4>
@@ -1977,6 +2152,8 @@ function App() {
               </div>
             </div>
           )}
+
+          {activeTab === 'whatsapp_inbox' && <WhatsAppInboxTab waStatus={waStatus} />}
 
           {activeTab === 'email_finder' && (() => {
             const seen = new Set();

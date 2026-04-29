@@ -16,6 +16,88 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const { simpleParser } = require('mailparser');
+
+// --- Schemas & Models ---
+const emailTemplateSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  subject: { type: String, required: true },
+  body: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+const EmailTemplate = mongoose.models.EmailTemplate || mongoose.model('EmailTemplate', emailTemplateSchema);
+
+const scrapedLeadSchema = new mongoose.Schema({
+  name: String,
+  phone: String,
+  address: String,
+  mapsLink: { type: String, unique: true },
+  keyword: String,
+  city: String,
+  isContacted: { type: Boolean, default: false },
+  website: { type: String, default: null }, // If populated, lead has a website — skip email enrichment
+  // Email Enrichment Fields
+  email: { type: String, default: null },
+  emailFound: { type: Boolean, default: false },
+  emailSource: { type: String, default: null }, // 'google', 'facebook', 'instagram', 'linkedin'
+  socialLinks: {
+    facebook: { type: String, default: null },
+    instagram: { type: String, default: null },
+    linkedin: { type: String, default: null }
+  },
+  createdAt: { type: Date, default: Date.now }
+});
+const ScrapedLead = mongoose.models.ScrapedLead || mongoose.model('ScrapedLead', scrapedLeadSchema);
+
+const settingsSchema = new mongoose.Schema({
+  igSession: { type: String, default: '' },
+  liAt: { type: String, default: '' },
+  fbCUser: { type: String, default: '' },
+  fbXs: { type: String, default: '' }
+});
+const Settings = mongoose.models.Settings || mongoose.model('Settings', settingsSchema);
+
+const whatsappTemplateSchema = new mongoose.Schema({
+  message: { type: String, required: true },
+  details: { type: String, required: true },
+  isActive: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+});
+const WhatsappTemplate = mongoose.models.WhatsappTemplate || mongoose.model('WhatsappTemplate', whatsappTemplateSchema);
+
+const recipientSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true, index: true },
+  campaignId: String,
+  step: { type: Number, default: 1 },
+  status: { type: String, default: 'pending' },
+  lastSentAt: Date,
+  nextSendAt: Date,
+  emailUser: String,
+  emailPass: String,
+  subject: String,
+  body1: String,
+  body2: String,
+  body3: String,
+  data: mongoose.Schema.Types.Mixed,
+  history: [{ sentAt: Date, event: String, subject: String }],
+  replies: [{
+    receivedAt: { type: Date, default: Date.now },
+    subject: String,
+    body: String,
+    type: { type: String, default: 'email' }, // 'email' or 'whatsapp'
+    fromMe: { type: Boolean, default: false }
+  }],
+  isArchived: { type: Boolean, default: false }
+});
+const Recipient = mongoose.models.Recipient || mongoose.model('Recipient', recipientSchema);
+
+const customFieldSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  active: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now }
+});
+const CustomField = mongoose.models.CustomField || mongoose.model('CustomField', customFieldSchema);
+
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
@@ -58,196 +140,122 @@ let waClient;
 let waQr = "";
 let waStatus = "disconnected";
 
-// Schema
-const { simpleParser } = require('mailparser');
-const recipientSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true, index: true },
-  campaignId: String,
-  step: { type: Number, default: 1 },
-  status: { type: String, default: 'pending' },
-  lastSentAt: Date,
-  nextSendAt: Date,
-  emailUser: String,
-  emailPass: String,
-  subject: String,
-  body1: String,
-  body2: String,
-  body3: String,
-  data: mongoose.Schema.Types.Mixed,
-  history: [{ sentAt: Date, event: String, subject: String }],
-  replies: [{ 
-    receivedAt: { type: Date, default: Date.now }, 
-    subject: String, 
-    body: String,
-    type: { type: String, default: 'email' } // 'email' or 'whatsapp'
-  }],
-  isArchived: { type: Boolean, default: false }
-});
-const Recipient = mongoose.models.Recipient || mongoose.model('Recipient', recipientSchema);
-
 // --- WhatsApp Client Logic ---
-const initWhatsapp = () => {
+
+const { execSync } = require('child_process');
+const initWhatsapp = async () => {
+  // Kill any existing Chrome processes and clear locks
+  try { execSync('pkill -9 -f chrome-linux64 2>/dev/null', { stdio: 'ignore' }); } catch (e) { }
+  try { execSync('rm -f ' + path.join(__dirname, 'wa_session/session/Singleton*'), { stdio: 'ignore' }); } catch (e) { }
+  await new Promise(r => setTimeout(r, 2000)); // Wait for Chrome to fully die
+
+  const chromePath = path.join(__dirname, '.cache/puppeteer/chrome/linux-146.0.7680.31/chrome-linux64/chrome');
   waClient = new Client({
     authStrategy: new LocalAuth({ dataPath: path.join(__dirname, 'wa_session') }),
-    puppeteer: {
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu'
-      ]
-    },
+    puppeteer: { headless: true, executablePath: chromePath, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas', '--disable-gpu'] },
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'
   });
-
-  waClient.on('qr', (qr) => {
-    waQr = qr;
-    waStatus = "qr-ready";
-    console.log('[WhatsApp] QR Received. Waiting for scan...');
-  });
-
-  waClient.on('authenticated', () => {
-    waQr = "";
-    waStatus = "connected";
-    console.log('[WhatsApp] Authenticated!');
-  });
-
-  waClient.on('ready', () => {
-    waQr = "";
-    waStatus = "connected";
-    console.log('[WhatsApp] Client is READY!');
-  });
-
-  waClient.on('message', async (msg) => {
-    if (!msg.from.includes('@c.us')) return;
-    const phone = msg.from.split('@')[0];
-    
-    // Match lead by phone (last 10 digits to be safe)
-    const lead = await Recipient.findOne({
-      $or: [
-        { 'data.Phone': { $regex: phone + '$' } },
-        { 'data.phone': { $regex: phone + '$' } },
-        { 'data.Phone': { $regex: phone.slice(-10) } }
-      ]
-    });
-
-    if (lead) {
-      const isDup = (lead.replies || []).some(r => r.type === 'whatsapp' && r.body === msg.body && (Date.now() - new Date(r.receivedAt).getTime()) < 10000);
+  waClient.on('qr', (qr) => { waQr = qr; waStatus = 'qr-ready'; console.log('[WhatsApp] QR Ready.'); });
+  waClient.on('authenticated', () => { waQr = ''; waStatus = 'connected'; console.log('[WhatsApp] Authenticated!'); });
+  waClient.on('ready', () => { waQr = ''; waStatus = 'connected'; console.log('[WhatsApp] READY!'); });
+  waClient.on('auth_failure', () => { waStatus = 'disconnected'; waQr = ''; });
+  waClient.on('disconnected', () => { waStatus = 'disconnected'; console.log('[WhatsApp] Disconnected.'); setTimeout(() => initWhatsapp(), 3000); });
+  const processMessage = async (msg, phone) => {
+    try {
+      let lead = await Recipient.findOne({
+        $or: [
+          { 'data.Phone': { $regex: phone + '$' } },
+          { 'data.phone': { $regex: phone + '$' } },
+          { 'data.Phone': { $regex: phone.slice(-10) } },
+          { email: phone + '@whatsapp.com' }
+        ]
+      });
+      if (!lead) {
+        const contact = await msg.getContact().catch(() => null);
+        const name = contact ? (contact.pushname || contact.name || ('+' + phone)) : ('+' + phone);
+        lead = new Recipient({
+          email: phone + '@whatsapp.com', status: 'replied',
+          data: { 'First Name': name, Phone: phone, Source: 'WhatsApp Inbound' },
+          replies: []
+        });
+        console.log(`[WhatsApp] 🆕 New lead: ${name}`);
+      }
+      const isDup = (lead.replies || []).some(r => r.type === 'whatsapp' && r.body === msg.body && Math.abs(new Date(r.receivedAt) - new Date(msg.timestamp * 1000)) < 30000);
       if (!isDup) {
         lead.status = 'replied';
-        lead.replies.push({
-          receivedAt: new Date(),
-          subject: 'WhatsApp Message',
-          body: msg.body,
-          type: 'whatsapp'
-        });
+        lead.replies.push({ receivedAt: new Date(msg.timestamp * 1000), subject: 'WhatsApp Message', body: msg.body, type: 'whatsapp' });
         await lead.save();
-        console.log(`[WhatsApp] Captured reply from ${phone}`);
+        console.log(`[WhatsApp] ✅ Reply saved from +${phone}: "${msg.body.substring(0, 40)}"`);
       }
-    }
-  });
+    } catch(err) { console.error('[WhatsApp] processMessage error:', err.message); }
+  };
 
-  waClient.on('disconnected', () => {
-    waStatus = "disconnected";
-    console.log('[WhatsApp] Client disconnected.');
-    setTimeout(() => initWhatsapp(), 3000);
-  });
+  // Also keep event listeners as backup
+  waClient.on('message', async (msg) => { if (!msg.fromMe && (msg.from.includes('@c.us') || msg.from.includes('@lid'))) await processMessage(msg, msg.from.split('@')[0]); });
+  waClient.on('message_create', async (msg) => { if (!msg.fromMe && (msg.from.includes('@c.us') || msg.from.includes('@lid'))) await processMessage(msg, msg.from.split('@')[0]); });
 
-  waClient.initialize().catch(err => {
-    console.error("[WhatsApp] Init Error:", err.message);
-    waStatus = "disconnected";
-    waQr = "";
-  });
+  waClient.initialize().catch(err => { console.error('[WhatsApp] Init Error:', err.message); waStatus = 'disconnected'; waQr = ''; });
 
-  // Fallback: poll client state every 3s in case ready event doesn't fire
-  let pollCount = 0;
-  let openingCount = 0;
-  const statusPoll = setInterval(async () => {
-    pollCount++;
-    if (pollCount > 60) { clearInterval(statusPoll); return; } // stop after 3 min
+  let polls = 0, openings = 0, chatPollStarted = false;
+  let lastChecked = Date.now() - 604800000; // Check last 7 days on startup
+
+
+
+  const scanChats = async () => {
+    try {
+      const chats = await waClient.getChats();
+      console.log(`[WhatsApp] Scanning ${chats.length} chats (since ${new Date(lastChecked).toLocaleTimeString()})`);
+      let found = 0;
+      for (const chat of chats) {
+        if (chat.isGroup) continue;
+        const msgs = await chat.fetchMessages({ limit: 10 });
+        for (const msg of msgs) {
+          if (msg.fromMe) continue;
+          if (!msg.from.includes('@c.us') && !msg.from.includes('@lid')) continue;
+          const msgTimeMs = msg.timestamp * 1000;
+          if (msgTimeMs < lastChecked) continue;
+          const phone = msg.from.split('@')[0];
+          console.log(`[WhatsApp] 📩 Processing: +${phone} — "${msg.body.substring(0, 40)}" (${new Date(msgTimeMs).toLocaleTimeString()})`);
+          await processMessage(msg, phone);
+          found++;
+        }
+      }
+      console.log(`[WhatsApp] Scan done: ${found} new msgs saved.`);
+      lastChecked = Date.now() - 2000;
+    } catch(e) { console.error('[WhatsApp] scanChats error:', e.message); }
+  };
+
+
+  const startChatPoll = () => {
+    if (chatPollStarted) return;
+    chatPollStarted = true;
+    console.log('[WhatsApp] 🔄 Chat polling started.');
+    scanChats(); // Immediate first scan
+    setInterval(scanChats, 15000); // Then every 15s
+  };
+
+
+  const poll = setInterval(async () => {
+    if (++polls > 90) { clearInterval(poll); return; }
     try {
       const state = await waClient.getState();
       if (state === 'CONNECTED') {
-        waStatus = 'connected';
-        waQr = '';
-        console.log('[WhatsApp] State CONNECTED detected via poll.');
-        clearInterval(statusPoll);
+        if (waStatus !== 'connected') { waStatus = 'connected'; waQr = ''; console.log('[WhatsApp] CONNECTED via poll!'); }
+        clearInterval(poll);
+        // Don't start chatPoll here - wait for 'ready' event which guarantees full init
       } else if (state === 'OPENING') {
-        openingCount++;
-        // If stuck in OPENING for 30s with no QR, destroy and reinit
-        if (openingCount > 10 && !waQr) {
-          console.log('[WhatsApp] Stuck in OPENING, destroying and reiniting...');
-          clearInterval(statusPoll);
-          try { await waClient.destroy(); } catch(e) {}
-          setTimeout(() => initWhatsapp(), 2000);
-        }
-      } else {
-        openingCount = 0; // reset if state changed
-      }
+        if (++openings > 15 && !waQr) { console.log('[WhatsApp] OPENING timeout'); clearInterval(poll); try { await waClient.destroy(); } catch(e) {} setTimeout(() => initWhatsapp(), 2000); }
+      } else { openings = 0; }
     } catch(e) {}
-  }, 3000);
+  }, 2000);
+
+  // Start chat polling ONLY from ready event (guarantees full init)
+  waClient.on('ready', () => { startChatPoll(); });
+
 };
 
 initWhatsapp();
 
-// Custom Email Templates Schema
-const emailTemplateSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  subject: { type: String, required: true },
-  body: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now }
-});
-const EmailTemplate = mongoose.models.EmailTemplate || mongoose.model('EmailTemplate', emailTemplateSchema);
-
-// Custom Fields Schema
-const customFieldSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true },
-  active: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now }
-});
-const CustomField = mongoose.models.CustomField || mongoose.model('CustomField', customFieldSchema);
-
-// Scraped Leads Schema
-const scrapedLeadSchema = new mongoose.Schema({
-  name: String,
-  phone: String,
-  address: String,
-  mapsLink: { type: String, unique: true },
-  keyword: String,
-  city: String,
-  isContacted: { type: Boolean, default: false },
-  website: { type: String, default: null }, // If populated, lead has a website — skip email enrichment
-  // Email Enrichment Fields
-  email: { type: String, default: null },
-  emailFound: { type: Boolean, default: false },
-  emailSource: { type: String, default: null }, // 'google', 'facebook', 'instagram', 'linkedin'
-  socialLinks: {
-    facebook: { type: String, default: null },
-    instagram: { type: String, default: null },
-    linkedin: { type: String, default: null }
-  },
-  createdAt: { type: Date, default: Date.now }
-});
-const ScrapedLead = mongoose.models.ScrapedLead || mongoose.model('ScrapedLead', scrapedLeadSchema);
-
-const settingsSchema = new mongoose.Schema({
-  igSession: { type: String, default: '' },
-  liAt: { type: String, default: '' },
-  fbCUser: { type: String, default: '' },
-  fbXs: { type: String, default: '' }
-});
-const Settings = mongoose.models.Settings || mongoose.model('Settings', settingsSchema);
-
-// WhatsApp Templates Schema
-const whatsappTemplateSchema = new mongoose.Schema({
-  message: { type: String, required: true },
-  details: { type: String, required: true },
-  isActive: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now }
-});
-const WhatsappTemplate = mongoose.models.WhatsappTemplate || mongoose.model('WhatsappTemplate', whatsappTemplateSchema);
 
 const upload = multer({ dest: 'uploads/' });
 
@@ -887,10 +895,10 @@ app.post('/api/whatsapp-templates', async (req, res) => {
   try {
     const { message, details } = req.body;
     const count = await WhatsappTemplate.countDocuments();
-    const template = await WhatsappTemplate.create({ 
-      message, 
-      details, 
-      isActive: count === 0 
+    const template = await WhatsappTemplate.create({
+      message,
+      details,
+      isActive: count === 0
     });
     res.json(template);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -1871,11 +1879,79 @@ app.get('/api/whatsapp/status', (req, res) => {
   res.json({ status: waStatus, hasQr: !!waQr });
 });
 
+app.get('/api/whatsapp/debug-chats', async (req, res) => {
+  try {
+    if (!waClient || waStatus !== 'connected') return res.json({ error: 'Not connected', waStatus });
+    const chats = await waClient.getChats();
+    const result = [];
+    for (const chat of chats.slice(0, 10)) {
+      if (chat.isGroup) continue;
+      const msgs = await chat.fetchMessages({ limit: 3 });
+      result.push({
+        name: chat.name,
+        id: chat.id._serialized,
+        msgs: msgs.filter(m => !m.fromMe).map(m => ({ from: m.from, body: m.body.substring(0,50), ts: new Date(m.timestamp*1000).toISOString(), fromMe: m.fromMe }))
+      });
+    }
+    res.json({ total: chats.length, chats: result });
+  } catch(e) { res.json({ error: e.message }); }
+});
+
 app.get('/api/whatsapp/qr', (req, res) => {
   console.log(`[API] QR requested. Ready: ${!!waQr}`);
   if (!waQr) return res.status(404).json({ error: "QR not ready" });
   res.json({ qr: waQr });
 });
+
+app.post('/api/whatsapp/send', async (req, res) => {
+  const { phone, message } = req.body;
+  if (!phone || !message) return res.status(400).json({ error: 'phone and message required' });
+  if (!waClient || waStatus !== 'connected') return res.status(503).json({ error: 'WhatsApp not connected' });
+  try {
+    const cleanPhone = phone.replace(/\D/g, '');
+
+    // Find the actual chat by scanning all chats for matching phone number
+    // This handles both @c.us and @lid formats used in newer WhatsApp
+    let targetChat = null;
+    const chats = await waClient.getChats();
+    for (const chat of chats) {
+      if (chat.isGroup) continue;
+      const chatPhone = chat.id.user || chat.id._serialized.split('@')[0];
+      if (chatPhone === cleanPhone || chatPhone.endsWith(cleanPhone) || cleanPhone.endsWith(chatPhone)) {
+        targetChat = chat;
+        break;
+      }
+    }
+
+    if (targetChat) {
+      // Use existing chat (works with @lid format)
+      await targetChat.sendMessage(message);
+    } else {
+      // Fallback: try @c.us directly
+      const chatId = cleanPhone + '@c.us';
+      await waClient.sendMessage(chatId, message);
+    }
+
+    console.log(`[WhatsApp] ✉️ Sent to +${cleanPhone}: "${message.substring(0, 40)}"`);
+
+    // Save sent message to lead replies
+    let lead = await Recipient.findOne({
+      $or: [
+        { 'data.Phone': { $regex: cleanPhone + '$' } },
+        { email: cleanPhone + '@whatsapp.com' }
+      ]
+    });
+    if (lead) {
+      lead.replies.push({ receivedAt: new Date(), subject: 'WhatsApp Sent', body: message, type: 'whatsapp', fromMe: true });
+      await lead.save();
+    }
+    res.json({ success: true });
+  } catch(e) {
+    console.error('[WhatsApp] Send error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 
 app.post('/api/whatsapp/logout', async (req, res) => {
   try {
@@ -1897,7 +1973,7 @@ app.post('/api/whatsapp/restart', async (req, res) => {
     waStatus = "disconnected";
     waQr = "";
     if (waClient) {
-      try { await waClient.destroy(); } catch(e) {}
+      try { await waClient.destroy(); } catch (e) { }
     }
     setTimeout(() => initWhatsapp(), 1000);
     res.json({ success: true, message: "WhatsApp restarting..." });
