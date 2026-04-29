@@ -152,6 +152,11 @@ function App() {
   const [inlineEditData, setInlineEditData] = useState({});
   const [keywordHistory, setKeywordHistory] = useState(JSON.parse(localStorage.getItem('keyword_history') || '[]'));
   const [cityHistory, setCityHistory] = useState(JSON.parse(localStorage.getItem('city_history') || '[]'));
+  const [waModal, setWaModal] = useState({ open: false, phone: '', message: '' });
+
+  // WhatsApp Templates State
+  const [whatsappTemplates, setWhatsappTemplates] = useState([]);
+  const [newWaTpl, setNewWaTpl] = useState({ message: '', details: '' });
 
   useEffect(() => {
     document.body.className = currentTheme;
@@ -174,6 +179,7 @@ function App() {
       fetchRecipients();
       fetchCustomTemplates();
       fetchCustomFields();
+      fetchWhatsappTemplates(); // Load WA templates
       fetchSettings();
       const interval = setInterval(() => {
         fetchStats();
@@ -193,6 +199,86 @@ function App() {
   const showToast = (msg, type = 'success') => {
     setNotification({ msg, type });
     setTimeout(() => setNotification(null), 3000);
+  };
+
+  const fetchWhatsappTemplates = async () => {
+    try {
+      const res = await axios.get('/api/whatsapp-templates');
+      setWhatsappTemplates(res.data);
+    } catch (err) { console.error(err); }
+  };
+
+  const handleAddWhatsappTemplate = async () => {
+    if (!newWaTpl.message || !newWaTpl.details) return showToast("Both fields are required", "error");
+    try {
+      await axios.post('/api/whatsapp-templates', newWaTpl);
+      setNewWaTpl({ message: '', details: '' });
+      fetchWhatsappTemplates();
+      showToast("WhatsApp Template added!");
+    } catch (err) { showToast("Failed to add template", "error"); }
+  };
+
+  const handleDeleteWhatsappTemplate = async (id) => {
+    try {
+      await axios.delete(`/api/whatsapp-templates/${id}`);
+      fetchWhatsappTemplates();
+      showToast("Template deleted");
+    } catch (err) { }
+  };
+
+  const handleActivateWhatsappTemplate = async (id) => {
+    try {
+      await axios.put(`/api/whatsapp-templates/${id}/activate`);
+      fetchWhatsappTemplates();
+      showToast("Template activated!");
+    } catch (err) { }
+  };
+
+  const handleWhatsappReply = (leadEmail) => {
+    const activeTpl = whatsappTemplates.find(t => t.isActive);
+    if (!activeTpl) {
+      showToast("No active WhatsApp template found. Please create and activate one in WhatsApp Settings.", "error");
+      return;
+    }
+
+    const lead = recipients.find(r => r.email === leadEmail);
+    const phone = lead?.data?.Phone || lead?.data?.phone || lead?.phone; 
+
+    if (!phone) {
+      showToast("No phone number found for this lead.", "error");
+      return;
+    }
+
+    const cleanPhone = phone.replace(/\D/g, '');
+    
+    // Process variables in the message
+    let finalMsg = activeTpl.message;
+    if (lead?.data) {
+      Object.keys(lead.data).forEach(key => {
+        const regex = new RegExp(`{{${key}}}`, 'g'); // Support {{Var}}
+        const regex2 = new RegExp(`{${key}}`, 'g');  // Support {Var}
+        finalMsg = finalMsg.replace(regex, lead.data[key] || '').replace(regex2, lead.data[key] || '');
+      });
+    }
+
+    // Show modal with message so user can copy and open WhatsApp
+    setWaModal({ open: true, phone: cleanPhone, message: finalMsg });
+  };
+
+  const copyWaMessage = () => {
+    const textArea = document.createElement('textarea');
+    textArea.value = waModal.message;
+    textArea.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      showToast('✅ Message copied to clipboard!', 'success');
+    } catch {
+      showToast('Could not copy — please select and copy manually.', 'error');
+    }
+    document.body.removeChild(textArea);
   };
 
   const fetchSettings = async () => {
@@ -681,6 +767,9 @@ function App() {
           <div className={`nav-item ${activeTab === 'custom_templates' ? 'active' : ''}`} onClick={() => { switchTab('custom_templates'); setIsMobileMenuOpen(false); }}>
             <FolderIcon /> Custom Templates
           </div>
+          <div className={`nav-item ${activeTab === 'whatsapp_settings' ? 'active' : ''}`} onClick={() => { switchTab('whatsapp_settings'); setIsMobileMenuOpen(false); }}>
+            <Phone size={20} /> <span>WhatsApp Settings</span>
+          </div>
           <div className={`nav-item ${activeTab === 'variables' ? 'active' : ''}`} onClick={() => { switchTab('variables'); setIsMobileMenuOpen(false); }}>
             <SettingsIcon /> Variable Manager
           </div>
@@ -711,7 +800,7 @@ function App() {
         <header className="top-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)}><MenuIcon /></button>
-            <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'variables' ? 'Variable Manager' : activeTab === 'logs' ? 'Delivery Logs' : activeTab === 'replied_leads' ? 'Replied Leads' : activeTab === 'scraper' ? 'Lead Scraper' : activeTab === 'email_finder' ? 'Email Enricher' : activeTab === 'saved_leads' ? 'Lead Automation CRM' : 'Archive'}</h2>
+            <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'whatsapp_settings' ? 'WhatsApp Settings' : activeTab === 'variables' ? 'Variable Manager' : activeTab === 'logs' ? 'Delivery Logs' : activeTab === 'replied_leads' ? 'Replied Leads' : activeTab === 'scraper' ? 'Lead Scraper' : activeTab === 'email_finder' ? 'Email Enricher' : activeTab === 'saved_leads' ? 'Lead Automation CRM' : 'Archive'}</h2>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <select
@@ -1078,6 +1167,93 @@ function App() {
                         </div>
                       </div>
                     ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'whatsapp_settings' && (
+            <div className="campaign-grid">
+              <div className="config-card">
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><Phone size={20} /> Create WhatsApp Template</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Define messages that you can quickly send to leads via WhatsApp.</p>
+                <div className="field">
+                  <label>Template Details (e.g. Follow-up 1)</label>
+                  <input 
+                    value={newWaTpl.details} 
+                    onChange={e => setNewWaTpl({...newWaTpl, details: e.target.value})} 
+                    placeholder="Enter template name/details" 
+                  />
+                </div>
+                <div className="field">
+                  <label>WhatsApp Message</label>
+                  <textarea 
+                    value={newWaTpl.message} 
+                    onChange={e => setNewWaTpl({...newWaTpl, message: e.target.value})} 
+                    placeholder="Enter your WhatsApp message here..."
+                    style={{ height: '150px' }}
+                  ></textarea>
+                </div>
+                <button className="launch-btn" onClick={handleAddWhatsappTemplate}>
+                  <Save size={18} /> Save Template
+                </button>
+              </div>
+
+              <div className="log-card full-width" style={{ marginTop: '2rem' }}>
+                <div style={{ padding: '1.2rem', borderBottom: '1px solid var(--border)', fontWeight: '700', fontSize: '1.1rem' }}>Your WhatsApp Library</div>
+                <div style={{ padding: '1.5rem' }}>
+                  {whatsappTemplates.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                      <Phone size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                      <p>No WhatsApp templates found. Create your first one above!</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                      {whatsappTemplates.map(t => (
+                        <div key={t._id} style={{ 
+                          border: t.isActive ? '2px solid var(--primary)' : '1px solid var(--border)', 
+                          borderRadius: '16px', padding: '1.5rem', background: 'white', position: 'relative',
+                          boxShadow: t.isActive ? '0 10px 25px rgba(99, 102, 241, 0.12)' : '0 4px 6px rgba(0,0,0,0.02)',
+                          transition: 'all 0.3s ease'
+                        }}>
+                          {t.isActive && (
+                            <div style={{ 
+                              position: 'absolute', top: '-10px', right: '20px', background: 'var(--primary)', 
+                              color: 'white', fontSize: '0.7rem', padding: '4px 12px', borderRadius: '20px', fontWeight: '800',
+                              boxShadow: '0 4px 10px rgba(99, 102, 241, 0.4)'
+                            }}>ACTIVE</div>
+                          )}
+                          <div style={{ fontWeight: '800', fontSize: '1rem', marginBottom: '12px', color: 'var(--text)' }}>{t.details}</div>
+                          <div style={{ 
+                            fontSize: '0.9rem', color: 'var(--text)', background: '#f8fafc', padding: '15px', 
+                            borderRadius: '10px', minHeight: '100px', marginBottom: '20px', whiteSpace: 'pre-wrap',
+                            border: '1px solid #edf2f7', lineHeight: '1.6'
+                          }}>{t.message}</div>
+                          
+                          <div style={{ display: 'flex', gap: '10px' }}>
+                            {!t.isActive && (
+                              <button 
+                                className="btn-icon btn-restart" 
+                                style={{ flex: 1, padding: '10px' }}
+                                onClick={() => handleActivateWhatsappTemplate(t._id)}
+                              >Activate Now</button>
+                            )}
+                            <button 
+                              className="btn-icon btn-stop" 
+                              style={{ flex: 0.4, padding: '10px' }}
+                              onClick={() => {
+                                setConfirmModal({
+                                  open: true,
+                                  title: `Delete template "${t.details}"?`,
+                                  onConfirm: () => handleDeleteWhatsappTemplate(t._id)
+                                });
+                              }}
+                            >Delete</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1651,8 +1827,11 @@ function App() {
                                                   {reply.body}
                                                 </div>
                                                 <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)', display: 'flex', gap: '10px' }}>
-                                                  <button style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                    <Reply size={14} /> Direct Reply
+                                                  <button 
+                                                    style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                                    onClick={() => handleWhatsappReply(r.email)}
+                                                  >
+                                                    <Reply size={14} /> Direct WhatsApp
                                                   </button>
                                                   <button style={{ background: 'white', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}>
                                                     Mark as Important
@@ -2273,7 +2452,16 @@ function App() {
                                         {lead.phone && lead.phone !== 'N/A' ? (
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <span style={{ color: 'var(--success)', fontWeight: '600', fontSize: '0.9rem' }}>{lead.phone}</span>
-                                            <a href={`https://wa.me/${lead.phone.replace(/[^\d+]/g, '')}`} target="_blank" rel="noreferrer" style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }} title="WhatsApp"><MessageSquare size={14} /></a>
+                                            <button
+                                              onClick={() => {
+                                                const activeTpl = whatsappTemplates.find(t => t.isActive);
+                                                const cleanPhone = lead.phone.replace(/\D/g, '');
+                                                let msg = activeTpl ? activeTpl.message : '';
+                                                setWaModal({ open: true, phone: cleanPhone, message: msg });
+                                              }}
+                                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', padding: '2px' }}
+                                              title="Send WhatsApp Message"
+                                            ><MessageSquare size={16} /></button>
                                           </div>
                                         ) : <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>}
 
@@ -2395,6 +2583,70 @@ function App() {
             <div className="modal-footer" style={{ marginTop: '2rem' }}>
               <button className="launch-btn" onClick={() => setIntelLead(null)}>Close Intelligence View</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Send Modal */}
+      {waModal.open && (
+        <div className="modal-overlay" style={{ zIndex: 9998 }}>
+          <div className="log-card" style={{ maxWidth: '520px', width: '100%', padding: '2rem', animation: 'slideIn 0.3s ease-out' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Phone size={22} style={{ color: '#25D366' }} /> Send WhatsApp Message
+              </h3>
+              <button onClick={() => setWaModal({ open: false, phone: '', message: '' })} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--text-muted)' }}>✕</button>
+            </div>
+
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+              📱 To: <strong>+{waModal.phone}</strong>
+            </p>
+
+            <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
+              <label style={{ fontWeight: '600', display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Your Active Message</label>
+              <textarea
+                id="wa-msg-textarea"
+                readOnly
+                value={waModal.message}
+                style={{
+                  width: '100%', height: '180px', padding: '14px', borderRadius: '12px',
+                  border: '2px solid #25D366', background: '#f0fdf4', color: '#1a1a1a',
+                  fontSize: '0.9rem', lineHeight: '1.6', resize: 'none', boxSizing: 'border-box',
+                  fontFamily: 'inherit'
+                }}
+                onClick={e => e.target.select()}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={copyWaMessage}
+                style={{
+                  flex: 1, padding: '13px', borderRadius: '10px', border: '2px solid #25D366',
+                  background: 'white', color: '#25D366', fontWeight: '700', fontSize: '0.95rem',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                }}
+              >
+                📋 Copy Message
+              </button>
+              <button
+                onClick={() => {
+                  const encodedMsg = encodeURIComponent(waModal.message);
+                  window.open(`https://web.whatsapp.com/send?phone=${waModal.phone}&text=${encodedMsg}`, '_blank');
+                }}
+                style={{
+                  flex: 1, padding: '13px', borderRadius: '10px', border: 'none',
+                  background: '#25D366', color: 'white', fontWeight: '700', fontSize: '0.95rem',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                }}
+              >
+                <Phone size={18} /> Open WhatsApp
+              </button>
+            </div>
+
+            <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '1rem' }}>
+              Tip: Click <strong>Copy Message</strong> first, then <strong>Open WhatsApp</strong> and paste with Ctrl+V
+            </p>
           </div>
         </div>
       )}

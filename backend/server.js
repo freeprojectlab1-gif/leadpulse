@@ -128,6 +128,15 @@ const settingsSchema = new mongoose.Schema({
 });
 const Settings = mongoose.models.Settings || mongoose.model('Settings', settingsSchema);
 
+// WhatsApp Templates Schema
+const whatsappTemplateSchema = new mongoose.Schema({
+  message: { type: String, required: true },
+  details: { type: String, required: true },
+  isActive: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+});
+const WhatsappTemplate = mongoose.models.WhatsappTemplate || mongoose.model('WhatsappTemplate', whatsappTemplateSchema);
+
 const upload = multer({ dest: 'uploads/' });
 
 // SPINTAX ENGINE (Support {Hi|Hello|Hey} format - MUST contain a pipe |)
@@ -749,11 +758,45 @@ app.delete('/api/email-templates/:id', async (req, res) => {
 
 // Update template
 app.put('/api/email-templates/:id', async (req, res) => {
+  const { name, subject, body } = req.body;
+  await EmailTemplate.findByIdAndUpdate(req.params.id, { name, subject, body });
+  res.json({ success: true });
+});
+
+// --- WhatsApp Template Routes ---
+app.get('/api/whatsapp-templates', async (req, res) => {
   try {
-    const { name, subject, body } = req.body;
-    await EmailTemplate.findByIdAndUpdate(req.params.id, { name, subject, body });
-    res.json({ message: 'Template updated!' });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    const templates = await WhatsappTemplate.find().sort({ createdAt: -1 });
+    res.json(templates);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/whatsapp-templates', async (req, res) => {
+  try {
+    const { message, details } = req.body;
+    const count = await WhatsappTemplate.countDocuments();
+    const template = await WhatsappTemplate.create({ 
+      message, 
+      details, 
+      isActive: count === 0 
+    });
+    res.json(template);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/whatsapp-templates/:id/activate', async (req, res) => {
+  try {
+    await WhatsappTemplate.updateMany({}, { $set: { isActive: false } });
+    await WhatsappTemplate.findByIdAndUpdate(req.params.id, { $set: { isActive: true } });
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/whatsapp-templates/:id', async (req, res) => {
+  try {
+    await WhatsappTemplate.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Send custom template to a specific lead
