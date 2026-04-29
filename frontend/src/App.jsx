@@ -658,8 +658,8 @@ function App() {
     <div className="dashboard-container">
       <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="brand">
-          <img src="/logo.png" alt="logo" style={{ height: '35px', borderRadius: '8px' }} />
-          PRO EMAILER
+          <img src="/logo.png" alt="LeadPulse" style={{ height: '38px', borderRadius: '8px' }} />
+          LeadPulse
         </div>
         <nav>
           <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => { switchTab('dashboard'); setIsMobileMenuOpen(false); }}>

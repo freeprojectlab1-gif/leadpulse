@@ -116,7 +116,7 @@ Berlin, Germany
 Amsterdam, Netherlands
 Stockholm, Sweden
 Copenhagen, Denmark
-Oslo, Norway
-Helsinki, Finland
+Oslo, Norway //
+Helsinki, Finland //
 Zurich, Switzerland //
 Geneva, Switzerland //
