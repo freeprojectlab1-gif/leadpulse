@@ -45,6 +45,11 @@ const scrapedLeadSchema = new mongoose.Schema({
     instagram: { type: String, default: null },
     linkedin: { type: String, default: null }
   },
+  category: String,
+  latitude: Number,
+  longitude: Number,
+  source: String,
+  radiusKm: Number,
   createdAt: { type: Date, default: Date.now }
 });
 const ScrapedLead = mongoose.models.ScrapedLead || mongoose.model('ScrapedLead', scrapedLeadSchema);
@@ -1398,6 +1403,305 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
   }
 };
 
+const getMapsZoomForRadius = (radiusKm) => {
+  const radius = Number(radiusKm) || 5;
+  if (radius <= 1) return 16;
+  if (radius <= 3) return 15;
+  if (radius <= 7) return 14;
+  if (radius <= 15) return 13;
+  if (radius <= 30) return 12;
+  return 11;
+};
+
+const parseGoogleMapsCoords = (value = '') => {
+  const text = String(value);
+  const placeMatch = text.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (placeMatch) return { latitude: Number(placeMatch[1]), longitude: Number(placeMatch[2]) };
+  const atMatch = text.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),/);
+  if (atMatch) return { latitude: Number(atMatch[1]), longitude: Number(atMatch[2]) };
+  return {};
+};
+
+const distanceKm = (aLat, aLng, bLat, bLng) => {
+  if (![aLat, aLng, bLat, bLng].every(Number.isFinite)) return null;
+  const toRad = (v) => (v * Math.PI) / 180;
+  const earthKm = 6371;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const s1 = Math.sin(dLat / 2) ** 2;
+  const s2 = Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return earthKm * 2 * Math.atan2(Math.sqrt(s1 + s2), Math.sqrt(1 - s1 - s2));
+};
+
+const ALL_BUSINESS_MAP_CATEGORIES = [
+  'restaurant',
+  'cafe',
+  'salon',
+  'grocery store',
+  'clothing store',
+  'hardware store',
+  'mobile shop',
+  'electronics store',
+  'gym',
+  'dentist',
+  'clinic',
+  'pharmacy',
+  'bakery',
+  'furniture store',
+  'car repair',
+  'real estate agency',
+  'travel agency',
+  'jewellery store',
+  'printing shop',
+  'pet shop'
+];
+
+const getMapSearchTerms = (keyword, shouldFindAllBusinesses) => {
+  if (shouldFindAllBusinesses) return ALL_BUSINESS_MAP_CATEGORIES;
+  const term = String(keyword || '').trim();
+  return term ? [term] : [];
+};
+
+const configureFastMapsPage = async (page) => {
+  await page.setRequestInterception(true).catch(() => { });
+  page.on('request', (req) => {
+    const resourceType = req.resourceType();
+    if (['image', 'media', 'font'].includes(resourceType)) return req.abort().catch(() => { });
+    return req.continue().catch(() => { });
+  });
+};
+
+const launchScraperBrowser = async () => {
+  const launchArgs = {
+    executablePath: executablePath(),
+    userDataDir: BROWSER_SESSION_DIR,
+    headless: "new",
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    timeout: 60000
+  };
+
+  try {
+    return await puppeteer.launch(launchArgs);
+  } catch (launchErr) {
+    if (launchErr.message.includes('already running')) {
+      console.log("⚠️ Browser lock detected. Force-clearing session...");
+      const { execSync } = require('child_process');
+      try { execSync(`pkill -f "${BROWSER_SESSION_DIR}"`); } catch (e) { }
+      await new Promise(r => setTimeout(r, 1000));
+      return puppeteer.launch(launchArgs);
+    }
+    throw launchErr;
+  }
+};
+
+const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
+  const { noWebsiteOnly = true, originLat, originLng, radiusKm } = options;
+  await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await workerPage.waitForSelector('h1', { timeout: 5000 }).catch(() => { });
+  await new Promise(r => setTimeout(r, 500));
+
+  const details = await workerPage.evaluate((skipWebsites) => {
+    const pageText = document.body?.innerText || '';
+    if (/permanently\s+closed/i.test(pageText)) return null;
+
+    let name = document.querySelector('h1')?.innerText;
+    if (!name) {
+      const title = document.title || '';
+      name = title.split('- Google')[0].trim() || 'Unknown';
+    }
+    if (name === 'Unknown' || name === '' || name === 'Google Maps') return null;
+
+    const websiteBtn = document.querySelector('[data-item-id="authority"]');
+    if (skipWebsites && websiteBtn) return null;
+
+    const phoneBtn = document.querySelector('[data-item-id^="phone:tel:"]');
+    let phone = phoneBtn ? phoneBtn.innerText || phoneBtn.getAttribute('aria-label') : 'N/A';
+    if (phone !== 'N/A') phone = phone.replace(/[^\d+\s-]/g, '').trim();
+
+    const addressBtn = document.querySelector('[data-item-id="address"]');
+    let address = addressBtn ? addressBtn.innerText || addressBtn.getAttribute('aria-label') : 'N/A';
+    if (address !== 'N/A') address = address.replace('Address: ', '').trim();
+
+    return { name, phone, address, pageUrl: window.location.href };
+  }, noWebsiteOnly);
+
+  if (!details) return null;
+
+  const coords = parseGoogleMapsCoords(details.pageUrl || link);
+  const distance = distanceKm(Number(originLat), Number(originLng), coords.latitude, coords.longitude);
+  if (distance !== null && Number(radiusKm) > 0 && distance > Number(radiusKm)) return null;
+
+  return {
+    name: details.name,
+    phone: details.phone,
+    address: details.address,
+    latitude: coords.latitude,
+    longitude: coords.longitude,
+    distanceKm: distance
+  };
+};
+
+app.get('/api/map-businesses', async (req, res) => {
+  const { keyword, lat, lng, radiusKm = 5, limit = 60, noWebsiteOnly = 'true', allBusinesses = 'false' } = req.query;
+  const originLat = Number(lat);
+  const originLng = Number(lng);
+  const radius = Math.max(0.5, Math.min(Number(radiusKm) || 5, 50));
+  const maxLeads = Math.max(5, Math.min(Number(limit) || 60, 200));
+  const shouldFindAllBusinesses = allBusinesses === 'true';
+  const searchKeyword = shouldFindAllBusinesses ? 'businesses' : String(keyword || '').trim();
+  const savedKeyword = shouldFindAllBusinesses ? 'All Businesses' : searchKeyword;
+
+  if ((!shouldFindAllBusinesses && !searchKeyword) || !Number.isFinite(originLat) || !Number.isFinite(originLng)) {
+    return res.status(400).json({ error: 'Keyword, lat and lng are required' });
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  let browser;
+  let isCancelled = false;
+  req.on('close', () => {
+    isCancelled = true;
+    if (browser) browser.close().catch(() => { });
+  });
+
+  const sendData = (data) => {
+    if (!isCancelled) res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const processedLinks = new Set();
+  let saved = 0;
+
+  try {
+    browser = await launchScraperBrowser();
+    const page = await browser.newPage();
+    await configureFastMapsPage(page);
+    const workerCount = shouldFindAllBusinesses ? 6 : 4;
+    const workerPages = await Promise.all(
+      Array.from({ length: workerCount }, async () => {
+        const workerPage = await browser.newPage();
+        await configureFastMapsPage(workerPage);
+        return workerPage;
+      })
+    );
+    const zoom = getMapsZoomForRadius(radius);
+    const searchTerms = getMapSearchTerms(searchKeyword, shouldFindAllBusinesses);
+    const city = `MAP ${originLat.toFixed(4)}, ${originLng.toFixed(4)} • ${radius}km`;
+
+    sendData({ type: 'status', message: `Opening map search for ${savedKeyword} within ${radius}km...` });
+
+    for (const term of searchTerms) {
+      if (isCancelled || saved >= maxLeads) break;
+
+      const query = `${term} near ${originLat},${originLng}`;
+      const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${originLat},${originLng},${zoom}z`;
+
+      sendData({
+        type: 'status',
+        message: shouldFindAllBusinesses
+          ? `Scanning ${term} nearby... saved ${saved}/${maxLeads}.`
+          : `Scanning ${term} nearby...`
+      });
+
+      await page.goto(mapsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForSelector('div[role="feed"]', { timeout: 15000 }).catch(() => { });
+
+      let consecutiveNoResults = 0;
+      const maxDryScrolls = shouldFindAllBusinesses ? 8 : 100;
+      for (let loop = 0; !isCancelled && saved < maxLeads; loop++) {
+        await page.evaluate(async () => {
+          const feed = document.querySelector('div[role="feed"]');
+          if (feed?.lastElementChild) feed.lastElementChild.scrollIntoView();
+          await new Promise(r => setTimeout(r, 1800));
+        });
+
+        const links = await page.evaluate(() => {
+          const selectors = [
+            'a[href*="https://www.google.com/maps/place/"]',
+            'a[href*="/maps/place/"]'
+          ];
+          return selectors.flatMap(selector => Array.from(document.querySelectorAll(selector)).map(a => a.href));
+        });
+
+        const newLinks = [...new Set(links)].filter(link => !processedLinks.has(link));
+        if (newLinks.length === 0) {
+          consecutiveNoResults++;
+          sendData({ type: 'status', message: `Still searching ${term}... saved ${saved}/${maxLeads}.` });
+          if (consecutiveNoResults >= maxDryScrolls) {
+            sendData({ type: 'status', message: `No more fresh ${term} results. Moving ahead...` });
+            break;
+          }
+          if (consecutiveNoResults % 40 === 0) {
+            await page.goto(mapsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => { });
+            await page.waitForSelector('div[role="feed"]', { timeout: 10000 }).catch(() => { });
+            sendData({ type: 'status', message: `Refreshing map search and continuing... saved ${saved}/${maxLeads}.` });
+          }
+          await new Promise(r => setTimeout(r, 2200));
+          continue;
+        }
+
+        consecutiveNoResults = 0;
+        const batch = newLinks.slice(0, Math.max(0, maxLeads - saved));
+        const processMapLink = async (link, workerPage) => {
+          try {
+            const details = await extractGoogleMapsLead(workerPage, link, {
+              noWebsiteOnly: noWebsiteOnly !== 'false',
+              originLat,
+              originLng,
+              radiusKm: radius
+            });
+
+            if (!details || isCancelled || saved >= maxLeads) return;
+
+            const leadData = {
+              ...details,
+              mapsLink: link,
+              keyword: savedKeyword,
+              category: term,
+              city,
+              source: 'map-range',
+              radiusKm: radius
+            };
+
+            await ScrapedLead.findOneAndUpdate(
+              { mapsLink: link },
+              { $set: leadData, $setOnInsert: { createdAt: new Date() } },
+              { upsert: true, new: true }
+            );
+
+            saved++;
+            sendData({ type: 'lead', data: leadData, saved });
+          } catch (e) {
+            console.log("[Map Range] worker error:", e.message);
+          }
+        };
+
+        for (let i = 0; i < batch.length && !isCancelled && saved < maxLeads; i += workerPages.length) {
+          const chunk = batch.slice(i, i + workerPages.length);
+          chunk.forEach(link => processedLinks.add(link));
+          await Promise.all(chunk.map((link, index) => processMapLink(link, workerPages[index])));
+        }
+
+        sendData({ type: 'status', message: `Saved ${saved} leads. Found ${newLinks.length} new ${term} links.` });
+      }
+    }
+
+    if (!isCancelled) {
+      const message = saved >= maxLeads
+        ? `Target complete. Saved ${saved} nearby businesses to Lead Automation CRM.`
+        : `Finished map scan. Saved ${saved} nearby businesses to Lead Automation CRM.`;
+      sendData({ type: 'done', message });
+    }
+  } catch (error) {
+    sendData({ type: 'error', message: error.message });
+  } finally {
+    if (browser) await browser.close().catch(() => { });
+    res.end();
+  }
+});
+
 // --- LEAD SCRAPER API (STREAMING VERSION) ---
 app.get('/api/scrape-leads', async (req, res) => {
   const { keyword, city, mode, sources, igSession, liAt, fbCUser, fbXs } = req.query;
@@ -1503,6 +1807,9 @@ app.get('/api/scrape-leads', async (req, res) => {
             await new Promise(r => setTimeout(r, 500));
 
             const details = await workerPage.evaluate(() => {
+              const pageText = document.body?.innerText || '';
+              if (/permanently\s+closed/i.test(pageText)) return null;
+
               let name = document.querySelector('h1')?.innerText;
               if (!name) {
                 const title = document.title || '';
@@ -2035,9 +2342,9 @@ app.post('/api/whatsapp/send', async (req, res) => {
 
 // WhatsApp Broadcast - send message to multiple contacts
 app.post('/api/whatsapp/broadcast', async (req, res) => {
-  const { phones, message, delay = 3000 } = req.body;
+  const { phones, message, messages, delay = 3000 } = req.body;
   if (!phones || !Array.isArray(phones) || phones.length === 0) return res.status(400).json({ error: 'phones array required' });
-  if (!message) return res.status(400).json({ error: 'message required' });
+  if (!message && (!Array.isArray(messages) || messages.length === 0)) return res.status(400).json({ error: 'message required' });
   if (!waClient || waStatus !== 'connected') return res.status(503).json({ error: 'WhatsApp not connected' });
 
   const results = { sent: 0, failed: 0, skipped: 0, details: [] };
@@ -2051,8 +2358,9 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
     chatMap[chatPhone] = chat;
   }
 
-  for (const phone of phones) {
+  for (const [index, phone] of phones.entries()) {
     const cleanPhone = String(phone).replace(/\D/g, '');
+    const outgoingMessage = Array.isArray(messages) && messages[index] ? String(messages[index]) : message;
     try {
       // Find matching chat
       let targetChat = null;
@@ -2064,9 +2372,9 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
       }
 
       if (targetChat) {
-        await targetChat.sendMessage(message);
+        await targetChat.sendMessage(outgoingMessage);
       } else {
-        await waClient.sendMessage(cleanPhone + '@c.us', message);
+        await waClient.sendMessage(cleanPhone + '@c.us', outgoingMessage);
       }
 
       // Save to DB
@@ -2077,7 +2385,7 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
         ]
       });
       if (lead) {
-        lead.replies.push({ receivedAt: new Date(), subject: 'WhatsApp Broadcast', body: message, type: 'whatsapp', fromMe: true });
+        lead.replies.push({ receivedAt: new Date(), subject: 'WhatsApp Broadcast', body: outgoingMessage, type: 'whatsapp', fromMe: true });
         await lead.save();
       }
 
@@ -2086,7 +2394,7 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
       console.log(`[WhatsApp Broadcast] ✅ Sent to +${cleanPhone}`);
 
       // Delay between messages to avoid rate limiting
-      if (phones.indexOf(phone) < phones.length - 1) {
+      if (index < phones.length - 1) {
         const jitter = Math.floor(Math.random() * 1000); // add up to 1s random jitter
         await new Promise(r => setTimeout(r, delay + jitter));
       }

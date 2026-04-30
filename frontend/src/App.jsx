@@ -101,6 +101,7 @@ const WhatsAppInboxTab = ({ waStatus }) => {
   const [broadcastDelay, setBroadcastDelay] = useState(3);
   const [broadcasting, setBroadcasting] = useState(false);
   const [broadcastResult, setBroadcastResult] = useState(null);
+  const [sendError, setSendError] = useState('');
 
   const fetchConversations = async () => {
     try {
@@ -130,11 +131,12 @@ const WhatsAppInboxTab = ({ waStatus }) => {
     const phone = selected.data?.Phone || selected.email?.replace('@whatsapp.com', '');
     if (!phone) return;
     setSending(true);
+    setSendError('');
     try {
       await axios.post('/api/whatsapp/send', { phone, message: msgInput.trim() });
       setMsgInput('');
       setTimeout(fetchConversations, 1000);
-    } catch (e) { alert('Failed to send: ' + (e.response?.data?.error || e.message)); }
+    } catch (e) { setSendError('Failed to send: ' + (e.response?.data?.error || e.message)); }
     setSending(false);
   };
 
@@ -605,6 +607,20 @@ const WhatsAppInboxTab = ({ waStatus }) => {
 
               {/* Floating Send Box */}
               <div style={{ padding: '20px 30px 30px', background: 'transparent', position: 'relative' }}>
+                {sendError && (
+                  <div style={{
+                    margin: '0 0 10px',
+                    padding: '10px 14px',
+                    borderRadius: '12px',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    border: '1px solid rgba(239, 68, 68, 0.22)',
+                    color: '#ef4444',
+                    fontSize: '0.85rem',
+                    fontWeight: 650
+                  }}>
+                    {sendError}
+                  </div>
+                )}
                 <div style={{
                   background: 'var(--surface)', padding: '8px 8px 8px 24px', borderRadius: '24px',
                   display: 'flex', gap: '12px', alignItems: 'center', border: '1px solid var(--border)',
@@ -677,6 +693,8 @@ const WhatsAppInboxTab = ({ waStatus }) => {
 const EmailChart = ({ recipients }) => {
   const [filter, setFilter] = useState('daily');
   const [mode, setMode] = useState('overall'); // 'emails', 'whatsapp', 'overall'
+  const [chartType, setChartType] = useState('bar');
+  const chartViews = ['bar', 'line', 'area', 'steps', 'dots', 'heat', 'blocks'];
 
   const toStartOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const getDayKey = (date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
@@ -769,6 +787,27 @@ const EmailChart = ({ recipients }) => {
   const maxCount = Math.max(...counts, 10);
   const totalSent = counts.reduce((sum, count) => sum + count, 0);
   const peak = Math.max(...counts, 0);
+  const chartWidth = 640;
+  const chartHeight = 210;
+  const chartPadding = { top: 24, right: 26, bottom: 34, left: 26 };
+  const plotHeight = chartHeight - chartPadding.top - chartPadding.bottom;
+  const plotWidth = chartWidth - chartPadding.left - chartPadding.right;
+  const trendPoints = points.map((point, index) => {
+    const x = chartPadding.left + (points.length <= 1 ? plotWidth / 2 : (plotWidth / (points.length - 1)) * index);
+    const y = chartPadding.top + plotHeight - ((point.count / maxCount) * plotHeight);
+    return { ...point, x, y };
+  });
+  const linePath = trendPoints.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+  const stepPath = trendPoints.map((point, index) => {
+    if (index === 0) return `M ${point.x} ${point.y}`;
+    const previous = trendPoints[index - 1];
+    const midX = (previous.x + point.x) / 2;
+    return `L ${midX} ${previous.y} L ${midX} ${point.y} L ${point.x} ${point.y}`;
+  }).join(' ');
+  const areaPath = trendPoints.length
+    ? `${linePath} L ${trendPoints[trendPoints.length - 1].x} ${chartPadding.top + plotHeight} L ${trendPoints[0].x} ${chartPadding.top + plotHeight} Z`
+    : '';
+  const activeLinePath = chartType === 'steps' ? stepPath : linePath;
 
   return (
     <div className="analytics-card">
@@ -781,7 +820,19 @@ const EmailChart = ({ recipients }) => {
           <span>{totalSent} messages</span>
           <span>{peak} peak</span>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div className="chart-controls">
+          <div className="chart-type-toggle" aria-label="Chart view">
+            {chartViews.map(type => (
+              <button
+                key={type}
+                type="button"
+                className={chartType === type ? 'active' : ''}
+                onClick={() => setChartType(type)}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
           <select 
             value={mode} 
             onChange={e => setMode(e.target.value)}
@@ -804,21 +855,298 @@ const EmailChart = ({ recipients }) => {
         </div>
       </div>
 
-      <div className="chart-shell" style={{ '--chart-columns': points.length }}>
-        <div className="chart-gridline chart-gridline-top"></div>
-        <div className="chart-gridline chart-gridline-mid"></div>
-        {points.map((point) => (
-          <div key={point.key} className="chart-point">
-            <span className="chart-value">{point.count}</span>
-            <div className="chart-bar-track">
-              <div
-                className={`chart-bar ${point.count === peak && point.count > 0 ? 'chart-bar-peak' : ''}`}
-                style={{ height: `${Math.max((point.count / maxCount) * 160, point.count === 0 ? 3 : 8)}px` }}
-              ></div>
+      {(chartType === 'bar' || chartType === 'blocks') ? (
+        <div className="chart-shell" style={{ '--chart-columns': points.length }}>
+          <div className="chart-gridline chart-gridline-top"></div>
+          <div className="chart-gridline chart-gridline-mid"></div>
+          {points.map((point) => (
+            <div key={point.key} className={`chart-point ${point.count === peak && point.count > 0 ? 'is-peak' : ''}`}>
+              <span className="chart-value">{point.count}</span>
+              {chartType === 'blocks' ? (
+                <div className="chart-block-stack">
+                  {Array.from({ length: 8 }).map((_, index) => {
+                    const activeBlocks = Math.ceil((point.count / maxCount) * 8);
+                    const isActive = index >= 8 - activeBlocks && point.count > 0;
+                    return <span key={index} className={isActive ? 'active' : ''}></span>;
+                  })}
+                </div>
+              ) : (
+                <div className="chart-bar-track">
+                  <div
+                    className={`chart-bar ${point.count === peak && point.count > 0 ? 'chart-bar-peak' : ''}`}
+                    style={{ height: `${Math.max((point.count / maxCount) * 178, point.count === 0 ? 2 : 10)}px` }}
+                  ></div>
+                </div>
+              )}
+              <span className="chart-label">{point.label}</span>
             </div>
-            <span className="chart-label">{point.label}</span>
+          ))}
+        </div>
+      ) : chartType === 'heat' ? (
+        <div className="chart-heat-shell" style={{ '--chart-columns': points.length }}>
+          {points.map(point => {
+            const intensity = peak > 0 ? point.count / peak : 0;
+            return (
+              <div
+                key={point.key}
+                className={`heat-cell ${point.count === peak && point.count > 0 ? 'is-peak' : ''}`}
+                style={{ '--heat': intensity }}
+              >
+                <strong>{point.count}</strong>
+                <span>{point.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className={`chart-trend-shell chart-trend-${chartType}`} style={{ '--chart-columns': points.length }}>
+          <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="none" role="img" aria-label={`${chartType} analytics chart`}>
+            <line className="trend-gridline" x1={chartPadding.left} y1={chartPadding.top + plotHeight * 0.28} x2={chartWidth - chartPadding.right} y2={chartPadding.top + plotHeight * 0.28} />
+            <line className="trend-gridline" x1={chartPadding.left} y1={chartPadding.top + plotHeight * 0.62} x2={chartWidth - chartPadding.right} y2={chartPadding.top + plotHeight * 0.62} />
+            <line className="trend-baseline" x1={chartPadding.left} y1={chartPadding.top + plotHeight} x2={chartWidth - chartPadding.right} y2={chartPadding.top + plotHeight} />
+            {chartType === 'area' && <path className="trend-area" d={areaPath} />}
+            {chartType !== 'dots' && <path className="trend-line" d={activeLinePath} />}
+            {trendPoints.map(point => (
+              <g key={point.key}>
+                {chartType === 'dots' && <line className="trend-stem" x1={point.x} y1={point.y} x2={point.x} y2={chartPadding.top + plotHeight} />}
+                <circle className={`trend-dot ${point.count === peak && point.count > 0 ? 'is-peak' : ''}`} cx={point.x} cy={point.y} r={chartType === 'dots' ? '7' : '5'} />
+                <text className={`trend-value ${point.count === peak && point.count > 0 ? 'is-peak' : ''}`} x={point.x} y={Math.max(14, point.y - 12)} textAnchor="middle">{point.count}</text>
+                <text className="trend-label" x={point.x} y={chartHeight - 10} textAnchor="middle">{point.label}</text>
+              </g>
+            ))}
+          </svg>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================================
+
+const MapBusinessFinder = ({
+  keyword,
+  setKeyword,
+  allBusinesses,
+  setAllBusinesses,
+  selectedLocation,
+  setSelectedLocation,
+  radiusKm,
+  setRadiusKm,
+  limit,
+  setLimit,
+  noWebsiteOnly,
+  setNoWebsiteOnly,
+  isSearching,
+  mapLeads,
+  mapStatus,
+  onSearch,
+  onStop,
+  onOpenCrm
+}) => {
+  const [zoom, setZoom] = useState(14);
+  const [locationSearch, setLocationSearch] = useState('');
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const mapRef = React.useRef(null);
+  const tileSize = 256;
+
+  const latLngToWorld = (lat, lng, z) => {
+    const scale = tileSize * 2 ** z;
+    const sinLat = Math.sin((lat * Math.PI) / 180);
+    return {
+      x: ((lng + 180) / 360) * scale,
+      y: (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale
+    };
+  };
+
+  const worldToLatLng = (x, y, z) => {
+    const scale = tileSize * 2 ** z;
+    const lng = (x / scale) * 360 - 180;
+    const n = Math.PI - (2 * Math.PI * y) / scale;
+    const lat = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+    return { lat, lng };
+  };
+
+  const centerWorld = latLngToWorld(selectedLocation.lat, selectedLocation.lng, zoom);
+  const centerTileX = Math.floor(centerWorld.x / tileSize);
+  const centerTileY = Math.floor(centerWorld.y / tileSize);
+  const tileOffsetX = centerWorld.x - centerTileX * tileSize;
+  const tileOffsetY = centerWorld.y - centerTileY * tileSize;
+  const tileRange = [-4, -3, -2, -1, 0, 1, 2, 3, 4];
+
+  const handleMapClick = (e) => {
+    const rect = mapRef.current.getBoundingClientRect();
+    const x = centerWorld.x + (e.clientX - rect.left - rect.width / 2);
+    const y = centerWorld.y + (e.clientY - rect.top - rect.height / 2);
+    const next = worldToLatLng(x, y, zoom);
+    setSelectedLocation({ lat: Number(next.lat.toFixed(6)), lng: Number(next.lng.toFixed(6)), label: 'Selected map point' });
+  };
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setSelectedLocation({
+          lat: Number(pos.coords.latitude.toFixed(6)),
+          lng: Number(pos.coords.longitude.toFixed(6)),
+          label: 'Current location'
+        });
+      },
+      () => { },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const geocodeLocation = async () => {
+    if (!locationSearch.trim() || isGeocoding) return;
+    setIsGeocoding(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(locationSearch.trim())}`);
+      const data = await res.json();
+      if (data?.[0]) {
+        setSelectedLocation({
+          lat: Number(Number(data[0].lat).toFixed(6)),
+          lng: Number(Number(data[0].lon).toFixed(6)),
+          label: data[0].display_name
+        });
+      }
+    } catch (_) { }
+    setIsGeocoding(false);
+  };
+
+  return (
+    <div className="map-workspace">
+      <div className="map-panel">
+        <div className="map-panel-head">
+          <div>
+            <span className="section-kicker">Geo Lead Finder</span>
+            <h3>Map Business Scanner</h3>
           </div>
-        ))}
+          <div className="map-live-chip"><CheckCircle size={15} /> CRM Auto Save</div>
+        </div>
+
+        <div className="map-search-row">
+          <div className="field">
+            <div className="map-field-label-row">
+              <label>Business Type</label>
+              <label className="mini-check">
+                <input type="checkbox" checked={allBusinesses} onChange={e => setAllBusinesses(e.target.checked)} />
+                <span>All Businesses</span>
+              </label>
+            </div>
+            <input
+              value={allBusinesses ? '' : keyword}
+              onChange={e => setKeyword(e.target.value)}
+              placeholder={allBusinesses ? 'Scanning every nearby business' : 'e.g. dentists, cafes, gyms'}
+              disabled={allBusinesses}
+            />
+          </div>
+          <div className="field">
+            <label>Search Location</label>
+            <div className="map-input-action">
+              <input value={locationSearch} onChange={e => setLocationSearch(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') geocodeLocation(); }} placeholder="Type area, city, landmark..." />
+              <button type="button" className="btn-icon" onClick={geocodeLocation} disabled={isGeocoding}>
+                {isGeocoding ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="premium-map" ref={mapRef} onClick={handleMapClick}>
+          <div
+            className="map-tiles"
+            style={{
+              transform: `translate(calc(50% - ${tileOffsetX}px), calc(50% - ${tileOffsetY}px))`
+            }}
+          >
+            {tileRange.flatMap(dx => tileRange.map(dy => {
+              const x = centerTileX + dx;
+              const y = centerTileY + dy;
+              return (
+                <img
+                  key={`${zoom}-${x}-${y}`}
+                  src={`https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`}
+                  alt=""
+                  draggable="false"
+                  style={{ left: `${dx * tileSize}px`, top: `${dy * tileSize}px` }}
+                />
+              );
+            }))}
+          </div>
+          <div className="map-radius-ring" style={{ width: `${Math.min(330, 72 + radiusKm * 12)}px`, height: `${Math.min(330, 72 + radiusKm * 12)}px` }}></div>
+          <div className="map-pin"><MapPin size={34} fill="currentColor" /></div>
+          <div className="map-controls">
+            <button type="button" onClick={(e) => { e.stopPropagation(); setZoom(Math.min(17, zoom + 1)); }}>+</button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); setZoom(Math.max(11, zoom - 1)); }}>-</button>
+          </div>
+          <button type="button" className="map-locate-btn" onClick={(e) => { e.stopPropagation(); useCurrentLocation(); }}>
+            <Target size={15} /> Locate
+          </button>
+        </div>
+
+        <div className="map-coordinate-strip">
+          <span><MapPin size={14} /> {selectedLocation.label}</span>
+          <strong>{selectedLocation.lat}, {selectedLocation.lng}</strong>
+        </div>
+      </div>
+
+      <div className="map-side-card">
+        <div>
+          <span className="section-kicker">Range Setup</span>
+          <h3>Fetch Nearby Businesses</h3>
+        </div>
+
+        <div className="range-control">
+          <div>
+            <label>Radius</label>
+            <strong>{radiusKm} km</strong>
+          </div>
+          <input type="range" min="1" max="50" value={radiusKm} onChange={e => setRadiusKm(Number(e.target.value))} />
+        </div>
+
+        <div className="field">
+          <label>Max Leads</label>
+          <input type="number" min="5" max="200" value={limit} onChange={e => setLimit(Number(e.target.value))} />
+        </div>
+
+        <label className="premium-toggle">
+          <input type="checkbox" checked={noWebsiteOnly} onChange={e => setNoWebsiteOnly(e.target.checked)} />
+          <span></span>
+          No-website businesses only
+        </label>
+
+        {!isSearching ? (
+          <button className="launch-btn map-launch-btn" onClick={onSearch}>
+            <Rocket size={18} /> Fetch & Save to CRM
+          </button>
+        ) : (
+          <button className="launch-btn btn-danger-stop" onClick={onStop}>
+            <Square size={18} fill="currentColor" /> Stop Search
+          </button>
+        )}
+
+        <div className="map-status-box">
+          <span>{isSearching ? 'Scanning live map data' : 'Ready'}</span>
+          <p>{mapStatus || 'Select a map point, choose a range, then fetch businesses.'}</p>
+        </div>
+
+        <div className="map-results-head">
+          <strong>{mapLeads.length} saved this run</strong>
+          <button className="btn-icon" onClick={onOpenCrm}>Open CRM</button>
+        </div>
+
+        <div className="map-results-list">
+          {mapLeads.length === 0 ? (
+            <div className="map-empty-state"><Globe size={26} /> No map leads fetched yet.</div>
+          ) : mapLeads.slice(0, 8).map((lead, idx) => (
+            <div className="map-result-item" key={`${lead.mapsLink || lead.name}-${idx}`}>
+              <div>
+                <strong>{lead.name}</strong>
+                <span>{lead.phone && lead.phone !== 'N/A' ? lead.phone : lead.address}</span>
+              </div>
+              {lead.mapsLink && <a href={lead.mapsLink} target="_blank" rel="noreferrer">Map</a>}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -878,6 +1206,15 @@ function App() {
   const [scrapeMode, setScrapeMode] = useState('no_website');
   const [scrapeSources, setScrapeSources] = useState(['map']);
   const [scrapedLeads, setScrapedLeads] = useState([]);
+  const [mapKeyword, setMapKeyword] = useState('restaurants');
+  const [mapAllBusinesses, setMapAllBusinesses] = useState(false);
+  const [mapLocation, setMapLocation] = useState({ lat: 23.0225, lng: 72.5714, label: 'Ahmedabad, Gujarat' });
+  const [mapRadiusKm, setMapRadiusKm] = useState(5);
+  const [mapLeadLimit, setMapLeadLimit] = useState(60);
+  const [mapNoWebsiteOnly, setMapNoWebsiteOnly] = useState(true);
+  const [mapLeads, setMapLeads] = useState([]);
+  const [mapStatus, setMapStatus] = useState('');
+  const [isMapSearching, setIsMapSearching] = useState(false);
   const [selectedScrapedPhones, setSelectedScrapedPhones] = useState([]);
   const [isScraperBroadcasting, setIsScraperBroadcasting] = useState(false);
   const [scraperWaDelay, setScraperWaDelay] = useState(3);
@@ -924,7 +1261,11 @@ function App() {
 
   // WhatsApp Templates State
   const [whatsappTemplates, setWhatsappTemplates] = useState([]);
-  const [newWaTpl, setNewWaTpl] = useState({ message: '', details: '' });
+  const defaultWaTemplate = {
+    details: 'Business intro',
+    message: 'Hello {{Business}},'
+  };
+  const [newWaTpl, setNewWaTpl] = useState(defaultWaTemplate);
 
   useEffect(() => {
     document.body.className = currentTheme;
@@ -980,7 +1321,7 @@ function App() {
     if (!newWaTpl.message || !newWaTpl.details) return showToast("Both fields are required", "error");
     try {
       await axios.post('/api/whatsapp-templates', newWaTpl);
-      setNewWaTpl({ message: '', details: '' });
+      setNewWaTpl(defaultWaTemplate);
       fetchWhatsappTemplates();
       showToast("WhatsApp Template added!");
     } catch (err) { showToast("Failed to add template", "error"); }
@@ -1002,6 +1343,41 @@ function App() {
     } catch (err) { }
   };
 
+  const escapeTemplateKey = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const getLeadTemplateVars = (lead = {}) => {
+    const data = lead.data || {};
+    const name = data['Name'] || data['Business Name'] || data.Business || data.name || lead.name || lead.whatsappName || '';
+    const phone = data.Phone || data.phone || lead.phone || lead.email?.replace('@whatsapp.com', '') || '';
+    return {
+      ...data,
+      Name: name,
+      name,
+      'First Name': data['First Name'] || name,
+      Business: data.Business || data['Business Name'] || data.Name || lead.business || lead.name || name,
+      'Business Name': data['Business Name'] || data.Business || data.Name || lead.business || lead.name || name,
+      Phone: phone,
+      phone,
+      City: data.City || data.city || lead.city || '',
+      city: data.city || data.City || lead.city || '',
+      Address: data.Address || data.address || lead.address || '',
+      address: data.address || data.Address || lead.address || '',
+      Email: data.Email || data.email || lead.email || '',
+      email: data.email || data.Email || lead.email || ''
+    };
+  };
+
+  const renderTemplateMessage = (template, lead) => {
+    let message = template || '';
+    const vars = getLeadTemplateVars(lead);
+    Object.entries(vars).forEach(([key, value]) => {
+      const safeKey = escapeTemplateKey(key);
+      const regex = new RegExp(`\\{+\\s*${safeKey}\\s*\\}+`, 'gi');
+      message = message.replace(regex, value || '');
+    });
+    return message;
+  };
+
   const handleWhatsappReply = (leadEmail) => {
     const activeTpl = whatsappTemplates.find(t => t.isActive);
     if (!activeTpl) {
@@ -1019,15 +1395,7 @@ function App() {
 
     const cleanPhone = phone.replace(/\D/g, '');
 
-    // Process variables in the message
-    let finalMsg = activeTpl.message;
-    if (lead?.data) {
-      Object.keys(lead.data).forEach(key => {
-        const regex = new RegExp(`{{${key}}}`, 'g'); // Support {{Var}}
-        const regex2 = new RegExp(`{${key}}`, 'g');  // Support {Var}
-        finalMsg = finalMsg.replace(regex, lead.data[key] || '').replace(regex2, lead.data[key] || '');
-      });
-    }
+    const finalMsg = renderTemplateMessage(activeTpl.message, lead);
 
     // Show modal with message so user can copy and open WhatsApp
     setWaModal({ open: true, phone: cleanPhone, message: finalMsg });
@@ -1223,6 +1591,71 @@ function App() {
       window.location.reload();
     }, 1000);
   };
+
+  const handleMapBusinessSearch = () => {
+    if (!mapAllBusinesses && !mapKeyword.trim()) return showToast("Business type is required", "error");
+    if (!mapLocation?.lat || !mapLocation?.lng) return showToast("Select a map location first", "error");
+
+    setIsMapSearching(true);
+    setMapLeads([]);
+    setMapStatus('Starting map range scan...');
+    showToast("Map scanner started. Leads will save directly to CRM.", "success");
+
+    const params = new URLSearchParams({
+      keyword: mapAllBusinesses ? 'businesses' : mapKeyword.trim(),
+      allBusinesses: String(mapAllBusinesses),
+      lat: String(mapLocation.lat),
+      lng: String(mapLocation.lng),
+      radiusKm: String(mapRadiusKm),
+      limit: String(mapLeadLimit),
+      noWebsiteOnly: String(mapNoWebsiteOnly)
+    });
+
+    const eventSource = new EventSource(`/api/map-businesses?${params.toString()}`);
+    window.currentMapBusinessES = eventSource;
+
+    eventSource.onmessage = (event) => {
+      try {
+        const parsed = JSON.parse(event.data);
+        if (parsed.type === 'lead') {
+          setMapLeads(prev => [...prev, parsed.data]);
+          setMapStatus(`Saved ${parsed.saved || ''} businesses to CRM...`);
+        } else if (parsed.type === 'status') {
+          setMapStatus(parsed.message);
+        } else if (parsed.type === 'done') {
+          setMapStatus(parsed.message);
+          showToast(parsed.message, "success");
+          eventSource.close();
+          setIsMapSearching(false);
+          fetchSavedLeads();
+        } else if (parsed.type === 'error') {
+          setMapStatus(parsed.message);
+          showToast("Map error: " + parsed.message, "error");
+          eventSource.close();
+          setIsMapSearching(false);
+        }
+      } catch (err) {
+        console.error("Failed to parse map SSE:", err);
+      }
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
+      setIsMapSearching(false);
+      setMapStatus('Map scanner connection closed.');
+    };
+  };
+
+  const stopMapBusinessSearch = () => {
+    if (window.currentMapBusinessES) {
+      window.currentMapBusinessES.close();
+      window.currentMapBusinessES = null;
+    }
+    setIsMapSearching(false);
+    setMapStatus('Map search stopped.');
+    fetchSavedLeads();
+  };
+
   const handleDeleteGroup = async (keyword, city) => {
     setConfirmModal({
       open: true,
@@ -1538,6 +1971,9 @@ function App() {
           <div className={`nav-item ${activeTab === 'scraper' ? 'active' : ''}`} onClick={() => { switchTab('scraper'); setIsMobileMenuOpen(false); }}>
             <SearchIcon /> Lead Scraper
           </div>
+          <div className={`nav-item ${activeTab === 'map_finder' ? 'active' : ''}`} onClick={() => { switchTab('map_finder'); setIsMobileMenuOpen(false); }}>
+            <MapPin size={20} /> Map Finder
+          </div>
           <div className={`nav-item ${activeTab === 'email_finder' ? 'active' : ''}`} onClick={() => { switchTab('email_finder'); setIsMobileMenuOpen(false); fetchSavedLeads(); }}>
             <TargetIcon /> Email Enricher
           </div>
@@ -1584,7 +2020,7 @@ function App() {
         <header className="top-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)}><MenuIcon /></button>
-            <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'whatsapp_settings' ? 'WhatsApp Settings' : activeTab === 'whatsapp_linker' ? 'WhatsApp Linker' : activeTab === 'whatsapp_inbox' ? 'WhatsApp Inbox' : activeTab === 'variables' ? 'Variable Manager' : activeTab === 'logs' ? 'Delivery Logs' : activeTab === 'replied_leads' ? 'Replied Leads' : activeTab === 'scraper' ? 'Lead Scraper' : activeTab === 'email_finder' ? 'Email Enricher' : activeTab === 'saved_leads' ? 'Lead Automation CRM' : 'Archive'}</h2>
+            <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'whatsapp_settings' ? 'WhatsApp Settings' : activeTab === 'whatsapp_linker' ? 'WhatsApp Linker' : activeTab === 'whatsapp_inbox' ? 'WhatsApp Inbox' : activeTab === 'variables' ? 'Variable Manager' : activeTab === 'logs' ? 'Delivery Logs' : activeTab === 'replied_leads' ? 'Replied Leads' : activeTab === 'scraper' ? 'Lead Scraper' : activeTab === 'map_finder' ? 'Map Finder' : activeTab === 'email_finder' ? 'Email Enricher' : activeTab === 'saved_leads' ? 'Lead Automation CRM' : 'Archive'}</h2>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <select
@@ -1717,6 +2153,29 @@ function App() {
                 </div>
               </div>
             </>
+          )}
+
+          {activeTab === 'map_finder' && (
+            <MapBusinessFinder
+              keyword={mapKeyword}
+              setKeyword={setMapKeyword}
+              allBusinesses={mapAllBusinesses}
+              setAllBusinesses={setMapAllBusinesses}
+              selectedLocation={mapLocation}
+              setSelectedLocation={setMapLocation}
+              radiusKm={mapRadiusKm}
+              setRadiusKm={setMapRadiusKm}
+              limit={mapLeadLimit}
+              setLimit={setMapLeadLimit}
+              noWebsiteOnly={mapNoWebsiteOnly}
+              setNoWebsiteOnly={setMapNoWebsiteOnly}
+              isSearching={isMapSearching}
+              mapLeads={mapLeads}
+              mapStatus={mapStatus}
+              onSearch={handleMapBusinessSearch}
+              onStop={stopMapBusinessSearch}
+              onOpenCrm={() => { fetchSavedLeads(); switchTab('saved_leads'); }}
+            />
           )}
 
           {activeTab === 'scraper' && (
@@ -2000,9 +2459,12 @@ function App() {
                   <textarea
                     value={newWaTpl.message}
                     onChange={e => setNewWaTpl({ ...newWaTpl, message: e.target.value })}
-                    placeholder="Enter your WhatsApp message here..."
+                    placeholder="Hi {{First Name}}, I came across {{Business}} and wanted to share a quick idea..."
                     style={{ height: '150px' }}
                   ></textarea>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.45rem' }}>
+                    Variables supported: {'{{First Name}}'}, {'{{Business}}'}, {'{{Phone}}'}, {'{{City}}'}, {'{{Address}}'} and your custom lead fields.
+                  </p>
                 </div>
                 <button className="launch-btn" onClick={handleAddWhatsappTemplate}>
                   <Save size={18} /> Save Template
@@ -3234,11 +3696,11 @@ function App() {
                                   onClick={() => {
                                     const selectedLeads = groupLeads.filter(l => selectedIds.includes(l._id) && l.phone && l.phone !== 'N/A');
                                     const phones = selectedLeads.map(l => l.phone.replace(/\D/g, ''));
-                                    if (phones.length === 0) return alert('No leads with valid phone numbers selected!');
+                                    if (phones.length === 0) return showToast('No leads with valid phone numbers selected!', 'error');
 
                                     const activeWaTpl = whatsappTemplates.find(t => t.isActive);
-                                    if (!activeWaTpl) return alert("Please activate a WhatsApp template in WhatsApp Settings first!");
-                                    if (waStatus !== 'connected') return alert("WhatsApp is not connected!");
+                                    if (!activeWaTpl) return showToast("Please activate a WhatsApp template in WhatsApp Settings first!", 'error');
+                                    if (waStatus !== 'connected') return showToast("WhatsApp is not connected!", 'error');
 
                                     setConfirmModal({
                                       open: true,
@@ -3249,9 +3711,10 @@ function App() {
                                           const res = await axios.post('/api/whatsapp/broadcast', {
                                             phones: phones,
                                             message: activeWaTpl.message,
+                                            messages: selectedLeads.map(lead => renderTemplateMessage(activeWaTpl.message, lead)),
                                             delay: scraperWaDelay * 1000 || 3000
                                           });
-                                          alert(`✅ Sent: ${res.data.sent} | ❌ Failed: ${res.data.failed}`);
+                                          showToast(`WhatsApp done. Sent: ${res.data.sent} | Failed: ${res.data.failed}`, res.data.failed ? 'info' : 'success');
                                           setSelectedIds([]);
 
                                           if (res.data.details) {
@@ -3265,7 +3728,7 @@ function App() {
                                           }
 
                                         } catch (err) {
-                                          alert('WA Broadcast failed: ' + (err.response?.data?.error || err.message));
+                                          showToast('WA Broadcast failed: ' + (err.response?.data?.error || err.message), 'error');
                                         } finally { setIsScraperBroadcasting(false); }
                                       }
                                     });
@@ -3397,7 +3860,7 @@ function App() {
                                               onClick={() => {
                                                 const activeTpl = whatsappTemplates.find(t => t.isActive);
                                                 const cleanPhone = lead.phone.replace(/\D/g, '');
-                                                let msg = activeTpl ? activeTpl.message : '';
+                                                let msg = activeTpl ? renderTemplateMessage(activeTpl.message, lead) : '';
                                                 setWaModal({ open: true, phone: cleanPhone, message: msg });
                                               }}
                                               style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', padding: '2px' }}
