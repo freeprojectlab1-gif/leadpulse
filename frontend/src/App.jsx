@@ -1394,7 +1394,7 @@ function App() {
             <UsersIcon /> Lead Automation CRM
           </div>
           <div className={`nav-item ${activeTab === 'replied_leads' ? 'active' : ''}`} onClick={() => { switchTab('replied_leads'); setIsMobileMenuOpen(false); }}>
-            <MessageSquare size={16} /> Replied Leads
+            <MessageSquare size={16} />Email Replied Leads
           </div>
           <div className={`nav-item ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => { switchTab('logs'); setIsMobileMenuOpen(false); }}>
             <HistoryIcon /> Delivery Logs
@@ -1463,20 +1463,32 @@ function App() {
                   <span className="stat-value">{recipients.length}</span>
                 </div>
                 <div className="stat-card">
-                  <span className="stat-label">Active</span>
+                  <span className="stat-label">Email Leads</span>
+                  <span className="stat-value" style={{ color: 'var(--primary)' }}>{recipients.filter(r => !r.email?.includes('@whatsapp.com')).length}</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-label">WhatsApp Leads</span>
+                  <span className="stat-value" style={{ color: '#25D366' }}>{recipients.filter(r => r.replies && r.replies.some(rep => rep.type === 'whatsapp' && rep.fromMe)).length}</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-label">Active Emails</span>
                   <span className="stat-value" style={{ color: 'var(--primary)' }}>{getStatCount('pending') + getStatCount('Step 1 Sent') + getStatCount('Step 2 Sent')}</span>
                 </div>
                 <div className="stat-card">
-                  <span className="stat-label">Active Replied</span>
-                  <span className="stat-value" style={{ color: 'var(--success)' }}>{getStatCount('replied')}</span>
+                  <span className="stat-label">Emails Replied</span>
+                  <span className="stat-value" style={{ color: 'var(--success)' }}>{recipients.filter(r => r.status === 'replied' && !r.email?.includes('@whatsapp.com')).length}</span>
                 </div>
                 <div className="stat-card">
-                  <span className="stat-label">Finished</span>
+                  <span className="stat-label">Emails Finished</span>
                   <span className="stat-value" style={{ color: 'var(--text-muted)' }}>{getStatCount('finished')}</span>
                 </div>
                 <div className="stat-card" style={{ borderLeft: '4px solid #ef4444' }}>
-                  <span className="stat-label" style={{ color: '#ef4444' }}>Stopped</span>
+                  <span className="stat-label" style={{ color: '#ef4444' }}>Emails Stopped</span>
                   <span className="stat-value" style={{ color: '#ef4444' }}>{getStatCount('stopped')}</span>
+                </div>
+                <div className="stat-card" style={{ borderLeft: '4px solid #ef4444' }}>
+                  <span className="stat-label" style={{ color: '#ef4444' }}>Failed</span>
+                  <span className="stat-value" style={{ color: '#ef4444' }}>{getStatCount('failed')}</span>
                 </div>
               </div>
 
@@ -2342,7 +2354,7 @@ function App() {
             <div className="content-area">
               <div className="log-card">
                 <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-                  <h3 style={{ margin: 0 }}>Replied Leads</h3>
+                  <h3 style={{ margin: 0 }}>Email Replied Leads</h3>
                   <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>All leads who have responded to your emails.</p>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
