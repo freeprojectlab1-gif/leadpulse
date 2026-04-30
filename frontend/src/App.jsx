@@ -42,7 +42,8 @@ import {
   Clock,
   Target,
   ShieldCheck,
-  Check
+  Check,
+  CheckCheck
 } from 'lucide-react';
 
 // --- ICONS (SVG) ---
@@ -93,14 +94,22 @@ const WhatsAppInboxTab = ({ waStatus }) => {
   const [search, setSearch] = useState('');
   const chatEndRef = React.useRef(null);
 
+  // Broadcast mode
+  const [broadcastMode, setBroadcastMode] = useState(false);
+  const [selectedPhones, setSelectedPhones] = useState([]);
+  const [broadcastMsg, setBroadcastMsg] = useState('');
+  const [broadcastDelay, setBroadcastDelay] = useState(3);
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [broadcastResult, setBroadcastResult] = useState(null);
+
   const fetchConversations = async () => {
     try {
       const res = await axios.get('/api/recipients?limit=200');
       const all = (res.data.recipients || res.data || []);
       const waLeads = all.filter(r => r.replies && r.replies.some(x => x.type === 'whatsapp'));
       waLeads.sort((a, b) => {
-        const aLast = Math.max(...a.replies.filter(x=>x.type==='whatsapp').map(x=>new Date(x.receivedAt)));
-        const bLast = Math.max(...b.replies.filter(x=>x.type==='whatsapp').map(x=>new Date(x.receivedAt)));
+        const aLast = Math.max(...a.replies.filter(x => x.type === 'whatsapp').map(x => new Date(x.receivedAt)));
+        const bLast = Math.max(...b.replies.filter(x => x.type === 'whatsapp').map(x => new Date(x.receivedAt)));
         return bLast - aLast;
       });
       setConversations(waLeads);
@@ -108,7 +117,7 @@ const WhatsAppInboxTab = ({ waStatus }) => {
         const updated = waLeads.find(r => r._id === selected._id);
         if (updated) setSelected(updated);
       }
-    } catch(e) {}
+    } catch (e) { }
     setLoading(false);
   };
 
@@ -118,134 +127,546 @@ const WhatsAppInboxTab = ({ waStatus }) => {
 
   const sendMessage = async () => {
     if (!msgInput.trim() || !selected || sending) return;
-    const phone = selected.data?.Phone || selected.email?.replace('@whatsapp.com','');
+    const phone = selected.data?.Phone || selected.email?.replace('@whatsapp.com', '');
     if (!phone) return;
     setSending(true);
     try {
       await axios.post('/api/whatsapp/send', { phone, message: msgInput.trim() });
       setMsgInput('');
-      setTimeout(fetchConversations, 2000);
-    } catch(e) { alert('Failed to send: ' + (e.response?.data?.error || e.message)); }
+      setTimeout(fetchConversations, 1000);
+    } catch (e) { alert('Failed to send: ' + (e.response?.data?.error || e.message)); }
     setSending(false);
   };
 
-  const getName = (r) => r.data?.['First Name'] || r.data?.name || r.email?.replace('@whatsapp.com','') || 'Unknown';
-  const getPhone = (r) => r.data?.Phone || r.email?.replace('@whatsapp.com','') || '';
-  const getWaMsgs = (r) => (r.replies || []).filter(x => x.type === 'whatsapp').sort((a,b) => new Date(a.receivedAt)-new Date(b.receivedAt));
-  const getLastMsg = (r) => { const msgs = getWaMsgs(r); return msgs[msgs.length-1]; };
-  const formatTime = (d) => { if (!d) return ''; const dt = new Date(d); const now = new Date(); const diff = now - dt; if (diff < 86400000) return dt.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}); return dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}); };
+  const togglePhone = (phone) => {
+    setSelectedPhones(prev =>
+      prev.includes(phone) ? prev.filter(p => p !== phone) : [...prev, phone]
+    );
+  };
+
+  const sendBroadcast = async () => {
+    if (!broadcastMsg.trim() || selectedPhones.length === 0 || broadcasting) return;
+    setBroadcasting(true);
+    setBroadcastResult(null);
+    try {
+      const res = await axios.post('/api/whatsapp/broadcast', {
+        phones: selectedPhones,
+        message: broadcastMsg.trim(),
+        delay: broadcastDelay * 1000
+      });
+      setBroadcastResult(res.data);
+      setTimeout(fetchConversations, 2000);
+    } catch (e) {
+      setBroadcastResult({ error: e.response?.data?.error || e.message });
+    }
+    setBroadcasting(false);
+  };
+
+  const getName = (r) => {
+    // Priority: Saved Name -> WhatsApp Name -> Formatted Phone -> ID
+    const fn = r.data?.['First Name'] || r.data?.name || r.whatsappName;
+    if (fn && fn !== 'WhatsApp User' && fn !== 'Unknown' && !fn.includes('@')) return fn;
+
+    const phone = r.data?.Phone || r.email?.replace('@whatsapp.com', '');
+    return phone ? ('+' + phone) : 'Unknown User';
+  };
+
+  const getPhone = (r) => {
+    const p = r.data?.Phone || r.email?.replace('@whatsapp.com', '');
+    if (!p) return '';
+    return p.length > 15 ? 'Linked Device' : p;
+  };
+  const getWaMsgs = (r) => (r.replies || []).filter(x => x.type === 'whatsapp').sort((a, b) => new Date(a.receivedAt) - new Date(b.receivedAt));
+  const getLastMsg = (r) => { const msgs = getWaMsgs(r); return msgs[msgs.length - 1]; };
+  const formatTime = (d) => {
+    if (!d) return '';
+    const dt = new Date(d);
+    const now = new Date();
+    const diff = now - dt;
+    if (diff < 86400000) return dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    if (diff < 172800000) return 'Yesterday';
+    return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+  };
   const filtered = conversations.filter(r => getName(r).toLowerCase().includes(search.toLowerCase()) || getPhone(r).includes(search));
 
+  // Premium Palette based on WhatsApp Emerald but adjusted for LeadPulse
+  const primaryBrand = '#10b981'; // Emerald 500
+  const primaryHover = '#059669'; // Emerald 600
+
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 80px)', background: 'var(--surface)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+    <div style={{
+      display: 'flex',
+      height: 'calc(100vh - 100px)',
+      background: 'var(--surface)',
+      borderRadius: '24px',
+      overflow: 'hidden',
+      border: '1px solid var(--border)',
+      boxShadow: '0 20px 50px rgba(0,0,0,0.1)',
+      position: 'relative',
+      margin: '0 20px 20px'
+    }}>
 
       {/* LEFT: Conversation List */}
-      <div style={{ width: '340px', minWidth: '280px', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+      <div style={{
+        width: '380px',
+        minWidth: '320px',
+        borderRight: '1px solid var(--border)',
+        display: 'flex',
+        flexDirection: 'column',
+        background: 'var(--bg)',
+        zIndex: 10
+      }}>
         {/* Header */}
-        <div style={{ padding: '20px 16px 12px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: waStatus === 'connected' ? '#25D366' : '#ef4444', flexShrink: 0 }} />
-            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>WhatsApp Inbox</h3>
-            <span style={{ marginLeft: 'auto', background: '#25D366', color: '#fff', borderRadius: '20px', padding: '2px 10px', fontSize: '0.75rem', fontWeight: 700 }}>{conversations.length}</span>
+        <div style={{ padding: '24px 20px 16px', background: 'var(--bg)', position: 'sticky', top: 0, zIndex: 5 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', color: primaryBrand
+              }}>
+                <MessageSquare size={22} />
+              </div>
+              <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+                {broadcastMode ? 'Broadcast' : 'Inbox'}
+              </h2>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {broadcastMode && (
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: primaryBrand }}>
+                  {selectedPhones.length} selected
+                </span>
+              )}
+              <button
+                onClick={() => { setBroadcastMode(!broadcastMode); setSelectedPhones([]); setBroadcastResult(null); }}
+                style={{
+                  padding: '6px 14px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem',
+                  background: broadcastMode ? primaryBrand : 'var(--surface)',
+                  color: broadcastMode ? '#fff' : 'var(--text-muted)',
+                  border: `1px solid ${broadcastMode ? primaryBrand : 'var(--border)'}`,
+                  transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px'
+                }}
+              >
+                📣 {broadcastMode ? 'Cancel' : 'Broadcast'}
+              </button>
+              {!broadcastMode && (
+                <div style={{
+                  padding: '6px 12px', borderRadius: '10px', background: 'var(--surface)', border: '1px solid var(--border)',
+                  fontSize: '0.8rem', fontWeight: 600, color: primaryBrand
+                }}>
+                  {conversations.length} Contacts
+                </div>
+              )}
+            </div>
           </div>
+          {broadcastMode && conversations.length > 0 && (
+            <div style={{ marginBottom: '8px', display: 'flex', gap: '8px' }}>
+              <button onClick={() => setSelectedPhones(filtered.map(r => r.data?.Phone || r.email?.replace('@whatsapp.com', '')))} style={{
+                fontSize: '0.78rem', fontWeight: 600, padding: '4px 10px', borderRadius: '8px', border: '1px solid var(--border)',
+                background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer'
+              }}>Select All ({filtered.length})</button>
+              <button onClick={() => setSelectedPhones([])} style={{
+                fontSize: '0.78rem', fontWeight: 600, padding: '4px 10px', borderRadius: '8px', border: '1px solid var(--border)',
+                background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer'
+              }}>Clear</button>
+            </div>
+          )}
           <div style={{ position: 'relative' }}>
-            <Search size={15} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search conversations..." style={{ width: '100%', padding: '8px 10px 8px 32px', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--surface)', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }} />
+            <Search size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', opacity: 0.7 }} />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search contacts or numbers..."
+              style={{
+                width: '100%', padding: '14px 14px 14px 44px', borderRadius: '16px', border: '1px solid var(--border)',
+                background: 'var(--surface)', color: 'var(--text-main)', fontSize: '0.95rem', outline: 'none',
+                boxSizing: 'border-box', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+              }}
+            />
           </div>
         </div>
 
-        {/* Conversations */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        {/* Conversations Scroll Area */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 10px 20px' }}>
           {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><Loader2 size={24} className="animate-spin" style={{ color: '#25D366' }} /></div>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '100px 0' }}>
+              <Loader2 size={32} className="animate-spin" style={{ color: primaryBrand }} />
+            </div>
           ) : filtered.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
-              <MessageSquare size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
-              <p style={{ margin: 0, fontSize: '0.9rem' }}>No WhatsApp conversations yet</p>
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+              <div style={{ opacity: 0.2, marginBottom: '16px' }}><MessageSquare size={64} /></div>
+              <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 500 }}>No chats found</p>
+              <p style={{ margin: '8px 0 0', fontSize: '0.9rem', opacity: 0.7 }}>Incoming messages will appear here.</p>
             </div>
           ) : filtered.map(r => {
             const lastMsg = getLastMsg(r);
             const isActive = selected?._id === r._id;
+            const waMsgs = getWaMsgs(r);
+            const phone = r.data?.Phone || r.email?.replace('@whatsapp.com', '');
+            const isChecked = selectedPhones.includes(phone);
             return (
-              <div key={r._id} onClick={() => setSelected(r)} style={{ padding: '14px 16px', display: 'flex', gap: '12px', alignItems: 'center', cursor: 'pointer', background: isActive ? 'rgba(37,211,102,0.08)' : 'transparent', borderLeft: isActive ? '3px solid #25D366' : '3px solid transparent', transition: 'all 0.15s' }}>
-                {/* Avatar */}
-                <div style={{ width: 46, height: 46, borderRadius: '50%', background: `hsl(${getName(r).charCodeAt(0)*7 % 360},60%,65%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '1.1rem', flexShrink: 0 }}>
-                  {getName(r)[0]?.toUpperCase()}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
-                    <span style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '160px' }}>{getName(r)}</span>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flexShrink: 0 }}>{formatTime(lastMsg?.receivedAt)}</span>
+              <div
+                key={r._id}
+                onClick={() => broadcastMode ? togglePhone(phone) : setSelected(r)}
+                style={{
+                  padding: '16px 12px', margin: '4px 0', borderRadius: '16px', display: 'flex', gap: '16px',
+                  alignItems: 'center', cursor: 'pointer', position: 'relative',
+                  background: broadcastMode && isChecked ? 'rgba(16,185,129,0.08)' : isActive ? 'var(--surface)' : 'transparent',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: isActive && !broadcastMode ? '0 10px 25px rgba(0,0,0,0.05)' : 'none',
+                  border: broadcastMode && isChecked ? `1px solid ${primaryBrand}` : isActive ? '1px solid var(--border)' : '1px solid transparent'
+                }}
+              >
+                {/* Avatar with dynamic color and status ring */}
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <div style={{
+                    width: '56px', height: '56px', borderRadius: '18px',
+                    background: r.profilePic ? 'transparent' : `linear-gradient(135deg, hsl(${getName(r).charCodeAt(0) * 13 % 360}, 70%, 60%), hsl(${getName(r).charCodeAt(0) * 13 % 360}, 80%, 45%))`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+                    fontWeight: 700, fontSize: '1.4rem', boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+                    overflow: 'hidden'
+                  }}>
+                    {r.profilePic ? (
+                      <img src={r.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      getName(r)[0]?.toUpperCase()
+                    )}
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lastMsg?.body || <em>Media message</em>}</div>
+                  {broadcastMode ? (
+                    <div style={{
+                      position: 'absolute', inset: 0, borderRadius: '18px', background: isChecked ? 'rgba(16,185,129,0.85)' : 'rgba(0,0,0,0.2)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+                    }}>
+                      {isChecked && <CheckCheck size={22} color="#fff" />}
+                    </div>
+                  ) : (
+                    <div style={{
+                      position: 'absolute', bottom: -2, right: -2, width: '16px', height: '16px',
+                      borderRadius: '50%', background: primaryBrand, border: '3px solid var(--bg)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }} />
+                  )}
                 </div>
-                <div style={{ background: '#25D366', color: '#fff', borderRadius: '50%', width: 20, height: 20, fontSize: '0.7rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {getWaMsgs(r).length}
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{
+                      fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                    }}>{getName(r)}</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-muted)', opacity: 0.8 }}>{formatTime(lastMsg?.receivedAt)}</span>
+                  </div>
+                  <div style={{
+                    fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 400,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    display: 'flex', alignItems: 'center', gap: '4px'
+                  }}>
+                    {lastMsg?.fromMe && <Check size={14} style={{ color: primaryBrand }} />}
+                    {lastMsg?.body || <em style={{ opacity: 0.6 }}>Media attachment</em>}
+                  </div>
                 </div>
+
+                {broadcastMode ? (
+                  <div style={{
+                    width: '22px', height: '22px', borderRadius: '6px', flexShrink: 0,
+                    border: `2px solid ${isChecked ? primaryBrand : 'var(--border)'}`,
+                    background: isChecked ? primaryBrand : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+                  }}>
+                    {isChecked && <Check size={14} color="#fff" />}
+                  </div>
+                ) : waMsgs.length > 0 && !isActive && (
+                  <div style={{
+                    minWidth: '22px', height: '22px', borderRadius: '8px', background: primaryBrand,
+                    color: '#fff', fontSize: '0.75rem', fontWeight: 800, display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', padding: '0 6px',
+                    boxShadow: `0 4px 10px rgba(16, 185, 129, 0.3)`
+                  }}>
+                    {waMsgs.length}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* RIGHT: Chat View */}
-      {selected ? (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#e5ddd5' }}>
-          {/* Chat Header */}
-          <div style={{ background: '#075E54', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{ width: 42, height: 42, borderRadius: '50%', background: `hsl(${getName(selected).charCodeAt(0)*7 % 360},60%,65%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '1.1rem' }}>
-              {getName(selected)[0]?.toUpperCase()}
-            </div>
-            <div>
-              <div style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>{getName(selected)}</div>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.78rem' }}>+{getPhone(selected)}</div>
-            </div>
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-              <button onClick={() => window.open(`https://wa.me/${getPhone(selected)}`, '_blank')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: '10px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>Open in WA ↗</button>
-              <button onClick={() => setSelected(null)} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: '10px', padding: '6px 10px', cursor: 'pointer' }}><X size={16} /></button>
-            </div>
-          </div>
-
-          {/* Messages */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px', backgroundImage: 'url("https://web.whatsapp.com/img/bg-chat-tile-dark_04fcacde539c58cca6745483d4858c52.png")', backgroundSize: '320px' }}>
-            {getWaMsgs(selected).map((msg, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: msg.fromMe ? 'flex-end' : 'flex-start' }}>
-                <div style={{ maxWidth: '65%', background: msg.fromMe ? '#dcf8c6' : '#fff', borderRadius: msg.fromMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px', padding: '8px 14px 6px', boxShadow: '0 1px 2px rgba(0,0,0,0.12)' }}>
-                  {!msg.fromMe && <div style={{ fontSize: '0.72rem', color: '#25D366', fontWeight: 700, marginBottom: 2 }}>+{getPhone(selected)}</div>}
-                  <div style={{ fontSize: '0.88rem', color: '#111', lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{msg.body || <em style={{color:'#888'}}>Media</em>}</div>
-                  <div style={{ fontSize: '0.68rem', color: '#888', textAlign: 'right', marginTop: 3 }}>{formatTime(msg.receivedAt)}</div>
-                </div>
+      {/* RIGHT: Broadcast Composer OR Chat View */}
+      {broadcastMode ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg)', padding: '32px' }}>
+          <div style={{
+            background: 'var(--surface)', borderRadius: '20px', border: '1px solid var(--border)',
+            padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.08)', maxWidth: '700px', width: '100%', margin: '0 auto'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '52px', height: '52px', borderRadius: '16px', background: 'rgba(16,185,129,0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem'
+              }}>📣</div>
+              <div>
+                <h2 style={{ margin: 0, fontWeight: 800, fontSize: '1.5rem', color: 'var(--text-main)' }}>WhatsApp Broadcast</h2>
+                <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  {selectedPhones.length === 0 ? 'Select contacts from the left to get started' : `Sending to ${selectedPhones.length} contact${selectedPhones.length > 1 ? 's' : ''}`}
+                </p>
               </div>
-            ))}
-            <div ref={chatEndRef} />
-          </div>
+            </div>
 
-          {/* Send Box */}
-          <div style={{ background: '#f0f0f0', padding: '12px 16px', display: 'flex', gap: '10px', alignItems: 'center', borderTop: '1px solid #ddd' }}>
-            <input
-              value={msgInput}
-              onChange={e => setMsgInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-              placeholder={waStatus === 'connected' ? "Type a message..." : "⚠️ WhatsApp not connected"}
-              disabled={waStatus !== 'connected'}
-              style={{ flex: 1, padding: '12px 16px', borderRadius: '24px', border: '1px solid #ddd', outline: 'none', fontSize: '0.9rem', background: '#fff', resize: 'none' }}
-            />
+            {selectedPhones.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {selectedPhones.map(p => {
+                  const lead = conversations.find(r => (r.data?.Phone || r.email?.replace('@whatsapp.com', '')) === p);
+                  const name = lead ? getName(lead) : '+' + p;
+                  return (
+                    <div key={p} style={{
+                      display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px',
+                      borderRadius: '20px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)',
+                      fontSize: '0.82rem', fontWeight: 600, color: primaryBrand
+                    }}>
+                      {name}
+                      <span onClick={() => togglePhone(p)} style={{ cursor: 'pointer', opacity: 0.7, marginLeft: '2px' }}>✕</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div>
+              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>MESSAGE</label>
+              <textarea
+                value={broadcastMsg}
+                onChange={e => setBroadcastMsg(e.target.value)}
+                placeholder="Type your broadcast message here..."
+                rows={5}
+                style={{
+                  width: '100%', padding: '16px', borderRadius: '14px', border: '1px solid var(--border)',
+                  background: 'var(--bg)', color: 'var(--text-main)', fontSize: '1rem', resize: 'vertical',
+                  outline: 'none', fontFamily: 'inherit', lineHeight: 1.6, boxSizing: 'border-box'
+                }}
+              />
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', textAlign: 'right' }}>
+                {broadcastMsg.length} chars
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>DELAY BETWEEN MSGS</label>
+              <input
+                type="number" min={1} max={30} value={broadcastDelay}
+                onChange={e => setBroadcastDelay(Number(e.target.value))}
+                style={{
+                  width: '80px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)',
+                  background: 'var(--bg)', color: 'var(--text-main)', fontSize: '1rem', outline: 'none'
+                }}
+              />
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>seconds</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', opacity: 0.7 }}>(prevents WhatsApp ban)</span>
+            </div>
+
+            {broadcastResult && (
+              <div style={{
+                padding: '16px 20px', borderRadius: '14px',
+                background: broadcastResult.error ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)',
+                border: `1px solid ${broadcastResult.error ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                fontSize: '0.9rem', color: broadcastResult.error ? '#ef4444' : primaryBrand, fontWeight: 600
+              }}>
+                {broadcastResult.error ? (
+                  <span>❌ Error: {broadcastResult.error}</span>
+                ) : (
+                  <span>✅ Done! Sent: {broadcastResult.sent} &nbsp;|&nbsp; Failed: {broadcastResult.failed}</span>
+                )}
+              </div>
+            )}
+
             <button
-              onClick={sendMessage}
-              disabled={!msgInput.trim() || sending || waStatus !== 'connected'}
-              style={{ width: 46, height: 46, borderRadius: '50%', background: msgInput.trim() && waStatus === 'connected' ? '#25D366' : '#ccc', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s', flexShrink: 0 }}
+              onClick={sendBroadcast}
+              disabled={broadcasting || selectedPhones.length === 0 || !broadcastMsg.trim() || waStatus !== 'connected'}
+              style={{
+                padding: '16px 32px', borderRadius: '14px', border: 'none', cursor: 'pointer',
+                background: broadcasting || selectedPhones.length === 0 || !broadcastMsg.trim() || waStatus !== 'connected'
+                  ? 'var(--border)' : `linear-gradient(135deg, ${primaryBrand}, #059669)`,
+                color: '#fff', fontWeight: 800, fontSize: '1.05rem',
+                boxShadow: selectedPhones.length > 0 && broadcastMsg.trim() ? '0 10px 25px rgba(16,185,129,0.3)' : 'none',
+                transition: 'all 0.3s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
+              }}
             >
-              {sending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+              {broadcasting ? (
+                <><Loader2 size={20} className="animate-spin" /> Sending to {selectedPhones.length} contacts...</>
+              ) : (
+                <>📣 Send Broadcast to {selectedPhones.length} Contact{selectedPhones.length !== 1 ? 's' : ''}</>
+              )}
             </button>
+
+            {waStatus !== 'connected' && (
+              <p style={{ margin: 0, color: '#ef4444', fontSize: '0.85rem', fontWeight: 600, textAlign: 'center' }}>
+                ⚠️ WhatsApp not connected. Connect first from WhatsApp Settings.
+              </p>
+            )}
           </div>
         </div>
       ) : (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0', gap: '16px', color: 'var(--text-muted)' }}>
-          <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(37,211,102,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <MessageSquare size={36} style={{ color: '#25D366' }} />
-          </div>
-          <h3 style={{ margin: 0, color: '#555' }}>Select a conversation</h3>
-          <p style={{ margin: 0, fontSize: '0.85rem' }}>Click any chat on the left to open it</p>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--bg)', position: 'relative' }}>
+          {/* RIGHT: Chat View Area */}
+          {selected ? (
+            <>
+              {/* Premium Chat Header */}
+              <div style={{
+                padding: '20px 30px', background: 'var(--surface)', borderBottom: '1px solid var(--border)',
+                display: 'flex', alignItems: 'center', gap: '20px', zIndex: 10,
+                backdropFilter: 'blur(20px)', background: 'rgba(var(--bg-rgb), 0.8)'
+              }}>
+                <div style={{
+                  width: '50px', height: '50px', borderRadius: '16px',
+                  background: selected.profilePic ? 'transparent' : `linear-gradient(135deg, hsl(${getName(selected).charCodeAt(0) * 13 % 360}, 70%, 60%), hsl(${getName(selected).charCodeAt(0) * 13 % 360}, 80%, 45%))`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff',
+                  fontWeight: 700, fontSize: '1.2rem', boxShadow: '0 10px 20px rgba(0,0,0,0.1)',
+                  overflow: 'hidden'
+                }}>
+                  {selected.profilePic ? (
+                    <img src={selected.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    getName(selected)[0]?.toUpperCase()
+                  )}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: 'var(--text-main)', fontWeight: 800, fontSize: '1.2rem', letterSpacing: '-0.01em' }}>{getName(selected)}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: primaryBrand }} />
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500 }}>Online • +{getPhone(selected)}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={() => window.open(`https://wa.me/${getPhone(selected)}`, '_blank')}
+                    style={{
+                      padding: '12px 20px', borderRadius: '14px', background: 'var(--bg)', border: '1px solid var(--border)',
+                      color: 'var(--text-main)', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s'
+                    }}
+                  >
+                    <Globe size={18} /> Open WhatsApp
+                  </button>
+                  <button
+                    onClick={() => setSelected(null)}
+                    style={{
+                      width: '44px', height: '44px', borderRadius: '14px', background: 'var(--bg)',
+                      border: '1px solid var(--border)', color: 'var(--text-main)', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Messages Area with subtle background pattern */}
+              <div style={{
+                flex: 1, overflowY: 'auto', padding: '30px', display: 'flex', flexDirection: 'column', gap: '12px',
+                background: 'var(--bg)', position: 'relative'
+              }}>
+                {/* Message groups or simple list */}
+                {getWaMsgs(selected).map((msg, i) => {
+                  const isFirstOfGroup = i === 0 || getWaMsgs(selected)[i - 1].fromMe !== msg.fromMe;
+                  return (
+                    <div key={i} style={{
+                      display: 'flex',
+                      justifyContent: msg.fromMe ? 'flex-end' : 'flex-start',
+                      marginTop: isFirstOfGroup ? '12px' : '0'
+                    }}>
+                      <div style={{
+                        maxWidth: '70%',
+                        background: msg.fromMe ? primaryBrand : 'var(--surface)',
+                        color: msg.fromMe ? '#fff' : 'var(--text-main)',
+                        borderRadius: msg.fromMe
+                          ? (isFirstOfGroup ? '20px 20px 4px 20px' : '20px 4px 4px 20px')
+                          : (isFirstOfGroup ? '20px 20px 20px 4px' : '4px 20px 20px 4px'),
+                        padding: '12px 18px',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+                        position: 'relative',
+                        transition: 'transform 0.2s',
+                        border: msg.fromMe ? 'none' : '1px solid var(--border)'
+                      }}>
+                        <div style={{ fontSize: '1rem', lineHeight: 1.5, whiteSpace: 'pre-wrap', fontWeight: 450 }}>
+                          {msg.body || <em style={{ opacity: 0.6 }}>Media attachment</em>}
+                        </div>
+                        <div style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+                          gap: '6px', marginTop: '6px', fontSize: '0.7rem',
+                          opacity: 0.8, color: msg.fromMe ? '#fff' : 'var(--text-muted)'
+                        }}>
+                          {formatTime(msg.receivedAt)}
+                          {msg.fromMe && <CheckCheck size={14} />}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Floating Send Box */}
+              <div style={{ padding: '20px 30px 30px', background: 'transparent', position: 'relative' }}>
+                <div style={{
+                  background: 'var(--surface)', padding: '8px 8px 8px 24px', borderRadius: '24px',
+                  display: 'flex', gap: '12px', alignItems: 'center', border: '1px solid var(--border)',
+                  boxShadow: '0 15px 35px rgba(0,0,0,0.1)', backdropFilter: 'blur(10px)'
+                }}>
+                  <input
+                    value={msgInput}
+                    onChange={e => setMsgInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                    placeholder={waStatus === 'connected' ? "Type a premium message..." : "Engine disconnected..."}
+                    disabled={waStatus !== 'connected'}
+                    style={{
+                      flex: 1, padding: '12px 0', border: 'none', outline: 'none',
+                      fontSize: '1rem', background: 'transparent', color: 'var(--text-main)'
+                    }}
+                  />
+                  <button
+                    onClick={sendMessage}
+                    disabled={!msgInput.trim() || sending || waStatus !== 'connected'}
+                    style={{
+                      width: '52px', height: '52px', borderRadius: '20px',
+                      background: msgInput.trim() && waStatus === 'connected' ? primaryBrand : 'var(--bg)',
+                      border: 'none', color: msgInput.trim() && waStatus === 'connected' ? '#fff' : 'var(--text-muted)',
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                      boxShadow: msgInput.trim() && waStatus === 'connected' ? `0 10px 20px rgba(16, 185, 129, 0.3)` : 'none',
+                      transform: msgInput.trim() ? 'scale(1)' : 'scale(0.95)'
+                    }}
+                  >
+                    {sending ? <Loader2 size={24} className="animate-spin" /> : <Send size={24} style={{ marginLeft: '4px' }} />}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', background: 'var(--bg)', gap: '24px', textAlign: 'center', padding: '40px'
+            }}>
+              <div style={{
+                width: '140px', height: '140px', borderRadius: '48px', background: 'var(--surface)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
+                boxShadow: '0 30px 60px rgba(0,0,0,0.08)', border: '1px solid var(--border)'
+              }}>
+                <MessageSquare size={60} style={{ color: primaryBrand, opacity: 0.8 }} />
+                <div style={{
+                  position: 'absolute', top: -10, right: -10, width: '40px', height: '40px',
+                  borderRadius: '16px', background: primaryBrand, color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 8px 16px rgba(16, 185, 129, 0.3)'
+                }}>
+                  <Flame size={20} />
+                </div>
+              </div>
+              <div>
+                <h2 style={{ margin: '0 0 12px', fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>Select a Conversation</h2>
+                <p style={{ margin: 0, fontSize: '1rem', color: 'var(--text-muted)', maxWidth: '400px', lineHeight: 1.6 }}>
+                  Choose a contact from the left sidebar to start chatting. Your responses are synced in real-time.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -300,13 +721,16 @@ function App() {
   const [notification, setNotification] = useState(null);
   const [dynamicValues, setDynamicValues] = useState({});
   const [confirmModal, setConfirmModal] = useState({ open: false, title: '', onConfirm: null });
-  const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('pro_theme') || 'theme-dark');
-
+  const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('pro_theme') || 'theme-light');
   const [scrapeKeyword, setScrapeKeyword] = useState('');
   const [scrapeCity, setScrapeCity] = useState('');
   const [scrapeMode, setScrapeMode] = useState('no_website');
   const [scrapeSources, setScrapeSources] = useState(['map']);
   const [scrapedLeads, setScrapedLeads] = useState([]);
+  const [selectedScrapedPhones, setSelectedScrapedPhones] = useState([]);
+  const [isScraperBroadcasting, setIsScraperBroadcasting] = useState(false);
+  const [scraperWaDelay, setScraperWaDelay] = useState(3);
+  const [waStatuses, setWaStatuses] = useState({});
   const [isScraping, setIsScraping] = useState(false);
   const [isLoadingSavedLeads, setIsLoadingSavedLeads] = useState(false);
   const [isBulkFinding, setIsBulkFinding] = useState(false);
@@ -957,29 +1381,23 @@ function App() {
           <div className={`nav-item ${activeTab === 'template' ? 'active' : ''}`} onClick={() => { switchTab('template'); setIsMobileMenuOpen(false); }}>
             <TemplateIcon /> Email Templates
           </div>
-          <div className={`nav-item ${activeTab === 'custom_templates' ? 'active' : ''}`} onClick={() => { switchTab('custom_templates'); setIsMobileMenuOpen(false); }}>
-            <FolderIcon /> Chat Templates
-          </div>
-          <div className={`nav-item ${activeTab === 'whatsapp_settings' ? 'active' : ''}`} onClick={() => { switchTab('whatsapp_settings'); setIsMobileMenuOpen(false); }}>
-            <Phone size={20} /> <span>WhatsApp Settings</span>
-          </div>
-          <div className={`nav-item ${activeTab === 'variables' ? 'active' : ''}`} onClick={() => { switchTab('variables'); setIsMobileMenuOpen(false); }}>
-            <SettingsIcon /> Variable Manager
-          </div>
-          <div className={`nav-item ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => { switchTab('logs'); setIsMobileMenuOpen(false); }}>
-            <HistoryIcon /> Delivery Logs
-          </div>
-          <div className={`nav-item ${activeTab === 'archive' ? 'active' : ''}`} onClick={() => { switchTab('archive'); setIsMobileMenuOpen(false); }}>
-            <ArchiveIcon /> Archive
-          </div>
-          <div className={`nav-item ${activeTab === 'replied_leads' ? 'active' : ''}`} onClick={() => { switchTab('replied_leads'); setIsMobileMenuOpen(false); }}>
-            <MessageSquare size={16} /> Replied Leads
-          </div>
           <div className={`nav-item ${activeTab === 'scraper' ? 'active' : ''}`} onClick={() => { switchTab('scraper'); setIsMobileMenuOpen(false); }}>
             <SearchIcon /> Lead Scraper
           </div>
           <div className={`nav-item ${activeTab === 'email_finder' ? 'active' : ''}`} onClick={() => { switchTab('email_finder'); setIsMobileMenuOpen(false); fetchSavedLeads(); }}>
             <TargetIcon /> Email Enricher
+          </div>
+          <div className={`nav-item ${activeTab === 'saved_leads' ? 'active' : ''}`} onClick={() => { switchTab('saved_leads'); setIsMobileMenuOpen(false); fetchSavedLeads(); }}>
+            <UsersIcon /> Lead Automation CRM
+          </div>
+          <div className={`nav-item ${activeTab === 'replied_leads' ? 'active' : ''}`} onClick={() => { switchTab('replied_leads'); setIsMobileMenuOpen(false); }}>
+            <MessageSquare size={16} /> Replied Leads
+          </div>
+          <div className={`nav-item ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => { switchTab('logs'); setIsMobileMenuOpen(false); }}>
+            <HistoryIcon /> Delivery Logs
+          </div>
+          <div className={`nav-item ${activeTab === 'whatsapp_settings' ? 'active' : ''}`} onClick={() => { switchTab('whatsapp_settings'); setIsMobileMenuOpen(false); }}>
+            <Phone size={20} /> <span>WhatsApp Settings</span>
           </div>
           <div className={`nav-item ${activeTab === 'whatsapp_linker' ? 'active' : ''}`} onClick={() => { switchTab('whatsapp_linker'); setIsMobileMenuOpen(false); }}>
             <div style={{ position: 'relative' }}>
@@ -996,9 +1414,16 @@ function App() {
             <MessageSquare size={20} />
             <span>WhatsApp Inbox</span>
           </div>
-          <div className={`nav-item ${activeTab === 'saved_leads' ? 'active' : ''}`} onClick={() => { switchTab('saved_leads'); setIsMobileMenuOpen(false); fetchSavedLeads(); }}>
-            <UsersIcon /> Lead Automation CRM
+          <div className={`nav-item ${activeTab === 'custom_templates' ? 'active' : ''}`} onClick={() => { switchTab('custom_templates'); setIsMobileMenuOpen(false); }}>
+            <FolderIcon /> Chat Templates
           </div>
+          <div className={`nav-item ${activeTab === 'variables' ? 'active' : ''}`} onClick={() => { switchTab('variables'); setIsMobileMenuOpen(false); }}>
+            <SettingsIcon /> Variable Manager
+          </div>
+          <div className={`nav-item ${activeTab === 'archive' ? 'active' : ''}`} onClick={() => { switchTab('archive'); setIsMobileMenuOpen(false); }}>
+            <ArchiveIcon /> Archive
+          </div>
+
         </nav>
       </aside>
 
@@ -1008,7 +1433,7 @@ function App() {
         <header className="top-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)}><MenuIcon /></button>
-            <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'whatsapp_settings' ? 'WhatsApp Settings' : activeTab === 'whatsapp_linker' ? 'WhatsApp Linker' : activeTab === 'variables' ? 'Variable Manager' : activeTab === 'logs' ? 'Delivery Logs' : activeTab === 'replied_leads' ? 'Replied Leads' : activeTab === 'scraper' ? 'Lead Scraper' : activeTab === 'email_finder' ? 'Email Enricher' : activeTab === 'saved_leads' ? 'Lead Automation CRM' : 'Archive'}</h2>
+            <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'whatsapp_settings' ? 'WhatsApp Settings' : activeTab === 'whatsapp_linker' ? 'WhatsApp Linker' : activeTab === 'whatsapp_inbox' ? 'WhatsApp Inbox' : activeTab === 'variables' ? 'Variable Manager' : activeTab === 'logs' ? 'Delivery Logs' : activeTab === 'replied_leads' ? 'Replied Leads' : activeTab === 'scraper' ? 'Lead Scraper' : activeTab === 'email_finder' ? 'Email Enricher' : activeTab === 'saved_leads' ? 'Lead Automation CRM' : 'Archive'}</h2>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <select
@@ -2625,6 +3050,52 @@ function App() {
                               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                 <button
                                   className="bulk-btn"
+                                  style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)' }}
+                                  disabled={isScraperBroadcasting}
+                                  onClick={() => {
+                                    const selectedLeads = groupLeads.filter(l => selectedIds.includes(l._id) && l.phone && l.phone !== 'N/A');
+                                    const phones = selectedLeads.map(l => l.phone.replace(/\D/g, ''));
+                                    if (phones.length === 0) return alert('No leads with valid phone numbers selected!');
+
+                                    const activeWaTpl = whatsappTemplates.find(t => t.isActive);
+                                    if (!activeWaTpl) return alert("Please activate a WhatsApp template in WhatsApp Settings first!");
+                                    if (waStatus !== 'connected') return alert("WhatsApp is not connected!");
+
+                                    setConfirmModal({
+                                      open: true,
+                                      title: `Send Active WA Msg to ${phones.length} leads?`,
+                                      onConfirm: async () => {
+                                        setIsScraperBroadcasting(true);
+                                        try {
+                                          const res = await axios.post('/api/whatsapp/broadcast', {
+                                            phones: phones,
+                                            message: activeWaTpl.message,
+                                            delay: scraperWaDelay * 1000 || 3000
+                                          });
+                                          alert(`✅ Sent: ${res.data.sent} | ❌ Failed: ${res.data.failed}`);
+                                          setSelectedIds([]);
+
+                                          if (res.data.details) {
+                                            setWaStatuses(prev => {
+                                              const newStats = { ...prev };
+                                              res.data.details.forEach(d => {
+                                                newStats[d.phone] = d.status;
+                                              });
+                                              return newStats;
+                                            });
+                                          }
+
+                                        } catch (err) {
+                                          alert('WA Broadcast failed: ' + (err.response?.data?.error || err.message));
+                                        } finally { setIsScraperBroadcasting(false); }
+                                      }
+                                    });
+                                  }}
+                                >
+                                  {isScraperBroadcasting ? <><Loader2 size={16} className="animate-spin" /> Sending...</> : <><Phone size={16} /> Send WA Msg</>}
+                                </button>
+                                <button
+                                  className="bulk-btn"
                                   style={{ background: 'white', color: 'var(--primary)', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
                                   onClick={() => {
                                     const ids = selectedIds.filter(id => groupLeads.some(l => l._id === id && l.email && l.emailFound));
@@ -2735,7 +3206,14 @@ function App() {
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                         {lead.phone && lead.phone !== 'N/A' ? (
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{ color: 'var(--success)', fontWeight: '600', fontSize: '0.9rem' }}>{lead.phone}</span>
+                                            {(() => {
+                                              const cleanP = lead.phone.replace(/\D/g, '');
+                                              const stat = waStatuses[cleanP];
+                                              const waStatusColor = stat === 'failed' ? '#ef4444' : stat === 'sent' ? '#eab308' : 'var(--success)';
+                                              return (
+                                                <span style={{ color: waStatusColor, fontWeight: '600', fontSize: '0.9rem' }}>{lead.phone}</span>
+                                              );
+                                            })()}
                                             <button
                                               onClick={() => {
                                                 const activeTpl = whatsappTemplates.find(t => t.isActive);

@@ -79,6 +79,8 @@ const recipientSchema = new mongoose.Schema({
   body2: String,
   body3: String,
   data: mongoose.Schema.Types.Mixed,
+  profilePic: { type: String, default: null },
+  whatsappName: { type: String, default: null },
   history: [{ sentAt: Date, event: String, subject: String }],
   replies: [{
     receivedAt: { type: Date, default: Date.now },
@@ -157,7 +159,52 @@ const initWhatsapp = async () => {
   });
   waClient.on('qr', (qr) => { waQr = qr; waStatus = 'qr-ready'; console.log('[WhatsApp] QR Ready.'); });
   waClient.on('authenticated', () => { waQr = ''; waStatus = 'connected'; console.log('[WhatsApp] Authenticated!'); });
-  waClient.on('ready', () => { waQr = ''; waStatus = 'connected'; console.log('[WhatsApp] READY!'); });
+  waClient.on('ready', async () => {
+    waQr = ''; waStatus = 'connected'; console.log('[WhatsApp] READY!');
+    // One-time fix: refresh all WA leads with correct contact names/pics
+    setTimeout(async () => {
+      try {
+        const waLeads = await Recipient.find({ email: /@whatsapp\.com$/ });
+        console.log(`[WhatsApp] 🔧 Refreshing contact info for ${waLeads.length} leads via chats...`);
+        
+        // Build a map of phone -> chat from actual WhatsApp chats
+        const allChats = await waClient.getChats();
+        const chatMap = {};
+        for (const chat of allChats) {
+          if (chat.isGroup) continue;
+          const chatPhone = chat.id.user || chat.id._serialized.split('@')[0];
+          chatMap[chatPhone] = chat;
+        }
+
+        let fixed = 0;
+        for (const lead of waLeads) {
+          const phone = lead.email.replace('@whatsapp.com', '');
+          const chat = chatMap[phone];
+          if (!chat) continue;
+
+          let freshName = null;
+          let freshPic = null;
+          try {
+            const contact = await chat.getContact();
+            freshName = contact.pushname || contact.name;
+            freshPic = await contact.getProfilePicUrl().catch(() => null);
+          } catch(e) {}
+
+          let changed = false;
+          if (freshName) {
+            lead.whatsappName = freshName;
+            if (!lead.data?.['First Name'] || lead.data['First Name'].startsWith('+')) {
+              lead.data = { ...lead.data, 'First Name': freshName };
+            }
+            changed = true;
+          }
+          if (freshPic) { lead.profilePic = freshPic; changed = true; }
+          if (changed) { await lead.save(); fixed++; }
+        }
+        console.log(`[WhatsApp] ✅ Contact refresh done. Fixed ${fixed}/${waLeads.length} leads.`);
+      } catch(e) { console.error('[WhatsApp] Contact refresh error:', e.message); }
+    }, 5000);
+  });
   waClient.on('auth_failure', () => { waStatus = 'disconnected'; waQr = ''; });
   waClient.on('disconnected', () => { waStatus = 'disconnected'; console.log('[WhatsApp] Disconnected.'); setTimeout(() => initWhatsapp(), 3000); });
   const processMessage = async (msg, phone) => {
@@ -170,15 +217,49 @@ const initWhatsapp = async () => {
           { email: phone + '@whatsapp.com' }
         ]
       });
+      // Fetch contact via chat (works for both @c.us and @lid formats)
+      let contact = null;
+      try {
+        const chat = await msg.getChat();
+        contact = await chat.getContact();
+      } catch(e) {}
+      
       if (!lead) {
-        const contact = await msg.getContact().catch(() => null);
-        const name = contact ? (contact.pushname || contact.name || ('+' + phone)) : ('+' + phone);
+        let name = contact ? (contact.pushname || contact.name) : null;
+        let pic = null;
+        if (contact) {
+          pic = await contact.getProfilePicUrl().catch(() => null);
+        }
+        if (!name) name = '+' + phone;
+
         lead = new Recipient({
-          email: phone + '@whatsapp.com', status: 'replied',
-          data: { 'First Name': name, Phone: phone, Source: 'WhatsApp Inbound' },
+          email: phone + '@whatsapp.com', 
+          status: 'replied',
+          profilePic: pic,
+          whatsappName: name,
+          data: { 
+            'First Name': name, 
+            Phone: phone,
+            Source: 'WhatsApp Inbound',
+            waId: phone
+          },
           replies: []
         });
-        console.log(`[WhatsApp] 🆕 New lead: ${name}`);
+        console.log(`[WhatsApp] 🆕 New lead: ${name} (${phone})`);
+      } else {
+        // Always refresh name + pic from actual contact
+        if (contact) {
+          const freshName = contact.pushname || contact.name;
+          if (freshName) {
+            lead.whatsappName = freshName;
+            if (freshName !== lead.data?.['First Name'] && lead.data?.['First Name']?.startsWith('+')) {
+              lead.data['First Name'] = freshName; // Only update if it was a phone placeholder
+            }
+          }
+          if (!lead.profilePic) {
+            lead.profilePic = await contact.getProfilePicUrl().catch(() => null);
+          }
+        }
       }
       const isDup = (lead.replies || []).some(r => r.type === 'whatsapp' && r.body === msg.body && Math.abs(new Date(r.receivedAt) - new Date(msg.timestamp * 1000)) < 30000);
       if (!isDup) {
@@ -1950,6 +2031,74 @@ app.post('/api/whatsapp/send', async (req, res) => {
     console.error('[WhatsApp] Send error:', e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// WhatsApp Broadcast - send message to multiple contacts
+app.post('/api/whatsapp/broadcast', async (req, res) => {
+  const { phones, message, delay = 3000 } = req.body;
+  if (!phones || !Array.isArray(phones) || phones.length === 0) return res.status(400).json({ error: 'phones array required' });
+  if (!message) return res.status(400).json({ error: 'message required' });
+  if (!waClient || waStatus !== 'connected') return res.status(503).json({ error: 'WhatsApp not connected' });
+
+  const results = { sent: 0, failed: 0, skipped: 0, details: [] };
+
+  // Pre-build chat map once
+  const allChats = await waClient.getChats().catch(() => []);
+  const chatMap = {};
+  for (const chat of allChats) {
+    if (chat.isGroup) continue;
+    const chatPhone = chat.id.user || chat.id._serialized.split('@')[0];
+    chatMap[chatPhone] = chat;
+  }
+
+  for (const phone of phones) {
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    try {
+      // Find matching chat
+      let targetChat = null;
+      for (const [chatPhone, chat] of Object.entries(chatMap)) {
+        if (chatPhone === cleanPhone || chatPhone.endsWith(cleanPhone) || cleanPhone.endsWith(chatPhone)) {
+          targetChat = chat;
+          break;
+        }
+      }
+
+      if (targetChat) {
+        await targetChat.sendMessage(message);
+      } else {
+        await waClient.sendMessage(cleanPhone + '@c.us', message);
+      }
+
+      // Save to DB
+      let lead = await Recipient.findOne({
+        $or: [
+          { 'data.Phone': { $regex: cleanPhone + '$' } },
+          { email: cleanPhone + '@whatsapp.com' }
+        ]
+      });
+      if (lead) {
+        lead.replies.push({ receivedAt: new Date(), subject: 'WhatsApp Broadcast', body: message, type: 'whatsapp', fromMe: true });
+        await lead.save();
+      }
+
+      results.sent++;
+      results.details.push({ phone: cleanPhone, status: 'sent' });
+      console.log(`[WhatsApp Broadcast] ✅ Sent to +${cleanPhone}`);
+
+      // Delay between messages to avoid rate limiting
+      if (phones.indexOf(phone) < phones.length - 1) {
+        const jitter = Math.floor(Math.random() * 1000); // add up to 1s random jitter
+        await new Promise(r => setTimeout(r, delay + jitter));
+      }
+    } catch(e) {
+      results.failed++;
+      results.details.push({ phone: cleanPhone, status: 'failed', error: e.message });
+      console.error(`[WhatsApp Broadcast] ❌ Failed +${cleanPhone}: ${e.message}`);
+    }
+  }
+
+  console.log(`[WhatsApp Broadcast] Done: ${results.sent} sent, ${results.failed} failed`);
+  res.json({ success: true, ...results });
 });
 
 

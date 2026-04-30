@@ -6,6 +6,9 @@
   --bg-dark: #0f172a;
   --sidebar-width: 260px;
   --card-bg: #ffffff;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --bg-rgb: 248, 250, 252;
   --text-main: #334155;
   --text-muted: #64748b;
   --border: #e2e8f0;
@@ -87,6 +90,9 @@ body.theme-dark {
   --primary-hover: #6366f1;
   --bg-dark: #0f172a;
   --card-bg: #1e293b;
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --bg-rgb: 15, 23, 42;
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --border: #334155;
@@ -119,6 +125,9 @@ body.theme-light {
   --primary-hover: #4338ca;
   --bg-dark: #0f172a;
   --card-bg: #ffffff;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --bg-rgb: 248, 250, 252;
   --text-main: #334155;
   --text-muted: #64748b;
   --border: #e2e8f0;
@@ -150,6 +159,9 @@ body.theme-cyber {
   --primary-hover: #d946ef;
   --bg-dark: #000000;
   --card-bg: #111111;
+  --bg: #000000;
+  --surface: #111111;
+  --bg-rgb: 0, 0, 0;
   --text-main: #ffffff;
   --text-muted: #f0abfc;
   --border: #f0abfc;
@@ -249,6 +261,9 @@ body.theme-abstract {
   --primary-hover: #ea580c;
   --bg-dark: #222f3e;
   --card-bg: #ffffff;
+  --bg: #fffbeb;
+  --surface: #ffffff;
+  --bg-rgb: 255, 251, 235;
   --text-main: #2d3436;
   --text-muted: #636e72;
   --border: #dfe6e9;
@@ -275,6 +290,9 @@ body.theme-glass-neon {
   --primary-hover: #2563eb;
   --bg-dark: #e2e8f0;
   --card-bg: rgba(30, 41, 59, 0.4);
+  --bg: #0f172a;
+  --surface: rgba(30, 41, 59, 0.7);
+  --bg-rgb: 15, 23, 42;
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --border: rgba(255, 255, 255, 0.1);
@@ -324,6 +342,9 @@ body.theme-light-gradient {
   --primary-hover: #7c3aed;
   --bg-dark: #0f172a;
   --card-bg: #ffffff;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --bg-rgb: 248, 250, 252;
   --text-main: #334155;
   --text-muted: #64748b;
   --border: #e5e7eb;
@@ -736,6 +757,40 @@ body.theme-light-gradient {
 /* CARDS & GRID */
 .content-area {
   animation: fadeIn 0.4s ease-out;
+}
+
+.main-content.whatsapp-main {
+  height: 100vh;
+  overflow: hidden;
+  padding-bottom: 2rem;
+}
+
+.whatsapp-content {
+  height: calc(100vh - 104px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.wa-conversation-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.35) transparent;
+}
+
+.wa-conversation-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.wa-conversation-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.wa-conversation-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.35);
+  border-radius: 999px;
+}
+
+.wa-conversation-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.7);
 }
 
 @keyframes fadeIn {
