@@ -1381,6 +1381,9 @@ function App() {
           <div className={`nav-item ${activeTab === 'template' ? 'active' : ''}`} onClick={() => { switchTab('template'); setIsMobileMenuOpen(false); }}>
             <TemplateIcon /> Email Templates
           </div>
+          <div className={`nav-item ${activeTab === 'custom_templates' ? 'active' : ''}`} onClick={() => { switchTab('custom_templates'); setIsMobileMenuOpen(false); }}>
+            <FolderIcon /> Custom Templates
+          </div>
           <div className={`nav-item ${activeTab === 'scraper' ? 'active' : ''}`} onClick={() => { switchTab('scraper'); setIsMobileMenuOpen(false); }}>
             <SearchIcon /> Lead Scraper
           </div>
@@ -1413,9 +1416,6 @@ function App() {
           <div className={`nav-item ${activeTab === 'whatsapp_inbox' ? 'active' : ''}`} onClick={() => { switchTab('whatsapp_inbox'); setIsMobileMenuOpen(false); }}>
             <MessageSquare size={20} />
             <span>WhatsApp Inbox</span>
-          </div>
-          <div className={`nav-item ${activeTab === 'custom_templates' ? 'active' : ''}`} onClick={() => { switchTab('custom_templates'); setIsMobileMenuOpen(false); }}>
-            <FolderIcon /> Chat Templates
           </div>
           <div className={`nav-item ${activeTab === 'variables' ? 'active' : ''}`} onClick={() => { switchTab('variables'); setIsMobileMenuOpen(false); }}>
             <SettingsIcon /> Variable Manager
@@ -2356,150 +2356,153 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {recipients.filter(r => r.status === 'replied').length > 0 ? (
-                        recipients.filter(r => r.status === 'replied')
-                          .sort((a, b) => {
-                            const dateA = a.replies && a.replies.length > 0 ? new Date(a.replies[a.replies.length - 1].receivedAt) : 0;
-                            const dateB = b.replies && b.replies.length > 0 ? new Date(b.replies[b.replies.length - 1].receivedAt) : 0;
-                            return dateB - dateA;
-                          })
-                          .map((r, i) => (
-                            <React.Fragment key={i}>
-                              <tr
-                                onClick={() => setExpandedLeadId(expandedLeadId === r._id ? null : r._id)}
-                                style={{
-                                  cursor: 'pointer',
-                                  background: expandedLeadId === r._id ? 'linear-gradient(90deg, rgba(99, 102, 241, 0.08) 0%, transparent 100%)' : 'transparent',
-                                  transition: 'all 0.3s ease',
-                                  borderLeft: expandedLeadId === r._id ? '4px solid var(--primary)' : '4px solid transparent'
-                                }}
-                                className="lead-row-hover"
-                              >
-                                <td style={{ padding: '1.2rem 1rem' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '1rem', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)' }}>
-                                      {r.email.charAt(0).toUpperCase()}
-                                    </div>
-                                    <div>
-                                      <div style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--text)' }}>{r.email}</div>
-                                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <MessageSquare size={10} /> {(r.replies || []).length} interactions
+                      {(() => {
+                        const repliedEmailLeads = recipients.filter(r => r.status === 'replied' && !r.email.includes('@whatsapp.com'));
+                        return repliedEmailLeads.length > 0 ? (
+                          repliedEmailLeads
+                            .sort((a, b) => {
+                              const dateA = a.replies && a.replies.length > 0 ? new Date(a.replies[a.replies.length - 1].receivedAt) : 0;
+                              const dateB = b.replies && b.replies.length > 0 ? new Date(b.replies[b.replies.length - 1].receivedAt) : 0;
+                              return dateB - dateA;
+                            })
+                            .map((r, i) => (
+                              <React.Fragment key={i}>
+                                <tr
+                                  onClick={() => setExpandedLeadId(expandedLeadId === r._id ? null : r._id)}
+                                  style={{
+                                    cursor: 'pointer',
+                                    background: expandedLeadId === r._id ? 'linear-gradient(90deg, rgba(99, 102, 241, 0.08) 0%, transparent 100%)' : 'transparent',
+                                    transition: 'all 0.3s ease',
+                                    borderLeft: expandedLeadId === r._id ? '4px solid var(--primary)' : '4px solid transparent'
+                                  }}
+                                  className="lead-row-hover"
+                                >
+                                  <td style={{ padding: '1.2rem 1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '1rem', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)' }}>
+                                        {r.email.charAt(0).toUpperCase()}
                                       </div>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td style={{ maxWidth: '280px' }}>
-                                  <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {r.replies && r.replies.length > 0 ? r.replies[r.replies.length - 1].subject : 'No content'}
-                                  </div>
-                                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {r.replies && r.replies.length > 0 ? (r.replies[r.replies.length - 1].body || '').substring(0, 60) + '...' : ''}
-                                  </div>
-                                </td>
-                                <td>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                    <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>
-                                      {r.replies && r.replies.length > 0 ? new Date(r.replies[r.replies.length - 1].receivedAt).toLocaleDateString() : 'N/A'}
-                                    </span>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                      {r.replies && r.replies.length > 0 ? new Date(r.replies[r.replies.length - 1].receivedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td style={{ textAlign: 'right', paddingRight: '1.5rem' }}>
-                                  <div style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px',
-                                    background: expandedLeadId === r._id ? 'var(--text)' : 'rgba(99, 102, 241, 0.1)',
-                                    color: expandedLeadId === r._id ? 'white' : 'var(--primary)',
-                                    fontSize: '0.75rem', fontWeight: '700', transition: 'all 0.3s ease'
-                                  }}>
-                                    {expandedLeadId === r._id ? 'Close' : 'View Thread'} <ChevronDown size={14} style={{ transform: expandedLeadId === r._id ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
-                                  </div>
-                                </td>
-                              </tr>
-                              {expandedLeadId === r._id && (
-                                <tr>
-                                  <td colSpan="4" style={{ padding: '0 1.5rem 2rem 1.5rem', background: 'rgba(99, 102, 241, 0.02)' }}>
-                                    <div style={{ padding: '2rem', border: '1px solid var(--border)', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(10px)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'relative' }}>
-                                        {/* Vertical Line Connector */}
-                                        <div style={{ position: 'absolute', left: '20px', top: '20px', bottom: '20px', width: '2px', background: 'linear-gradient(to bottom, var(--primary) 0%, transparent 100%)', opacity: 0.2 }}></div>
-
-                                        {[...(r.replies || [])].sort((a, b) => new Date(b.receivedAt) - new Date(a.receivedAt)).map((reply, idx) => (
-                                          <div key={idx} style={{ position: 'relative', paddingLeft: '45px' }}>
-                                            {/* Message Node */}
-                                            <div style={{ position: 'absolute', left: '13px', top: '0', width: '16px', height: '16px', borderRadius: '50%', background: idx === 0 ? 'var(--primary)' : 'white', border: '3px solid var(--primary)', zIndex: 2 }}></div>
-
-                                            <div style={{
-                                              background: 'white', borderRadius: '12px', border: '1px solid var(--border)',
-                                              boxShadow: idx === 0 ? '0 10px 25px rgba(99, 102, 241, 0.1)' : '0 4px 12px rgba(0,0,0,0.03)',
-                                              overflow: 'hidden', animation: `slideIn 0.3s ease-out ${idx * 0.1}s both`
-                                            }}>
-                                              <div
-                                                style={{
-                                                  padding: '12px 20px', background: idx === 0 ? 'linear-gradient(90deg, #6366f1 0%, #818cf8 100%)' : '#f8fafc',
-                                                  color: idx === 0 ? 'white' : 'var(--text)', cursor: 'pointer',
-                                                  display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                                                }}
-                                                onClick={() => setExpandedReplyIdx(expandedReplyIdx === idx ? null : idx)}
-                                              >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                  {idx === 0 && <span style={{ background: 'white', color: 'var(--primary)', fontSize: '0.65rem', fontWeight: '900', padding: '2px 8px', borderRadius: '10px', textTransform: 'uppercase' }}>Latest</span>}
-                                                  <span style={{ fontWeight: '700', fontSize: '0.9rem' }}>{reply.subject}</span>
-                                                </div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', opacity: 0.8 }}>
-                                                  {reply.type === 'whatsapp' ? <MessageSquare size={12} /> : <Mail size={12} />}
-                                                  <span style={{ fontWeight: '600' }}>{reply.type === 'whatsapp' ? 'WhatsApp' : 'Email'}</span>
-                                                  <span style={{ opacity: 0.5 }}>•</span>
-                                                  <Calendar size={12} /> {new Date(reply.receivedAt).toLocaleString()}
-                                                </div>
-                                              </div>
-                                              {expandedReplyIdx === idx && (
-                                                <div style={{ padding: '25px', background: 'white', position: 'relative' }}>
-                                                  <div style={{
-                                                    whiteSpace: 'pre-wrap', fontSize: '0.95rem', lineHeight: '1.7', color: 'var(--text)',
-                                                    fontFamily: 'Inter, system-ui, sans-serif'
-                                                  }}>
-                                                    {reply.body}
-                                                  </div>
-                                                  <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)', display: 'flex', gap: '10px' }}>
-                                                    <button
-                                                      style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-                                                      onClick={() => handleWhatsappReply(r.email)}
-                                                    >
-                                                      <Reply size={14} /> Direct WhatsApp
-                                                    </button>
-                                                    <button style={{ background: 'white', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}>
-                                                      Mark as Important
-                                                    </button>
-                                                  </div>
-                                                </div>
-                                              )}
-                                            </div>
-                                          </div>
-                                        ))}
+                                      <div>
+                                        <div style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--text)' }}>{r.email}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                          <MessageSquare size={10} /> {(r.replies || []).length} interactions
+                                        </div>
                                       </div>
                                     </div>
                                   </td>
+                                  <td style={{ maxWidth: '280px' }}>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {r.replies && r.replies.length > 0 ? r.replies[r.replies.length - 1].subject : 'No content'}
+                                    </div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {r.replies && r.replies.length > 0 ? (r.replies[r.replies.length - 1].body || '').substring(0, 60) + '...' : ''}
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                      <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>
+                                        {r.replies && r.replies.length > 0 ? new Date(r.replies[r.replies.length - 1].receivedAt).toLocaleDateString() : 'N/A'}
+                                      </span>
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                        {r.replies && r.replies.length > 0 ? new Date(r.replies[r.replies.length - 1].receivedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td style={{ textAlign: 'right', paddingRight: '1.5rem' }}>
+                                    <div style={{
+                                      display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px',
+                                      background: expandedLeadId === r._id ? 'var(--text)' : 'rgba(99, 102, 241, 0.1)',
+                                      color: expandedLeadId === r._id ? 'white' : 'var(--primary)',
+                                      fontSize: '0.75rem', fontWeight: '700', transition: 'all 0.3s ease'
+                                    }}>
+                                      {expandedLeadId === r._id ? 'Close' : 'View Thread'} <ChevronDown size={14} style={{ transform: expandedLeadId === r._id ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+                                    </div>
+                                  </td>
                                 </tr>
-                              )}
-                            </React.Fragment>
-                          ))
-                      ) : (
-                        <tr>
-                          <td colSpan="4" style={{ padding: '4rem', textAlign: 'center' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
-                              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <MessageSquare size={30} />
+                                {expandedLeadId === r._id && (
+                                  <tr>
+                                    <td colSpan="4" style={{ padding: '0 1.5rem 2rem 1.5rem', background: 'rgba(99, 102, 241, 0.02)' }}>
+                                      <div style={{ padding: '2rem', border: '1px solid var(--border)', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(10px)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'relative' }}>
+                                          {/* Vertical Line Connector */}
+                                          <div style={{ position: 'absolute', left: '20px', top: '20px', bottom: '20px', width: '2px', background: 'linear-gradient(to bottom, var(--primary) 0%, transparent 100%)', opacity: 0.2 }}></div>
+
+                                          {[...(r.replies || [])].sort((a, b) => new Date(b.receivedAt) - new Date(a.receivedAt)).map((reply, idx) => (
+                                            <div key={idx} style={{ position: 'relative', paddingLeft: '45px' }}>
+                                              {/* Message Node */}
+                                              <div style={{ position: 'absolute', left: '13px', top: '0', width: '16px', height: '16px', borderRadius: '50%', background: idx === 0 ? 'var(--primary)' : 'white', border: '3px solid var(--primary)', zIndex: 2 }}></div>
+
+                                              <div style={{
+                                                background: 'white', borderRadius: '12px', border: '1px solid var(--border)',
+                                                boxShadow: idx === 0 ? '0 10px 25px rgba(99, 102, 241, 0.1)' : '0 4px 12px rgba(0,0,0,0.03)',
+                                                overflow: 'hidden', animation: `slideIn 0.3s ease-out ${idx * 0.1}s both`
+                                              }}>
+                                                <div
+                                                  style={{
+                                                    padding: '12px 20px', background: idx === 0 ? 'linear-gradient(90deg, #6366f1 0%, #818cf8 100%)' : '#f8fafc',
+                                                    color: idx === 0 ? 'white' : 'var(--text)', cursor: 'pointer',
+                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                                  }}
+                                                  onClick={() => setExpandedReplyIdx(expandedReplyIdx === idx ? null : idx)}
+                                                >
+                                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    {idx === 0 && <span style={{ background: 'white', color: 'var(--primary)', fontSize: '0.65rem', fontWeight: '900', padding: '2px 8px', borderRadius: '10px', textTransform: 'uppercase' }}>Latest</span>}
+                                                    <span style={{ fontWeight: '700', fontSize: '0.9rem' }}>{reply.subject}</span>
+                                                  </div>
+                                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', opacity: 0.8 }}>
+                                                    {reply.type === 'whatsapp' ? <MessageSquare size={12} /> : <Mail size={12} />}
+                                                    <span style={{ fontWeight: '600' }}>{reply.type === 'whatsapp' ? 'WhatsApp' : 'Email'}</span>
+                                                    <span style={{ opacity: 0.5 }}>•</span>
+                                                    <Calendar size={12} /> {new Date(reply.receivedAt).toLocaleString()}
+                                                  </div>
+                                                </div>
+                                                {expandedReplyIdx === idx && (
+                                                  <div style={{ padding: '25px', background: 'white', position: 'relative' }}>
+                                                    <div style={{
+                                                      whiteSpace: 'pre-wrap', fontSize: '0.95rem', lineHeight: '1.7', color: 'var(--text)',
+                                                      fontFamily: 'Inter, system-ui, sans-serif'
+                                                    }}>
+                                                      {reply.body}
+                                                    </div>
+                                                    <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)', display: 'flex', gap: '10px' }}>
+                                                      <button
+                                                        style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                                        onClick={() => handleWhatsappReply(r.email)}
+                                                      >
+                                                        <Reply size={14} /> Direct WhatsApp
+                                                      </button>
+                                                      <button style={{ background: 'white', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}>
+                                                        Mark as Important
+                                                      </button>
+                                                    </div>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            ))
+                        ) : (
+                          <tr>
+                            <td colSpan="4" style={{ padding: '4rem', textAlign: 'center' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+                                <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <MessageSquare size={30} />
+                                </div>
+                                <div>
+                                  <h4 style={{ margin: '0 0 5px 0' }}>No replies detected yet</h4>
+                                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>Your leads will appear here as soon as they respond to your emails.</p>
+                                </div>
                               </div>
-                              <div>
-                                <h4 style={{ margin: '0 0 5px 0' }}>No replies detected yet</h4>
-                                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>Your leads will appear here as soon as they respond to your emails.</p>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
+                            </td>
+                          </tr>
+                        );
+                      })()}
                     </tbody>
                   </table>
                 </div>
