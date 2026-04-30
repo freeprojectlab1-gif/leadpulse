@@ -674,6 +674,157 @@ const WhatsAppInboxTab = ({ waStatus }) => {
 };
 // ============================================================
 
+const EmailChart = ({ recipients }) => {
+  const [filter, setFilter] = useState('daily');
+  const [mode, setMode] = useState('overall'); // 'emails', 'whatsapp', 'overall'
+
+  const toStartOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const getDayKey = (date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  const getMonthKey = (date) => `${date.getFullYear()}-${date.getMonth()}`;
+  const getWeekStart = (date) => {
+    const d = toStartOfDay(date);
+    const day = d.getDay();
+    d.setDate(d.getDate() - day);
+    return d;
+  };
+
+  const now = new Date();
+  const sentDates = [];
+  recipients.forEach(r => {
+    // Collect Email dates
+    if (mode === 'emails' || mode === 'overall') {
+      if (r.history) {
+        r.history.forEach(h => {
+          if (h.sentAt) {
+            const date = new Date(h.sentAt);
+            if (!Number.isNaN(date.getTime())) sentDates.push(date);
+          }
+        });
+      }
+    }
+    // Collect WhatsApp dates
+    if (mode === 'whatsapp' || mode === 'overall') {
+      if (r.replies) {
+        r.replies.forEach(rep => {
+          if (rep.type === 'whatsapp' && rep.fromMe && rep.receivedAt) {
+            const date = new Date(rep.receivedAt);
+            if (!Number.isNaN(date.getTime())) sentDates.push(date);
+          }
+        });
+      }
+    }
+  });
+
+  let points = [];
+
+  if (filter === 'daily') {
+    points = Array.from({ length: 7 }).map((_, i) => {
+      const d = toStartOfDay(now);
+      d.setDate(d.getDate() - (6 - i));
+      return {
+        key: getDayKey(d),
+        label: d.toLocaleDateString('en-IN', { weekday: 'short' }),
+        count: 0
+      };
+    });
+    const pointMap = new Map(points.map((point, index) => [point.key, index]));
+    sentDates.forEach(d => {
+      const index = pointMap.get(getDayKey(toStartOfDay(d)));
+      if (index !== undefined) points[index].count += 1;
+    });
+  } else if (filter === 'weekly') {
+    const currentWeekStart = getWeekStart(now);
+    points = Array.from({ length: 4 }).map((_, i) => {
+      const d = new Date(currentWeekStart);
+      d.setDate(d.getDate() - ((3 - i) * 7));
+      return {
+        key: getDayKey(d),
+        label: i === 3 ? 'This Week' : `Week ${i + 1}`,
+        count: 0
+      };
+    });
+    const pointMap = new Map(points.map((point, index) => [point.key, index]));
+    sentDates.forEach(d => {
+      const index = pointMap.get(getDayKey(getWeekStart(d)));
+      if (index !== undefined) points[index].count += 1;
+    });
+  } else if (filter === 'monthly') {
+    points = Array.from({ length: 6 }).map((_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth(), 1);
+      d.setMonth(d.getMonth() - (5 - i));
+      return {
+        key: getMonthKey(d),
+        label: d.toLocaleDateString('en-IN', { month: 'short' }),
+        count: 0
+      };
+    });
+    const pointMap = new Map(points.map((point, index) => [point.key, index]));
+    sentDates.forEach(d => {
+      const index = pointMap.get(getMonthKey(d));
+      if (index !== undefined) points[index].count += 1;
+    });
+  }
+
+  const counts = points.map(point => point.count);
+  const maxCount = Math.max(...counts, 10);
+  const totalSent = counts.reduce((sum, count) => sum + count, 0);
+  const peak = Math.max(...counts, 0);
+
+  return (
+    <div className="analytics-card">
+      <div className="analytics-head">
+        <div>
+          <span className="section-kicker">Delivery Intelligence</span>
+          <h3>{mode === 'emails' ? 'Email' : mode === 'whatsapp' ? 'WhatsApp' : 'Overall'} Analytics</h3>
+        </div>
+        <div className="analytics-summary">
+          <span>{totalSent} messages</span>
+          <span>{peak} peak</span>
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <select 
+            value={mode} 
+            onChange={e => setMode(e.target.value)}
+            className="pro-select chart-select"
+            style={{ width: '120px' }}
+          >
+            <option value="overall">Overall</option>
+            <option value="emails">Emails Only</option>
+            <option value="whatsapp">WhatsApp Only</option>
+          </select>
+          <select 
+            value={filter} 
+            onChange={e => setFilter(e.target.value)}
+            className="pro-select chart-select"
+          >
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="chart-shell" style={{ '--chart-columns': points.length }}>
+        <div className="chart-gridline chart-gridline-top"></div>
+        <div className="chart-gridline chart-gridline-mid"></div>
+        {points.map((point) => (
+          <div key={point.key} className="chart-point">
+            <span className="chart-value">{point.count}</span>
+            <div className="chart-bar-track">
+              <div
+                className={`chart-bar ${point.count === peak && point.count > 0 ? 'chart-bar-peak' : ''}`}
+                style={{ height: `${Math.max((point.count / maxCount) * 160, point.count === 0 ? 3 : 8)}px` }}
+              ></div>
+            </div>
+            <span className="chart-label">{point.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ============================================================
 function App() {
 
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
@@ -1459,38 +1610,51 @@ function App() {
             <>
               <div className="stats-grid">
                 <div className="stat-card">
+                  <div className="stat-icon stat-icon-blue"><UsersIcon size={24} /></div>
                   <span className="stat-label">Total Leads</span>
-                  <span className="stat-value">{recipients.length}</span>
+                  <span className="stat-value">
+                    {recipients.filter(r => !r.email?.includes('@whatsapp.com')).length + 
+                     recipients.filter(r => r.replies && r.replies.some(rep => rep.type === 'whatsapp' && rep.fromMe)).length}
+                  </span>
                 </div>
                 <div className="stat-card">
+                  <div className="stat-icon stat-icon-violet"><MailIcon size={24} /></div>
                   <span className="stat-label">Email Leads</span>
-                  <span className="stat-value" style={{ color: 'var(--primary)' }}>{recipients.filter(r => !r.email?.includes('@whatsapp.com')).length}</span>
+                  <span className="stat-value stat-value-primary">{recipients.filter(r => !r.email?.includes('@whatsapp.com')).length}</span>
                 </div>
                 <div className="stat-card">
+                  <div className="stat-icon stat-icon-green"><MessageSquare size={24} /></div>
                   <span className="stat-label">WhatsApp Leads</span>
-                  <span className="stat-value" style={{ color: '#25D366' }}>{recipients.filter(r => r.replies && r.replies.some(rep => rep.type === 'whatsapp' && rep.fromMe)).length}</span>
+                  <span className="stat-value stat-value-success">{recipients.filter(r => r.replies && r.replies.some(rep => rep.type === 'whatsapp' && rep.fromMe)).length}</span>
                 </div>
                 <div className="stat-card">
-                  <span className="stat-label">Active Emails</span>
-                  <span className="stat-value" style={{ color: 'var(--primary)' }}>{getStatCount('pending') + getStatCount('Step 1 Sent') + getStatCount('Step 2 Sent')}</span>
+                  <div className="stat-icon stat-icon-violet"><Rocket size={24} /></div>
+                  <span className="stat-label">Active Automation</span>
+                  <span className="stat-value stat-value-primary">{getStatCount('pending') + getStatCount('Step 1 Sent') + getStatCount('Step 2 Sent')}</span>
                 </div>
                 <div className="stat-card">
+                  <div className="stat-icon stat-icon-green"><SuccessIcon size={24} /></div>
                   <span className="stat-label">Emails Replied</span>
-                  <span className="stat-value" style={{ color: 'var(--success)' }}>{recipients.filter(r => r.status === 'replied' && !r.email?.includes('@whatsapp.com')).length}</span>
+                  <span className="stat-value stat-value-success">{recipients.filter(r => r.status === 'replied' && !r.email?.includes('@whatsapp.com')).length}</span>
                 </div>
                 <div className="stat-card">
-                  <span className="stat-label">Emails Finished</span>
-                  <span className="stat-value" style={{ color: 'var(--text-muted)' }}>{getStatCount('finished')}</span>
+                  <div className="stat-icon stat-icon-slate"><CheckIcon size={24} /></div>
+                  <span className="stat-label">Automation Finished</span>
+                  <span className="stat-value">{getStatCount('finished')}</span>
                 </div>
-                <div className="stat-card" style={{ borderLeft: '4px solid #ef4444' }}>
-                  <span className="stat-label" style={{ color: '#ef4444' }}>Emails Stopped</span>
-                  <span className="stat-value" style={{ color: '#ef4444' }}>{getStatCount('stopped')}</span>
+                <div className="stat-card stat-card-danger">
+                  <div className="stat-icon stat-icon-red"><ErrorIcon size={24} /></div>
+                  <span className="stat-label">Emails Stopped</span>
+                  <span className="stat-value stat-value-danger">{getStatCount('stopped')}</span>
                 </div>
-                <div className="stat-card" style={{ borderLeft: '4px solid #ef4444' }}>
-                  <span className="stat-label" style={{ color: '#ef4444' }}>Failed</span>
-                  <span className="stat-value" style={{ color: '#ef4444' }}>{getStatCount('failed')}</span>
+                <div className="stat-card stat-card-danger">
+                  <div className="stat-icon stat-icon-amber"><AlertTriangle size={24} /></div>
+                  <span className="stat-label">Failed</span>
+                  <span className="stat-value stat-value-danger">{getStatCount('failed')}</span>
                 </div>
               </div>
+
+              <EmailChart recipients={recipients} />
 
               <div className="log-card" style={{ marginTop: '2rem' }}>
                 <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', fontWeight: '700', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
