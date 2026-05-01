@@ -9,6 +9,8 @@ const path = require('path');
 const fs = require('fs');
 const { ImapFlow } = require('imapflow');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const puppeteer = require('puppeteer');
 const { executablePath } = require('puppeteer');
 const BROWSER_SESSION_DIR = path.join(__dirname, 'browser_session');
@@ -19,6 +21,23 @@ app.use(express.json());
 const uploadsDir = path.join(__dirname, 'uploads');
 fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Cloudinary Configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+const cloudinaryStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'leadpulse_avatars',
+    allowed_formats: ['jpg', 'png', 'jpeg'],
+    transformation: [{ width: 400, height: 400, crop: 'limit' }]
+  },
+});
+const cloudUpload = multer({ storage: cloudinaryStorage });
 
 const { simpleParser } = require('mailparser');
 
@@ -1959,10 +1978,11 @@ app.post('/api/settings', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/api/upload-avatar', upload.single('avatar'), async (req, res) => {
+app.post('/api/upload-avatar', cloudUpload.single('avatar'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-    const avatarUrl = `/uploads/${req.file.filename}`;
+    // Use the secure Cloudinary URL instead of local path
+    const avatarUrl = req.file.path; 
     
     let settings = await Settings.findOne();
     if (!settings) settings = new Settings();
