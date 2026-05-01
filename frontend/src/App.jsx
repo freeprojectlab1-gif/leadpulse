@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Textarea, Label, Badge, Separator, Progress, Switch, Tabs, TabsList, TabsTrigger, TabsContent, Dialog, DialogContent, DialogHeader, DialogTitle, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Avatar, AvatarFallback, AvatarImage, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, Checkbox } from '@/components/ui';
 import {
   MapPin,
   Facebook,
@@ -43,7 +44,18 @@ import {
   Target,
   ShieldCheck,
   Check,
-  CheckCheck
+  CheckCheck,
+  TrendingUp,
+  UploadCloud,
+  Plus,
+  Database,
+  RefreshCw,
+  ChevronLeft,
+  AlertCircle,
+  PenTool,
+  Copy,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 // --- ICONS (SVG) ---
@@ -810,113 +822,70 @@ const EmailChart = ({ recipients }) => {
   const activeLinePath = chartType === 'steps' ? stepPath : linePath;
 
   return (
-    <div className="analytics-card">
-      <div className="analytics-head">
+    <div className="w-full flex flex-col space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
         <div>
-          <span className="section-kicker">Delivery Intelligence</span>
-          <h3>{mode === 'emails' ? 'Email' : mode === 'whatsapp' ? 'WhatsApp' : 'Overall'} Analytics</h3>
+          <h3 className="text-lg font-bold text-foreground">
+            {mode === 'emails' ? 'Email' : mode === 'whatsapp' ? 'WhatsApp' : 'Overall'} Delivery Analytics
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {totalSent} total messages • Peak of {peak}
+          </p>
         </div>
-        <div className="analytics-summary">
-          <span>{totalSent} messages</span>
-          <span>{peak} peak</span>
-        </div>
-        <div className="chart-controls">
-          <div className="chart-type-toggle" aria-label="Chart view">
-            {chartViews.map(type => (
-              <button
-                key={type}
-                type="button"
-                className={chartType === type ? 'active' : ''}
-                onClick={() => setChartType(type)}
-              >
-                {type}
-              </button>
-            ))}
-          </div>
-          <select 
-            value={mode} 
-            onChange={e => setMode(e.target.value)}
-            className="pro-select chart-select"
-            style={{ width: '120px' }}
-          >
-            <option value="overall">Overall</option>
-            <option value="emails">Emails Only</option>
-            <option value="whatsapp">WhatsApp Only</option>
-          </select>
-          <select 
-            value={filter} 
-            onChange={e => setFilter(e.target.value)}
-            className="pro-select chart-select"
-          >
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <Select value={mode} onValueChange={setMode}>
+            <SelectTrigger className="w-[140px] bg-background/50 border-border">
+              <SelectValue placeholder="Mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="overall">Overall</SelectItem>
+              <SelectItem value="emails">Emails Only</SelectItem>
+              <SelectItem value="whatsapp">WhatsApp Only</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="w-[120px] bg-background/50 border-border">
+              <SelectValue placeholder="Timeframe" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {(chartType === 'bar' || chartType === 'blocks') ? (
-        <div className="chart-shell" style={{ '--chart-columns': points.length }}>
-          <div className="chart-gridline chart-gridline-top"></div>
-          <div className="chart-gridline chart-gridline-mid"></div>
-          {points.map((point) => (
-            <div key={point.key} className={`chart-point ${point.count === peak && point.count > 0 ? 'is-peak' : ''}`}>
-              <span className="chart-value">{point.count}</span>
-              {chartType === 'blocks' ? (
-                <div className="chart-block-stack">
-                  {Array.from({ length: 8 }).map((_, index) => {
-                    const activeBlocks = Math.ceil((point.count / maxCount) * 8);
-                    const isActive = index >= 8 - activeBlocks && point.count > 0;
-                    return <span key={index} className={isActive ? 'active' : ''}></span>;
-                  })}
-                </div>
-              ) : (
-                <div className="chart-bar-track">
-                  <div
-                    className={`chart-bar ${point.count === peak && point.count > 0 ? 'chart-bar-peak' : ''}`}
-                    style={{ height: `${Math.max((point.count / maxCount) * 178, point.count === 0 ? 2 : 10)}px` }}
-                  ></div>
-                </div>
-              )}
-              <span className="chart-label">{point.label}</span>
-            </div>
-          ))}
+      <div className="relative w-full h-[250px] bg-card/30 border border-border/50 rounded-xl p-4 flex items-end justify-between gap-2 mt-4">
+        {/* Background Grid Lines */}
+        <div className="absolute inset-x-4 inset-y-8 flex flex-col justify-between pointer-events-none">
+          <div className="w-full h-px bg-border/40"></div>
+          <div className="w-full h-px bg-border/40"></div>
+          <div className="w-full h-px bg-border/40"></div>
+          <div className="w-full h-px bg-border/40"></div>
         </div>
-      ) : chartType === 'heat' ? (
-        <div className="chart-heat-shell" style={{ '--chart-columns': points.length }}>
-          {points.map(point => {
-            const intensity = peak > 0 ? point.count / peak : 0;
-            return (
-              <div
-                key={point.key}
-                className={`heat-cell ${point.count === peak && point.count > 0 ? 'is-peak' : ''}`}
-                style={{ '--heat': intensity }}
-              >
-                <strong>{point.count}</strong>
-                <span>{point.label}</span>
+
+        {points.map((point) => {
+          const heightPercent = maxCount > 0 ? (point.count / maxCount) * 100 : 0;
+          return (
+            <div key={point.key} className="relative flex flex-col items-center justify-end h-full w-full group">
+              <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-primary text-primary-foreground text-xs font-bold py-1 px-2 rounded">
+                {point.count}
               </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className={`chart-trend-shell chart-trend-${chartType}`} style={{ '--chart-columns': points.length }}>
-          <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="none" role="img" aria-label={`${chartType} analytics chart`}>
-            <line className="trend-gridline" x1={chartPadding.left} y1={chartPadding.top + plotHeight * 0.28} x2={chartWidth - chartPadding.right} y2={chartPadding.top + plotHeight * 0.28} />
-            <line className="trend-gridline" x1={chartPadding.left} y1={chartPadding.top + plotHeight * 0.62} x2={chartWidth - chartPadding.right} y2={chartPadding.top + plotHeight * 0.62} />
-            <line className="trend-baseline" x1={chartPadding.left} y1={chartPadding.top + plotHeight} x2={chartWidth - chartPadding.right} y2={chartPadding.top + plotHeight} />
-            {chartType === 'area' && <path className="trend-area" d={areaPath} />}
-            {chartType !== 'dots' && <path className="trend-line" d={activeLinePath} />}
-            {trendPoints.map(point => (
-              <g key={point.key}>
-                {chartType === 'dots' && <line className="trend-stem" x1={point.x} y1={point.y} x2={point.x} y2={chartPadding.top + plotHeight} />}
-                <circle className={`trend-dot ${point.count === peak && point.count > 0 ? 'is-peak' : ''}`} cx={point.x} cy={point.y} r={chartType === 'dots' ? '7' : '5'} />
-                <text className={`trend-value ${point.count === peak && point.count > 0 ? 'is-peak' : ''}`} x={point.x} y={Math.max(14, point.y - 12)} textAnchor="middle">{point.count}</text>
-                <text className="trend-label" x={point.x} y={chartHeight - 10} textAnchor="middle">{point.label}</text>
-              </g>
-            ))}
-          </svg>
-        </div>
-      )}
+              <div className="w-full flex justify-center items-end h-[85%] z-10 relative">
+                <div
+                  className={`w-full max-w-[40px] rounded-t-sm transition-all duration-500 ease-out ${point.count === peak && point.count > 0 ? 'bg-primary shadow-[0_0_15px_rgba(66,120,244,0.5)]' : 'bg-primary/40 hover:bg-primary/60'}`}
+                  style={{ height: `${Math.max(heightPercent, 2)}%` }}
+                ></div>
+              </div>
+              <span className="text-xs text-muted-foreground mt-3 font-medium text-center z-10">
+                {point.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -1014,46 +983,53 @@ const MapBusinessFinder = ({
   };
 
   return (
-    <div className="map-workspace">
-      <div className="map-panel">
-        <div className="map-panel-head">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto mb-8 animate-fade-in">
+      <Card className="lg:col-span-2 border-border/50 bg-card/50 backdrop-blur-xl shadow-lg flex flex-col overflow-hidden">
+        <div className="p-4 border-b border-border/50 bg-muted/20 flex justify-between items-center">
           <div>
-            <span className="section-kicker">Geo Lead Finder</span>
-            <h3>Map Business Scanner</h3>
+            <Badge variant="outline" className="mb-1 text-primary border-primary/20 bg-primary/5 uppercase text-[10px] tracking-wider">Geo Lead Finder</Badge>
+            <h3 className="font-bold text-foreground text-lg">Live Map Scanner</h3>
           </div>
-          <div className="map-live-chip"><CheckCircle size={15} /> CRM Auto Save</div>
+          <Badge className="bg-emerald-500/10 text-emerald-600 border-transparent hover:bg-emerald-500/20 shadow-none"><CheckCircle size={14} className="mr-1.5" /> CRM Auto Save</Badge>
         </div>
 
-        <div className="map-search-row">
-          <div className="field">
-            <div className="map-field-label-row">
+        <div className="p-4 bg-background/50 grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-border/50">
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center text-sm font-semibold text-foreground">
               <label>Business Type</label>
-              <label className="mini-check">
-                <input type="checkbox" checked={allBusinesses} onChange={e => setAllBusinesses(e.target.checked)} />
-                <span>All Businesses</span>
+              <label className="flex items-center gap-1.5 cursor-pointer text-xs font-normal">
+                <input type="checkbox" className="rounded border-border text-primary focus:ring-primary h-3 w-3" checked={allBusinesses} onChange={e => setAllBusinesses(e.target.checked)} />
+                <span className="text-muted-foreground">All Businesses</span>
               </label>
             </div>
-            <input
+            <Input
               value={allBusinesses ? '' : keyword}
               onChange={e => setKeyword(e.target.value)}
               placeholder={allBusinesses ? 'Scanning every nearby business' : 'e.g. dentists, cafes, gyms'}
               disabled={allBusinesses}
+              className="bg-card/50"
             />
           </div>
-          <div className="field">
-            <label>Search Location</label>
-            <div className="map-input-action">
-              <input value={locationSearch} onChange={e => setLocationSearch(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') geocodeLocation(); }} placeholder="Type area, city, landmark..." />
-              <button type="button" className="btn-icon" onClick={geocodeLocation} disabled={isGeocoding}>
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-foreground">Search Location</label>
+            <div className="flex gap-2">
+              <Input
+                value={locationSearch}
+                onChange={e => setLocationSearch(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') geocodeLocation(); }}
+                placeholder="Type area, city, landmark..."
+                className="bg-card/50 flex-1"
+              />
+              <Button variant="secondary" size="icon" onClick={geocodeLocation} disabled={isGeocoding} className="shrink-0 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary border-none">
                 {isGeocoding ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
 
-        <div className="premium-map" ref={mapRef} onClick={handleMapClick}>
+        <div className="relative w-full h-[400px] bg-muted/30 overflow-hidden cursor-crosshair group flex-1" ref={mapRef} onClick={handleMapClick}>
           <div
-            className="map-tiles"
+            className="absolute inset-0 pointer-events-none transition-transform duration-75 ease-linear"
             style={{
               transform: `translate(calc(50% - ${tileOffsetX}px), calc(50% - ${tileOffsetY}px))`
             }}
@@ -1067,87 +1043,99 @@ const MapBusinessFinder = ({
                   src={`https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`}
                   alt=""
                   draggable="false"
-                  style={{ left: `${dx * tileSize}px`, top: `${dy * tileSize}px` }}
+                  className="absolute select-none shadow-[0_0_1px_rgba(0,0,0,0.1)] opacity-70"
+                  style={{ width: 256, height: 256, left: `${dx * tileSize}px`, top: `${dy * tileSize}px`, filter: 'var(--map-filter, none)' }}
                 />
               );
             }))}
           </div>
-          <div className="map-radius-ring" style={{ width: `${Math.min(330, 72 + radiusKm * 12)}px`, height: `${Math.min(330, 72 + radiusKm * 12)}px` }}></div>
-          <div className="map-pin"><MapPin size={34} fill="currentColor" /></div>
-          <div className="map-controls">
-            <button type="button" onClick={(e) => { e.stopPropagation(); setZoom(Math.min(17, zoom + 1)); }}>+</button>
-            <button type="button" onClick={(e) => { e.stopPropagation(); setZoom(Math.max(11, zoom - 1)); }}>-</button>
+
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-primary/40 bg-primary/10 pointer-events-none transition-all duration-300 shadow-[0_0_30px_rgba(66,120,244,0.1)]" style={{ width: `${Math.min(330, 72 + radiusKm * 12)}px`, height: `${Math.min(330, 72 + radiusKm * 12)}px` }}></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary drop-shadow-md pointer-events-none"><MapPin size={34} fill="currentColor" className="-mt-4" /></div>
+
+          <div className="absolute top-4 right-4 flex flex-col gap-2 shadow-md rounded-lg overflow-hidden bg-background/80 backdrop-blur-md border border-border/50">
+            <button type="button" className="w-8 h-8 flex items-center justify-center hover:bg-muted text-foreground font-bold transition-colors border-b border-border/50" onClick={(e) => { e.stopPropagation(); setZoom(Math.min(17, zoom + 1)); }}>+</button>
+            <button type="button" className="w-8 h-8 flex items-center justify-center hover:bg-muted text-foreground font-bold transition-colors" onClick={(e) => { e.stopPropagation(); setZoom(Math.max(11, zoom - 1)); }}>-</button>
           </div>
-          <button type="button" className="map-locate-btn" onClick={(e) => { e.stopPropagation(); useCurrentLocation(); }}>
-            <Target size={15} /> Locate
-          </button>
+
+          <Button variant="secondary" size="sm" className="absolute bottom-4 right-4 shadow-md bg-background/80 backdrop-blur-md border border-border/50 font-bold" onClick={(e) => { e.stopPropagation(); useCurrentLocation(); }}>
+            <Target size={14} className="mr-1.5" /> Locate Me
+          </Button>
         </div>
 
-        <div className="map-coordinate-strip">
-          <span><MapPin size={14} /> {selectedLocation.label}</span>
-          <strong>{selectedLocation.lat}, {selectedLocation.lng}</strong>
+        <div className="p-3 bg-muted/40 text-xs flex justify-between items-center text-muted-foreground border-t border-border/50">
+          <span className="flex items-center gap-1.5 font-medium truncate pr-4 max-w-[60%]"><MapPin size={12} className="text-primary shrink-0" /> {selectedLocation.label}</span>
+          <strong className="font-mono">{selectedLocation.lat}, {selectedLocation.lng}</strong>
         </div>
-      </div>
+      </Card>
 
-      <div className="map-side-card">
-        <div>
-          <span className="section-kicker">Range Setup</span>
-          <h3>Fetch Nearby Businesses</h3>
-        </div>
-
-        <div className="range-control">
-          <div>
-            <label>Radius</label>
-            <strong>{radiusKm} km</strong>
-          </div>
-          <input type="range" min="1" max="50" value={radiusKm} onChange={e => setRadiusKm(Number(e.target.value))} />
+      <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg flex flex-col h-full">
+        <div className="p-5 border-b border-border/50 bg-muted/20">
+          <Badge variant="outline" className="mb-1 text-primary border-primary/20 bg-primary/5 uppercase text-[10px] tracking-wider">Range Setup</Badge>
+          <h3 className="font-bold text-foreground text-lg">Scan Settings</h3>
         </div>
 
-        <div className="field">
-          <label>Max Leads</label>
-          <input type="number" min="5" max="200" value={limit} onChange={e => setLimit(Number(e.target.value))} />
-        </div>
-
-        <label className="premium-toggle">
-          <input type="checkbox" checked={noWebsiteOnly} onChange={e => setNoWebsiteOnly(e.target.checked)} />
-          <span></span>
-          No-website businesses only
-        </label>
-
-        {!isSearching ? (
-          <button className="launch-btn map-launch-btn" onClick={onSearch}>
-            <Rocket size={18} /> Fetch & Save to CRM
-          </button>
-        ) : (
-          <button className="launch-btn btn-danger-stop" onClick={onStop}>
-            <Square size={18} fill="currentColor" /> Stop Search
-          </button>
-        )}
-
-        <div className="map-status-box">
-          <span>{isSearching ? 'Scanning live map data' : 'Ready'}</span>
-          <p>{mapStatus || 'Select a map point, choose a range, then fetch businesses.'}</p>
-        </div>
-
-        <div className="map-results-head">
-          <strong>{mapLeads.length} saved this run</strong>
-          <button className="btn-icon" onClick={onOpenCrm}>Open CRM</button>
-        </div>
-
-        <div className="map-results-list">
-          {mapLeads.length === 0 ? (
-            <div className="map-empty-state"><Globe size={26} /> No map leads fetched yet.</div>
-          ) : mapLeads.slice(0, 8).map((lead, idx) => (
-            <div className="map-result-item" key={`${lead.mapsLink || lead.name}-${idx}`}>
-              <div>
-                <strong>{lead.name}</strong>
-                <span>{lead.phone && lead.phone !== 'N/A' ? lead.phone : lead.address}</span>
-              </div>
-              {lead.mapsLink && <a href={lead.mapsLink} target="_blank" rel="noreferrer">Map</a>}
+        <CardContent className="p-5 flex-1 flex flex-col space-y-6">
+          <div className="space-y-3 p-4 rounded-xl bg-muted/30 border border-border/50">
+            <div className="flex justify-between items-center text-sm font-semibold text-foreground">
+              <label>Search Radius</label>
+              <strong className="text-primary">{radiusKm} km</strong>
             </div>
-          ))}
-        </div>
-      </div>
+            <input type="range" min="1" max="50" value={radiusKm} onChange={e => setRadiusKm(Number(e.target.value))} className="w-full accent-primary" />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold text-foreground">Max Leads (Limit)</label>
+            <Input type="number" min="5" max="200" value={limit} onChange={e => setLimit(Number(e.target.value))} className="bg-card/50" />
+          </div>
+
+          <label className="flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-muted/30 transition-colors cursor-pointer bg-background/50">
+            <input type="checkbox" className="rounded border-border text-primary focus:ring-primary h-4 w-4" checked={noWebsiteOnly} onChange={e => setNoWebsiteOnly(e.target.checked)} />
+            <span className="text-sm font-medium text-foreground">No-website businesses only</span>
+          </label>
+
+          <div className="pt-2">
+            {!isSearching ? (
+              <Button className="w-full h-12 text-sm font-bold shadow-glow-primary group bg-primary hover:bg-primary/90 text-white transition-all" onClick={onSearch}>
+                <Rocket size={18} className="mr-2 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" /> Fetch & Save to CRM
+              </Button>
+            ) : (
+              <Button variant="destructive" className="w-full h-12 text-sm font-bold shadow-sm animate-pulse" onClick={onStop}>
+                <Square size={18} fill="currentColor" className="mr-2" /> Stop Search
+              </Button>
+            )}
+          </div>
+
+          <div className="mt-4 p-4 rounded-xl bg-muted/40 border border-border/30">
+            <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">{isSearching ? 'Scanning live map data...' : 'Ready'}</div>
+            <p className="text-sm text-foreground/80 leading-relaxed">{mapStatus || 'Select a map point, choose a range, then fetch businesses.'}</p>
+          </div>
+
+          <div className="flex-1 mt-2 flex flex-col">
+            <div className="flex justify-between items-center mb-3">
+              <strong className="text-sm text-foreground">{mapLeads.length} saved this run</strong>
+              <Button variant="outline" size="sm" className="h-7 text-xs border-primary/30 text-primary hover:bg-primary/10" onClick={onOpenCrm}>Open CRM</Button>
+            </div>
+
+            <div className="flex-1 min-h-[150px] max-h-[200px] overflow-y-auto space-y-2 pr-1">
+              {mapLeads.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground/60 text-center gap-2 p-6 border-2 border-dashed border-border/50 rounded-xl">
+                  <Globe size={32} className="opacity-50" />
+                  <span className="text-sm">No map leads fetched yet.</span>
+                </div>
+              ) : mapLeads.slice(0, 8).map((lead, idx) => (
+                <div className="flex justify-between items-center p-3 rounded-lg bg-card border border-border/50 shadow-sm text-sm hover:border-primary/30 transition-colors" key={`${lead.mapsLink || lead.name}-${idx}`}>
+                  <div className="flex flex-col truncate pr-2">
+                    <strong className="text-foreground truncate">{lead.name}</strong>
+                    <span className="text-xs text-muted-foreground truncate">{lead.phone && lead.phone !== 'N/A' ? lead.phone : lead.address}</span>
+                  </div>
+                  {lead.mapsLink && <Button variant="secondary" size="sm" className="h-6 text-[10px] uppercase font-bold shrink-0 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary" asChild><a href={lead.mapsLink} target="_blank" rel="noreferrer">Map</a></Button>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
@@ -1193,6 +1181,7 @@ function App() {
   const [modalData, setModalData] = useState({});
   const [intelLead, setIntelLead] = useState(null);
   const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [customFields, setCustomFields] = useState([]);
   const [newFieldName, setNewFieldName] = useState('');
@@ -1206,7 +1195,7 @@ function App() {
   const [scrapeMode, setScrapeMode] = useState('no_website');
   const [scrapeSources, setScrapeSources] = useState(['map']);
   const [scrapedLeads, setScrapedLeads] = useState([]);
-  const [mapKeyword, setMapKeyword] = useState('restaurants');
+  const [mapKeyword, setMapKeyword] = useState('Restaurants');
   const [mapAllBusinesses, setMapAllBusinesses] = useState(false);
   const [mapLocation, setMapLocation] = useState({ lat: 23.0225, lng: 72.5714, label: 'Ahmedabad, Gujarat' });
   const [mapRadiusKm, setMapRadiusKm] = useState(5);
@@ -1949,210 +1938,444 @@ function App() {
   const getStatCount = (id) => (Array.isArray(stats) ? stats : []).find(s => s._id === id)?.count || 0;
 
   return (
-    <div className="dashboard-container">
-      <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
-        <div className="brand">
-          <img src="/logo.png" alt="LeadPulse" style={{ height: '38px', borderRadius: '8px' }} />
-          LeadPulse
-        </div>
-        <nav>
-          <div className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => { switchTab('dashboard'); setIsMobileMenuOpen(false); }}>
-            <DashIcon /> Dashboard
-          </div>
-          <div className={`nav-item ${activeTab === 'campaign' ? 'active' : ''}`} onClick={() => { switchTab('campaign'); setIsMobileMenuOpen(false); }}>
-            <SendIcon /> New Campaign
-          </div>
-          <div className={`nav-item ${activeTab === 'template' ? 'active' : ''}`} onClick={() => { switchTab('template'); setIsMobileMenuOpen(false); }}>
-            <TemplateIcon /> Email Templates
-          </div>
-          <div className={`nav-item ${activeTab === 'custom_templates' ? 'active' : ''}`} onClick={() => { switchTab('custom_templates'); setIsMobileMenuOpen(false); }}>
-            <FolderIcon /> Custom Templates
-          </div>
-          <div className={`nav-item ${activeTab === 'scraper' ? 'active' : ''}`} onClick={() => { switchTab('scraper'); setIsMobileMenuOpen(false); }}>
-            <SearchIcon /> Lead Scraper
-          </div>
-          <div className={`nav-item ${activeTab === 'map_finder' ? 'active' : ''}`} onClick={() => { switchTab('map_finder'); setIsMobileMenuOpen(false); }}>
-            <MapPin size={20} /> Map Finder
-          </div>
-          <div className={`nav-item ${activeTab === 'email_finder' ? 'active' : ''}`} onClick={() => { switchTab('email_finder'); setIsMobileMenuOpen(false); fetchSavedLeads(); }}>
-            <TargetIcon /> Email Enricher
-          </div>
-          <div className={`nav-item ${activeTab === 'saved_leads' ? 'active' : ''}`} onClick={() => { switchTab('saved_leads'); setIsMobileMenuOpen(false); fetchSavedLeads(); }}>
-            <UsersIcon /> Lead Automation CRM
-          </div>
-          <div className={`nav-item ${activeTab === 'replied_leads' ? 'active' : ''}`} onClick={() => { switchTab('replied_leads'); setIsMobileMenuOpen(false); }}>
-            <MessageSquare size={16} />Email Replied Leads
-          </div>
-          <div className={`nav-item ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => { switchTab('logs'); setIsMobileMenuOpen(false); }}>
-            <HistoryIcon /> Delivery Logs
-          </div>
-          <div className={`nav-item ${activeTab === 'whatsapp_settings' ? 'active' : ''}`} onClick={() => { switchTab('whatsapp_settings'); setIsMobileMenuOpen(false); }}>
-            <Phone size={20} /> <span>WhatsApp Settings</span>
-          </div>
-          <div className={`nav-item ${activeTab === 'whatsapp_linker' ? 'active' : ''}`} onClick={() => { switchTab('whatsapp_linker'); setIsMobileMenuOpen(false); }}>
-            <div style={{ position: 'relative' }}>
-              <Phone size={20} />
-              <div style={{
-                position: 'absolute', top: -4, right: -4, width: 8, height: 8, borderRadius: '50%',
-                background: waStatus === 'connected' ? '#10b981' : waStatus === 'qr-ready' ? '#f59e0b' : '#ef4444',
-                border: '2px solid var(--sidebar-bg)'
-              }} />
+    <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
+      {/* MODERN SIDEBAR */}
+      <aside className={`${isSidebarCollapsed ? 'w-[78px]' : 'w-[260px]'} flex-shrink-0 flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out z-50 ${isMobileMenuOpen ? 'fixed inset-y-0 left-0 shadow-2xl w-[260px]' : 'hidden md:flex'}`}>
+        <div className={`h-16 flex items-center ${isSidebarCollapsed ? 'justify-center px-0' : 'px-6'} border-b border-sidebar-border/30 overflow-hidden`}>
+          <div className={`flex items-center gap-2.5 font-extrabold text-xl tracking-tight text-sidebar-foreground transition-opacity duration-300 ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100'}`}>
+            <div className="bg-primary p-1.5 rounded-lg shrink-0">
+              <Rocket className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span>WhatsApp Linker</span>
+            <span>LeadPulse</span>
           </div>
-          <div className={`nav-item ${activeTab === 'whatsapp_inbox' ? 'active' : ''}`} onClick={() => { switchTab('whatsapp_inbox'); setIsMobileMenuOpen(false); }}>
-            <MessageSquare size={20} />
-            <span>WhatsApp Inbox</span>
-          </div>
-          <div className={`nav-item ${activeTab === 'variables' ? 'active' : ''}`} onClick={() => { switchTab('variables'); setIsMobileMenuOpen(false); }}>
-            <SettingsIcon /> Variable Manager
-          </div>
-          <div className={`nav-item ${activeTab === 'archive' ? 'active' : ''}`} onClick={() => { switchTab('archive'); setIsMobileMenuOpen(false); }}>
-            <ArchiveIcon /> Archive
+          
+          <button 
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className={`hidden md:flex h-8 w-8 items-center justify-center rounded-lg border border-sidebar-border/50 bg-sidebar-accent/50 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all ${isSidebarCollapsed ? 'mx-auto' : 'ml-auto'}`}
+          >
+            {isSidebarCollapsed ? <ChevronLeft size={16} className="rotate-180" /> : <ChevronLeft size={16} />}
+          </button>
+
+          <button className="ml-auto md:hidden text-sidebar-foreground/50 hover:text-sidebar-foreground" onClick={() => setIsMobileMenuOpen(false)}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className={`flex-1 overflow-y-auto py-6 ${isSidebarCollapsed ? 'px-2' : 'px-4'} custom-scrollbar space-y-8 overflow-x-hidden`}>
+
+          {/* Main Group */}
+          <div>
+            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.1em] mb-3 truncate">Overview</div>}
+            <div className="space-y-1">
+              {[
+                { id: 'dashboard', icon: DashIcon, label: 'Dashboard' },
+                { id: 'campaign', icon: SendIcon, label: 'New Campaign' },
+                { id: 'logs', icon: HistoryIcon, label: 'Delivery Logs' },
+              ].map(item => (
+                <TooltipProvider key={item.id} delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => { switchTab(item.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id
+                            ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm'
+                            : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                          }`}
+                      >
+                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} /> 
+                        {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
+                      </button>
+                    </TooltipTrigger>
+                    {isSidebarCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
+            </div>
           </div>
 
-        </nav>
+
+          {/* Sourcing Group */}
+          <div>
+            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.1em] mb-3 truncate">Lead Generation</div>}
+            <div className="space-y-1">
+              {[
+                { id: 'scraper', icon: SearchIcon, label: 'Lead Scraper' },
+                { id: 'map_finder', icon: () => <MapPin size={18} />, label: 'Map Finder' },
+                { id: 'email_finder', icon: TargetIcon, label: 'Email Enricher' },
+                { id: 'saved_leads', icon: UsersIcon, label: 'Automation CRM' },
+              ].map(item => (
+                <TooltipProvider key={item.id} delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => { switchTab(item.id); setIsMobileMenuOpen(false); if (item.id === 'email_finder' || item.id === 'saved_leads') fetchSavedLeads(); }}
+                        className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                          }`}
+                      >
+                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} /> 
+                        {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
+                      </button>
+                    </TooltipTrigger>
+                    {isSidebarCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
+            </div>
+          </div>
+
+
+          {/* Inbox Group */}
+          <div>
+            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.1em] mb-3 truncate">Inbox & Templates</div>}
+            <div className="space-y-1">
+              {[
+                { id: 'replied_leads', icon: () => <MessageSquare size={18} />, label: 'Email Replies' },
+                { id: 'whatsapp_inbox', icon: () => <MessageSquare size={18} />, label: 'WhatsApp Inbox' },
+                { id: 'template', icon: TemplateIcon, label: 'Email Templates' },
+                { id: 'custom_templates', icon: FolderIcon, label: 'Custom Folders' },
+                { id: 'variables', icon: SettingsIcon, label: 'Variable Manager' },
+              ].map(item => (
+                <TooltipProvider key={item.id} delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => { switchTab(item.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                          }`}
+                      >
+                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} /> 
+                        {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
+                      </button>
+                    </TooltipTrigger>
+                    {isSidebarCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
+            </div>
+          </div>
+
+
+          {/* Integrations */}
+          <div>
+            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.1em] mb-3 truncate">Integrations</div>}
+            <div className="space-y-1">
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => { switchTab('whatsapp_settings'); setIsMobileMenuOpen(false); }}
+                      className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'whatsapp_settings' ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                        }`}
+                    >
+                      <Phone size={18} className={activeTab === 'whatsapp_settings' ? 'text-primary' : ''} /> 
+                      {!isSidebarCollapsed && <span className="truncate">WhatsApp Settings</span>}
+                    </button>
+                  </TooltipTrigger>
+                  {isSidebarCollapsed && <TooltipContent side="right">WhatsApp Settings</TooltipContent>}
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => { switchTab('whatsapp_linker'); setIsMobileMenuOpen(false); }}
+                      className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'whatsapp_linker' ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                        }`}
+                    >
+                      <div className={`flex items-center ${isSidebarCollapsed ? '' : 'gap-3'}`}>
+                        <Phone size={18} className={activeTab === 'whatsapp_linker' ? 'text-primary' : ''} /> 
+                        {!isSidebarCollapsed && <span className="truncate">WhatsApp Linker</span>}
+                      </div>
+                      {!isSidebarCollapsed && <div className={`w-1.5 h-1.5 rounded-full ${waStatus === 'connected' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : waStatus === 'qr-ready' ? 'bg-amber-500' : 'bg-red-500'}`}></div>}
+                    </button>
+                  </TooltipTrigger>
+                  {isSidebarCollapsed && <TooltipContent side="right">WhatsApp Linker</TooltipContent>}
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          </div>
+
+
+          <div>
+            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.1em] mb-3 truncate">System</div>}
+            <div className="space-y-1">
+              {[
+                { id: 'logs', icon: HistoryIcon, label: 'System Logs' },
+                { id: 'archive', icon: ArchiveIcon, label: 'Archive' },
+              ].map(item => (
+                <TooltipProvider key={item.id} delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => { switchTab(item.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                          }`}
+                      >
+                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} /> 
+                        {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
+                      </button>
+                    </TooltipTrigger>
+                    {isSidebarCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
+                  </Tooltip>
+                </TooltipProvider>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className={`mt-auto p-4 border-t border-sidebar-border/30 ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
+          <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} p-2 rounded-xl bg-sidebar-accent/30 overflow-hidden`}>
+            <Avatar className="h-8 w-8 border border-sidebar-border/50 shrink-0">
+              <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs uppercase">XP</AvatarFallback>
+            </Avatar>
+            {!isSidebarCollapsed && (
+              <div className="flex flex-col min-w-0">
+                <span className="text-[11px] font-bold text-sidebar-foreground truncate">Muntazir</span>
+                <span className="text-[9px] text-sidebar-foreground/50 truncate">Premium Plan</span>
+              </div>
+            )}
+          </div>
+        </div>
       </aside>
 
-      {isMobileMenuOpen && <div className="sidebar-overlay" onClick={() => setIsMobileMenuOpen(false)}></div>}
+      {isMobileMenuOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>}
 
-      <main className="main-content">
-        <header className="top-bar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)}><MenuIcon /></button>
-            <h2>{activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'campaign' ? 'New Campaign' : activeTab === 'template' ? 'Email Templates' : activeTab === 'custom_templates' ? 'Custom Templates' : activeTab === 'whatsapp_settings' ? 'WhatsApp Settings' : activeTab === 'whatsapp_linker' ? 'WhatsApp Linker' : activeTab === 'whatsapp_inbox' ? 'WhatsApp Inbox' : activeTab === 'variables' ? 'Variable Manager' : activeTab === 'logs' ? 'Delivery Logs' : activeTab === 'replied_leads' ? 'Replied Leads' : activeTab === 'scraper' ? 'Lead Scraper' : activeTab === 'map_finder' ? 'Map Finder' : activeTab === 'email_finder' ? 'Email Enricher' : activeTab === 'saved_leads' ? 'Lead Automation CRM' : 'Archive'}</h2>
+      <main className="flex-1 flex flex-col min-w-0 bg-background relative overflow-hidden">
+        {/* TOP HEADER */}
+        <header className="h-16 flex items-center justify-between px-8 border-b border-border bg-background/80 backdrop-blur-md z-10 sticky top-0">
+          <div className="flex items-center gap-6">
+            <button className="md:hidden text-foreground/60 hover:text-foreground" onClick={() => setIsMobileMenuOpen(true)}>
+              <Menu size={22} />
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground/40 text-sm font-medium">Pages</span>
+              <ChevronLeft size={14} className="rotate-180 text-muted-foreground/40" />
+              <h1 className="text-sm font-semibold tracking-tight text-foreground">
+                {activeTab === 'dashboard' ? 'Dashboard' :
+                  activeTab === 'campaign' ? 'Campaign Studio' :
+                    activeTab === 'template' ? 'Email Templates' :
+                      activeTab === 'custom_templates' ? 'Custom Folders' :
+                        activeTab === 'whatsapp_settings' ? 'WhatsApp Settings' :
+                          activeTab === 'whatsapp_linker' ? 'WhatsApp Linker' :
+                            activeTab === 'whatsapp_inbox' ? 'WhatsApp Inbox' :
+                              activeTab === 'variables' ? 'Variables' :
+                                activeTab === 'logs' ? 'Delivery Logs' :
+                                  activeTab === 'replied_leads' ? 'Email Replies' :
+                                    activeTab === 'scraper' ? 'Lead Scraper' :
+                                      activeTab === 'map_finder' ? 'Maps Finder' :
+                                        activeTab === 'email_finder' ? 'Enrichment' :
+                                          activeTab === 'saved_leads' ? 'Automation CRM' : 'Archive'}
+              </h1>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <select
-              value={currentTheme}
-              onChange={(e) => setCurrentTheme(e.target.value)}
-              className="pro-select"
-              style={{ padding: '4px 8px', fontSize: '0.8rem', width: 'auto', background: 'var(--card-bg)', color: 'var(--text-main)', border: '1px solid var(--border)' }}
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/5 border border-emerald-500/20 rounded-full">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">System Live</span>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-xl h-9 w-9 text-foreground/60 hover:text-primary hover:bg-primary/5 transition-all"
+              onClick={() => setCurrentTheme(currentTheme === 'theme-light' ? 'theme-dark' : 'theme-light')}
             >
-              <option value="theme-dark">Dark Premium</option>
-              <option value="theme-light">Light Minimal</option>
-              <option value="theme-cyber">Neon Cyber</option>
-              <option value="theme-abstract">Creative Abstract</option>
-              <option value="theme-glass-neon">Dark Glass Neon</option>
-              <option value="theme-light-gradient">Light Soft Gradient</option>
-            </select>
-            <span style={{ color: 'var(--success)', fontSize: '0.8rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}><SuccessIcon /> System Live</span>
-            <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="btn-icon btn-stop" style={{ padding: '4px 10px' }}>Logout</button>
+              {currentTheme === 'theme-light' ? <Moon size={18} /> : <Sun size={18} />}
+            </Button>
+
+            <div className="w-[1px] h-4 bg-border mx-1 hidden sm:block"></div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2.5 pl-2 pr-1 py-1 rounded-full border border-transparent hover:border-border hover:bg-accent/50 transition-all">
+                  <div className="flex flex-col items-end hidden lg:flex">
+                    <span className="text-[11px] font-bold text-foreground leading-tight">Muntazir</span>
+                    <span className="text-[9px] text-muted-foreground leading-tight">Admin</span>
+                  </div>
+                  <Avatar className="h-8 w-8 border border-border shadow-sm">
+                    <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">XP</AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 mt-2 border-border/50 shadow-xl rounded-xl">
+                <DropdownMenuLabel className="text-xs">Management</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => switchTab('profile')} className="text-xs py-2 cursor-pointer rounded-lg mx-1">
+                  <User size={14} className="mr-2 opacity-60" /> Profile Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => switchTab('security')} className="text-xs py-2 cursor-pointer rounded-lg mx-1">
+                  <ShieldCheck size={14} className="mr-2 opacity-60" /> Security
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => { localStorage.clear(); window.location.reload(); }} className="text-xs py-2 text-destructive focus:bg-destructive/10 cursor-pointer rounded-lg mx-1">
+                  <X size={14} className="mr-2" /> Log out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
-        <section className="content-area">
+        <section className={`flex-1 overflow-y-auto p-6 md:p-8 ${activeTab === 'whatsapp_inbox' ? '!p-0 overflow-hidden' : ''}`}>
           {activeTab === 'dashboard' && (
-            <>
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <div className="stat-icon stat-icon-blue"><UsersIcon size={24} /></div>
-                  <span className="stat-label">Total Leads</span>
-                  <span className="stat-value">
-                    {recipients.filter(r => !r.email?.includes('@whatsapp.com')).length + 
-                     recipients.filter(r => r.replies && r.replies.some(rep => rep.type === 'whatsapp' && rep.fromMe)).length}
-                  </span>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-icon stat-icon-violet"><MailIcon size={24} /></div>
-                  <span className="stat-label">Email Leads</span>
-                  <span className="stat-value stat-value-primary">{recipients.filter(r => !r.email?.includes('@whatsapp.com')).length}</span>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-icon stat-icon-green"><MessageSquare size={24} /></div>
-                  <span className="stat-label">WhatsApp Leads</span>
-                  <span className="stat-value stat-value-success">{recipients.filter(r => r.replies && r.replies.some(rep => rep.type === 'whatsapp' && rep.fromMe)).length}</span>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-icon stat-icon-violet"><Rocket size={24} /></div>
-                  <span className="stat-label">Active Automation</span>
-                  <span className="stat-value stat-value-primary">{getStatCount('pending') + getStatCount('Step 1 Sent') + getStatCount('Step 2 Sent')}</span>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-icon stat-icon-green"><SuccessIcon size={24} /></div>
-                  <span className="stat-label">Emails Replied</span>
-                  <span className="stat-value stat-value-success">{recipients.filter(r => r.status === 'replied' && !r.email?.includes('@whatsapp.com')).length}</span>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-icon stat-icon-slate"><CheckIcon size={24} /></div>
-                  <span className="stat-label">Automation Finished</span>
-                  <span className="stat-value">{getStatCount('finished')}</span>
-                </div>
-                <div className="stat-card stat-card-danger">
-                  <div className="stat-icon stat-icon-red"><ErrorIcon size={24} /></div>
-                  <span className="stat-label">Emails Stopped</span>
-                  <span className="stat-value stat-value-danger">{getStatCount('stopped')}</span>
-                </div>
-                <div className="stat-card stat-card-danger">
-                  <div className="stat-icon stat-icon-amber"><AlertTriangle size={24} /></div>
-                  <span className="stat-label">Failed</span>
-                  <span className="stat-value stat-value-danger">{getStatCount('failed')}</span>
-                </div>
+            <div className="space-y-10 animate-fade-in pb-10">
+              {/* HERO WELCOME */}
+              <div className="flex flex-col gap-1">
+                <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Welcome back, Muntazir</h2>
+                <p className="text-muted-foreground text-sm font-medium">Here's what's happening across your outreach channels today.</p>
               </div>
 
-              <EmailChart recipients={recipients} />
+              {/* TOP STATS GRID */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[
+                  {
+                    label: 'Total Active Leads',
+                    value: recipients.filter(r => !r.email?.includes('@whatsapp.com')).length + recipients.filter(r => r.replies && r.replies.some(rep => rep.type === 'whatsapp' && rep.fromMe)).length,
+                    sub: 'Across all channels',
+                    icon: Users,
+                    color: 'text-primary',
+                    bg: 'bg-primary/5',
+                    border: 'border-primary/20'
+                  },
+                  {
+                    label: 'Email Campaigns',
+                    value: recipients.filter(r => !r.email?.includes('@whatsapp.com')).length,
+                    sub: 'Verified email leads',
+                    icon: Mail,
+                    color: 'text-indigo-500',
+                    bg: 'bg-indigo-500/5',
+                    border: 'border-indigo-500/20'
+                  },
+                  {
+                    label: 'WhatsApp Leads',
+                    value: recipients.filter(r => r.replies && r.replies.some(rep => rep.type === 'whatsapp' && rep.fromMe)).length,
+                    sub: 'Active WA conversations',
+                    icon: MessageSquare,
+                    color: 'text-emerald-500',
+                    bg: 'bg-emerald-500/5',
+                    border: 'border-emerald-500/20'
+                  },
+                  {
+                    label: 'Active Automations',
+                    value: getStatCount('pending') + getStatCount('Step 1 Sent') + getStatCount('Step 2 Sent'),
+                    sub: 'Sequences in progress',
+                    icon: Rocket,
+                    color: 'text-amber-500',
+                    bg: 'bg-amber-500/5',
+                    border: 'border-amber-500/20'
+                  }
+                ].map((stat, i) => (
+                  <Card key={i} className="border-border/40 bg-card/40 backdrop-blur-sm shadow-sm hover:shadow-md hover:border-border/80 transition-all duration-300 group">
+                    <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
+                      <CardTitle className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</CardTitle>
+                      <div className={`p-2 ${stat.bg} ${stat.color} rounded-xl border ${stat.border} group-hover:scale-110 transition-transform`}>
+                        <stat.icon size={16} />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-black tracking-tight text-foreground">{stat.value}</div>
+                      <p className="text-[10px] font-medium text-muted-foreground mt-1.5 flex items-center gap-1.5">
+                        <TrendingUp size={12} className="text-emerald-500" />
+                        {stat.sub}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
 
-              <div className="log-card" style={{ marginTop: '2rem' }}>
-                <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', fontWeight: '700', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <HistoryIcon /> Recent Activity
+              {/* SECONDARY STATS ROW */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {[
+                  { label: 'Replied', value: recipients.filter(r => r.status === 'replied' && !r.email?.includes('@whatsapp.com')).length, icon: Reply, color: 'text-emerald-500' },
+                  { label: 'Completed', value: getStatCount('finished'), icon: CheckCircle, color: 'text-blue-500' },
+                  { label: 'Stopped', value: getStatCount('stopped'), icon: X, color: 'text-destructive' },
+                  { label: 'Failed', value: getStatCount('failed'), icon: AlertTriangle, color: 'text-amber-500' }
+                ].map((stat, i) => (
+                  <div key={i} className="bg-muted/30 border border-border/50 rounded-2xl p-5 flex items-center justify-between group hover:bg-muted/50 transition-colors">
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{stat.label}</p>
+                      <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
+                    </div>
+                    <div className="p-2 bg-background rounded-lg border border-border shadow-sm">
+                      <stat.icon size={18} className={stat.color} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* CHART & LOGS AREA */}
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <div className="xl:col-span-2">
+                  <Card className="border-border/40 bg-card/40 backdrop-blur-sm shadow-sm overflow-hidden h-full">
+                    <CardHeader className="border-b border-border/40 bg-muted/20 px-6 py-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                            <TrendingUp size={16} className="text-primary" /> Performance Analytics
+                          </CardTitle>
+                          <CardDescription className="text-[11px] mt-0.5">Real-time engagement tracking across all channels</CardDescription>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-[10px] font-bold px-3 rounded-lg border-border/60"
+                          onClick={() => switchTab('logs')}
+                        >
+                          View Full Report
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="h-[320px] w-full bg-muted/10 rounded-2xl border border-dashed border-border/60 flex items-center justify-center">
+                        <EmailChart recipients={recipients} />
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table className="pro-table">
-                    <thead>
-                      <tr>
-                        <th>RECIPIENT</th>
-                        <th>CURRENT STEP</th>
-                        <th>STATUS</th>
-                        <th>LAST ACTIVITY</th>
-                        <th>REPLY</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recipients.slice(0, 10).map((r, i) => (
-                        <tr key={i}>
-                          <td style={{ fontWeight: '500' }}>{r.email}</td>
-                          <td>{r.step > 3 ? 'Completed' : `Step ${r.step}`}</td>
-                          <td><span className={`status-badge status-${r.status.replace(/ /g, '-').toLowerCase()}`}>{r.status}</span></td>
-                          <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{r.lastSentAt ? new Date(r.lastSentAt).toLocaleString() : 'Queued'}</td>
-                          <td>
-                            {r.status === 'replied' && (
-                              <button
-                                className="reply-view-btn"
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  padding: '5px 12px',
-                                  fontSize: '0.75rem',
-                                  background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-                                  border: 'none',
-                                  borderRadius: '20px',
-                                  color: 'white',
-                                  cursor: 'pointer',
-                                  fontWeight: '600',
-                                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
-                                  transition: 'transform 0.2s'
-                                }}
-                                onClick={() => setViewReplyModal({ open: true, lead: r })}
-                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                              >
-                                <MessageSquare size={12} /> View Reply
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                      {recipients.length === 0 && (
-                        <tr>
-                          <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>No recent activity found. Launch a campaign to see results!</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+
+                <div className="xl:col-span-1">
+                  <Card className="border-border/40 bg-card/40 backdrop-blur-sm shadow-sm h-full flex flex-col overflow-hidden">
+                    <CardHeader className="border-b border-border/40 bg-muted/20 px-6 py-4">
+                      <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                        <HistoryIcon size={16} className="text-primary" /> Activity Log
+                      </CardTitle>
+                      <CardDescription className="text-[11px] mt-0.5">Latest automation events & status updates</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 overflow-auto p-0 scrollbar-hide">
+                      <div className="divide-y divide-border/30">
+                        {recipients.slice(0, 10).map((r, i) => (
+                          <div key={i} className="px-6 py-4 hover:bg-muted/40 transition-colors flex items-center justify-between gap-4">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[13px] font-bold text-foreground truncate" title={r.email}>{r.email}</p>
+                              <p className="text-[10px] font-medium text-muted-foreground mt-1 flex items-center gap-1.5 uppercase tracking-tight">
+                                <span className={r.step > 3 ? 'text-emerald-500' : 'text-primary'}>
+                                  {r.step > 3 ? 'Completed' : `Sequence Step ${r.step}`}
+                                </span>
+                                <span className="opacity-30">•</span>
+                                <span>{r.lastSentAt ? new Date(r.lastSentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Queued'}</span>
+                              </p>
+                            </div>
+                            <Badge variant="outline" className={`text-[9px] font-black uppercase tracking-[0.05em] px-2 py-0.5 rounded-md border-border/50 ${r.status === 'replied' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
+                                r.status === 'failed' ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                                  r.status === 'finished' ? 'bg-blue-500/10 text-blue-600 border-blue-500/20' : 'bg-muted text-muted-foreground'
+                              }`}>
+                              {r.status}
+                            </Badge>
+                          </div>
+                        ))}
+                        {recipients.length === 0 && (
+                          <div className="p-10 text-center flex flex-col items-center justify-center h-full opacity-50">
+                            <Archive size={32} className="mb-3 text-muted-foreground" />
+                            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">No recent activity</p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
           {activeTab === 'map_finder' && (
@@ -2179,340 +2402,480 @@ function App() {
           )}
 
           {activeTab === 'scraper' && (
-            <div className="content-area">
-              <div className="config-card">
-                <h3>Extract Local Businesses (No Website)</h3>
-                <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', fontSize: '0.9rem' }}>Automatically searches Google Maps using browser automation and extracts businesses that do NOT have a digital presence.</p>
-                <form onSubmit={handleScrape} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                  <div className="field" style={{ flex: 1, minWidth: '150px' }}>
-                    <label>Business Type / Keyword</label>
-                    <input type="text" list="keyword-history" placeholder="e.g. Interior Designer, Furniture, Clinic..." required value={scrapeKeyword} onChange={e => setScrapeKeyword(e.target.value)} />
-                    <datalist id="keyword-history">
-                      {keywordHistory.map((h, i) => <option key={i} value={h} />)}
-                    </datalist>
-                  </div>
-                  <div className="field" style={{ flex: 1, minWidth: '150px' }}>
-                    <label>Target Location</label>
-                    <input type="text" list="city-history" placeholder="e.g. Ahmedabad, Gujarat" required value={scrapeCity} onChange={e => setScrapeCity(e.target.value)} />
-                    <datalist id="city-history">
-                      {cityHistory.map((h, i) => <option key={i} value={h} />)}
-                    </datalist>
-                  </div>
-                  <div className="field" style={{ flex: 1, minWidth: '350px' }}>
-                    <label>Scrape Sources</label>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
-                      {[
-                        { id: 'map', label: 'Google Maps', icon: <MapPin size={14} /> },
-                        { id: 'facebook', label: 'Facebook', icon: <Facebook size={14} /> },
-                        { id: 'ig', label: 'Instagram', icon: <Instagram size={14} /> },
-                        { id: 'linkedin', label: 'LinkedIn', icon: <Linkedin size={14} /> }
-                      ].map(src => (
-                        <label key={src.id} style={{
-                          display: 'flex', alignItems: 'center', gap: '6px',
-                          padding: '6px 12px', background: scrapeSources.includes(src.id) ? 'var(--primary)' : 'transparent',
-                          border: `1px solid ${scrapeSources.includes(src.id) ? 'var(--primary)' : 'var(--border)'}`,
-                          borderRadius: '20px', cursor: 'pointer', fontSize: '0.85rem', color: scrapeSources.includes(src.id) ? '#fff' : 'var(--text-muted)',
-                          userSelect: 'none'
-                        }}>
-                          <input
-                            type="checkbox"
-                            checked={scrapeSources.includes(src.id)}
-                            style={{ display: 'none' }}
-                            onChange={(e) => {
-                              if (e.target.checked) setScrapeSources([...scrapeSources, src.id]);
-                              else setScrapeSources(scrapeSources.filter(s => s !== src.id));
-                            }}
-                          />
-                          {src.icon}
-                          {src.label}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="field" style={{ flex: 1, minWidth: '200px' }}>
-                    <label>Extraction Mode</label>
-                    <select value={scrapeMode} onChange={e => setScrapeMode(e.target.value)} className="pro-select">
-                      <option value="no_website">No Website (Name, Phone, Address)</option>
-                      <option value="emails_only">No Website (Auto-Find Email & Name)</option>
-                    </select>
-                  </div>
-                  <div className="field" style={{ flex: 0, minWidth: '200px' }}>
-                    <label>&nbsp;</label>
-                    {!isScraping ? (
-                      <button type="submit" className="launch-btn">
-                        <Rocket size={18} /> Start Extraction
-                      </button>
-                    ) : (
-                      <button type="button" onClick={stopScrape} className="launch-btn btn-danger-stop">
-                        <Square size={18} fill="currentColor" /> Stop Extraction
-                      </button>
-                    )}
-                  </div>
-                </form>
+            <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
+              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <SearchIcon size={22} className="text-primary" /> Lead Scraper Engine
+                  </CardTitle>
+                  <CardDescription>Automatically extract local businesses from Google Maps, Facebook, Instagram, and LinkedIn.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleScrape} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label>Business Type / Keyword</Label>
+                        <Input
+                          type="text"
+                          list="keyword-history"
+                          placeholder="e.g. Interior Designer, Clinic..."
+                          required
+                          value={scrapeKeyword}
+                          onChange={e => setScrapeKeyword(e.target.value)}
+                          className="bg-background/50"
+                        />
+                        <datalist id="keyword-history">
+                          {keywordHistory.map((h, i) => <option key={i} value={h} />)}
+                        </datalist>
+                      </div>
 
-                <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                    <strong>Pro Tip:</strong> For deep Instagram/LinkedIn/Facebook email extraction on a live server, paste your session cookies below (they save automatically).
-                  </p>
+                      <div className="space-y-2">
+                        <Label>Target Location</Label>
+                        <Input
+                          type="text"
+                          list="city-history"
+                          placeholder="e.g. Ahmedabad, Gujarat"
+                          required
+                          value={scrapeCity}
+                          onChange={e => setScrapeCity(e.target.value)}
+                          className="bg-background/50"
+                        />
+                        <datalist id="city-history">
+                          {cityHistory.map((h, i) => <option key={i} value={h} />)}
+                        </datalist>
+                      </div>
+                    </div>
 
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <div className="field" style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
-                      <label style={{ fontSize: '0.75rem' }}><Instagram size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> IG sessionid</label>
-                      <input type={showCookies ? "text" : "password"} placeholder="sessionid cookie" value={igSession} onChange={e => { setIgSession(e.target.value); localStorage.setItem('saved_igSession', e.target.value); }} onBlur={() => handleSaveCookie('igSession', igSession)} style={{ paddingRight: '35px' }} />
-                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '42px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
-                        {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
+                    <div className="space-y-3">
+                      <Label>Scrape Sources</Label>
+                      <div className="flex flex-wrap gap-3">
+                        {[
+                          { id: 'map', label: 'Google Maps', icon: <MapPin size={16} /> },
+                          { id: 'facebook', label: 'Facebook', icon: <Facebook size={16} /> },
+                          { id: 'ig', label: 'Instagram', icon: <Instagram size={16} /> },
+                          { id: 'linkedin', label: 'LinkedIn', icon: <Linkedin size={16} /> }
+                        ].map(src => (
+                          <label
+                            key={src.id}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer text-sm font-medium transition-all duration-200 border ${scrapeSources.includes(src.id)
+                                ? 'bg-primary text-primary-foreground border-primary shadow-glow-sm'
+                                : 'bg-muted/30 text-muted-foreground border-border hover:bg-muted'
+                              }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="hidden"
+                              checked={scrapeSources.includes(src.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) setScrapeSources([...scrapeSources, src.id]);
+                                else setScrapeSources(scrapeSources.filter(s => s !== src.id));
+                              }}
+                            />
+                            {src.icon}
+                            {src.label}
+                          </label>
+                        ))}
+                      </div>
                     </div>
-                    <div className="field" style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
-                      <label style={{ fontSize: '0.75rem' }}><Linkedin size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> LI li_at</label>
-                      <input type={showCookies ? "text" : "password"} placeholder="li_at cookie" value={liAt} onChange={e => { setLiAt(e.target.value); localStorage.setItem('saved_liAt', e.target.value); }} onBlur={() => handleSaveCookie('liAt', liAt)} style={{ paddingRight: '35px' }} />
-                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '42px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
-                        {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                      <div className="space-y-2">
+                        <Label>Extraction Mode</Label>
+                        <Select value={scrapeMode} onValueChange={setScrapeMode}>
+                          <SelectTrigger className="bg-background/50">
+                            <SelectValue placeholder="Select mode" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="no_website">No Website (Name, Phone, Address)</SelectItem>
+                            <SelectItem value="emails_only">No Website (Auto-Find Email & Name)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="pb-1">
+                        {!isScraping ? (
+                          <Button type="submit" className="w-full sm:w-auto shadow-glow-primary">
+                            <Rocket className="mr-2 h-4 w-4" /> Start Extraction
+                          </Button>
+                        ) : (
+                          <Button type="button" variant="destructive" onClick={stopScrape} className="w-full sm:w-auto shadow-[0_0_15px_rgba(239,68,68,0.4)]">
+                            <Square className="mr-2 h-4 w-4" fill="currentColor" /> Stop Extraction
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="field" style={{ flex: 1, minWidth: '150px', position: 'relative' }}>
-                      <label style={{ fontSize: '0.75rem' }}><Facebook size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> FB c_user</label>
-                      <input type={showCookies ? "text" : "password"} placeholder="c_user" value={fbCUser} onChange={e => { setFbCUser(e.target.value); localStorage.setItem('saved_fbCUser', e.target.value); }} onBlur={() => handleSaveCookie('fbCUser', fbCUser)} style={{ paddingRight: '35px' }} />
-                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '42px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
-                        {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
+                  </form>
+
+                  <Separator className="my-8" />
+
+                  <div className="space-y-4">
+                    <div className="bg-muted/40 border border-border/50 rounded-lg p-3">
+                      <p className="text-sm text-foreground/80 flex items-center gap-2">
+                        <span className="font-bold text-primary">Pro Tip:</span>
+                        For deep Instagram/LinkedIn/Facebook email extraction on a live server, paste your session cookies below (they save automatically).
+                      </p>
                     </div>
-                    <div className="field" style={{ flex: 1, minWidth: '150px', position: 'relative' }}>
-                      <label style={{ fontSize: '0.75rem' }}><Facebook size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> FB xs</label>
-                      <input type={showCookies ? "text" : "password"} placeholder="xs cookie" value={fbXs} onChange={e => { setFbXs(e.target.value); localStorage.setItem('saved_fbXs', e.target.value); }} onBlur={() => handleSaveCookie('fbXs', fbXs)} style={{ paddingRight: '35px' }} />
-                      <button type="button" onClick={() => setShowCookies(!showCookies)} style={{ position: 'absolute', right: '10px', top: '42px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
-                        {showCookies ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                      <div className="space-y-1.5 relative">
+                        <Label className="text-xs flex items-center gap-1.5"><Instagram size={14} className="text-pink-500" /> IG sessionid</Label>
+                        <div className="relative">
+                          <Input type={showCookies ? "text" : "password"} placeholder="sessionid cookie" value={igSession} onChange={e => { setIgSession(e.target.value); localStorage.setItem('saved_igSession', e.target.value); }} onBlur={() => handleSaveCookie('igSession', igSession)} className="pr-10 bg-background/50 font-mono text-xs" />
+                          <button type="button" onClick={() => setShowCookies(!showCookies)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                            {showCookies ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 relative">
+                        <Label className="text-xs flex items-center gap-1.5"><Linkedin size={14} className="text-blue-500" /> LI li_at</Label>
+                        <div className="relative">
+                          <Input type={showCookies ? "text" : "password"} placeholder="li_at cookie" value={liAt} onChange={e => { setLiAt(e.target.value); localStorage.setItem('saved_liAt', e.target.value); }} onBlur={() => handleSaveCookie('liAt', liAt)} className="pr-10 bg-background/50 font-mono text-xs" />
+                          <button type="button" onClick={() => setShowCookies(!showCookies)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                            {showCookies ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 relative">
+                        <Label className="text-xs flex items-center gap-1.5"><Facebook size={14} className="text-blue-600" /> FB c_user</Label>
+                        <div className="relative">
+                          <Input type={showCookies ? "text" : "password"} placeholder="c_user" value={fbCUser} onChange={e => { setFbCUser(e.target.value); localStorage.setItem('saved_fbCUser', e.target.value); }} onBlur={() => handleSaveCookie('fbCUser', fbCUser)} className="pr-10 bg-background/50 font-mono text-xs" />
+                          <button type="button" onClick={() => setShowCookies(!showCookies)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                            {showCookies ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 relative">
+                        <Label className="text-xs flex items-center gap-1.5"><Facebook size={14} className="text-blue-600" /> FB xs</Label>
+                        <div className="relative">
+                          <Input type={showCookies ? "text" : "password"} placeholder="xs cookie" value={fbXs} onChange={e => { setFbXs(e.target.value); localStorage.setItem('saved_fbXs', e.target.value); }} onBlur={() => handleSaveCookie('fbXs', fbXs)} className="pr-10 bg-background/50 font-mono text-xs" />
+                          <button type="button" onClick={() => setShowCookies(!showCookies)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                            {showCookies ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
 
               {scrapedLeads.length > 0 && (
-                <div className="log-card">
-                  <table className="pro-table">
-                    <thead>
-                      <tr>
-                        <th>Business Name</th>
-                        {scrapeMode === 'emails_only' ? (
-                          <th><Mail size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Email Found</th>
-                        ) : (
-                          <>
-                            <th>Phone</th>
-                            <th>Address</th>
-                          </>
-                        )}
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {scrapedLeads.map((lead, idx) => (
-                        <tr key={idx}>
-                          <td style={{ fontWeight: '600' }}>{lead.name}</td>
-                          {scrapeMode === 'emails_only' ? (
-                            <td style={{ color: lead.emailFound ? '#6366f1' : 'var(--text-muted)' }}>
-                              {lead.emailFound ? <strong>{lead.email}</strong> : 'Not Found'}
-                            </td>
-                          ) : (
-                            <>
-                              <td style={{ color: 'var(--success)', fontWeight: '500' }}>{lead.phone}</td>
-                              <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{lead.address}</td>
-                            </>
-                          )}
-                          <td>
-                            <a href={lead.mapsLink} target="_blank" rel="noreferrer" className="btn-icon btn-restart" style={{ textDecoration: 'none' }}>View Map</a>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Extracted Leads ({scrapedLeads.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm text-left border-collapse">
+                        <thead className="bg-muted/50 text-muted-foreground text-xs uppercase font-semibold border-y border-border">
+                          <tr>
+                            <th className="px-6 py-3">Business Name</th>
+                            {scrapeMode === 'emails_only' ? (
+                              <th className="px-6 py-3"><div className="flex items-center gap-2"><Mail size={14} /> Email Found</div></th>
+                            ) : (
+                              <>
+                                <th className="px-6 py-3">Phone</th>
+                                <th className="px-6 py-3">Address</th>
+                              </>
+                            )}
+                            <th className="px-6 py-3 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/50">
+                          {scrapedLeads.map((lead, idx) => (
+                            <tr key={idx} className="hover:bg-muted/30 transition-colors">
+                              <td className="px-6 py-3 font-medium text-foreground">{lead.name}</td>
+                              {scrapeMode === 'emails_only' ? (
+                                <td className={`px-6 py-3 font-medium ${lead.emailFound ? 'text-primary' : 'text-muted-foreground/70'}`}>
+                                  {lead.emailFound ? lead.email : 'Not Found'}
+                                </td>
+                              ) : (
+                                <>
+                                  <td className="px-6 py-3 text-emerald-500 font-medium whitespace-nowrap">{lead.phone}</td>
+                                  <td className="px-6 py-3 text-muted-foreground text-xs">{lead.address}</td>
+                                </>
+                              )}
+                              <td className="px-6 py-3 text-right">
+                                <Button variant="outline" size="sm" asChild className="h-8">
+                                  <a href={lead.mapsLink} target="_blank" rel="noreferrer">
+                                    <MapPin className="mr-2 h-3.5 w-3.5" /> View Map
+                                  </a>
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
             </div>
           )}
 
           {activeTab === 'template' && (
-            <div className="campaign-grid">
-              <div className="config-card full-width">
-                <h3>1. SMTP Configuration</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="field">
-                    <label>Gmail User</label>
-                    <input type="text" value={emailUser} onChange={e => setEmailUser(e.target.value)} placeholder="yourname@gmail.com" />
+            <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
+              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Lock size={20} className="text-primary" /> 1. SMTP Configuration
+                  </CardTitle>
+                  <CardDescription>Configure your sending email account (Gmail App Passwords recommended).</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label>Gmail User / Sending Email</Label>
+                      <Input type="text" value={emailUser} onChange={e => setEmailUser(e.target.value)} placeholder="yourname@gmail.com" className="bg-background/50" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>App Password</Label>
+                      <Input type="password" value={emailPass} onChange={e => setEmailPass(e.target.value)} placeholder="xxxx xxxx xxxx xxxx" className="bg-background/50" />
+                    </div>
                   </div>
-                  <div className="field">
-                    <label>App Password</label>
-                    <input type="password" value={emailPass} onChange={e => setEmailPass(e.target.value)} placeholder="xxxx xxxx xxxx xxxx" />
-                  </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
 
-              <div className="config-card full-width">
-                <h3>2. Automated 3-Step Sequence</h3>
-                <div className="field">
-                  <label>Main Subject Line</label>
-                  <input type="text" value={subject} onChange={e => setSubject(e.target.value)} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                  <div className="field">
-                    <label>Step 1 (3-day follow-up)</label>
-                    <textarea value={body1} onChange={e => setBody1(e.target.value)} />
+              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Mail size={20} className="text-primary" /> 2. Automated 3-Step Sequence
+                  </CardTitle>
+                  <CardDescription>Define your default drip sequence that executes when a new lead is added.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>Main Subject Line</Label>
+                    <Input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder="Enter an engaging subject line..." className="bg-background/50 text-lg font-medium" />
                   </div>
-                  <div className="field">
-                    <label>Step 2 (6-day follow-up)</label>
-                    <textarea value={body2} onChange={e => setBody2(e.target.value)} />
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-indigo-500"><Badge variant="outline" className="bg-indigo-500/10 text-indigo-500 border-indigo-500/20">Step 1</Badge> Initial Pitch (Day 1)</Label>
+                      <Textarea value={body1} onChange={e => setBody1(e.target.value)} placeholder="First email content..." className="min-h-[250px] bg-background/50 resize-none" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-primary"><Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">Step 2</Badge> Follow-up (Day 4)</Label>
+                      <Textarea value={body2} onChange={e => setBody2(e.target.value)} placeholder="Follow-up content..." className="min-h-[250px] bg-background/50 resize-none" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-emerald-500"><Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Step 3</Badge> Final Touch (Day 10)</Label>
+                      <Textarea value={body3} onChange={e => setBody3(e.target.value)} placeholder="Break-up/final email content..." className="min-h-[250px] bg-background/50 resize-none" />
+                    </div>
                   </div>
-                  <div className="field">
-                    <label>Step 3 (Final touch)</label>
-                    <textarea value={body3} onChange={e => setBody3(e.target.value)} />
+
+                  <div className="pt-4 flex justify-end border-t border-border/50">
+                    <Button onClick={handleSaveTemplates} className="w-full sm:w-auto shadow-glow-primary">
+                      <Save className="mr-2 h-4 w-4" /> Save Sequence Templates
+                    </Button>
                   </div>
-                </div>
-                <button className="launch-btn" onClick={handleSaveTemplates}>Save Templates</button>
-              </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
           {activeTab === 'custom_templates' && (
-            <div className="campaign-grid">
-              <div className="config-card">
-                <h3>{editingTemplateId ? <><EditIcon /> Edit Your Template</> : <><DesignIcon /> 1. Design New Template</>}</h3>
-                <div className="field">
-                  <label>Template Name (Internal Reference)</label>
-                  <input id="tplName" placeholder="e.g. AC Repair Cold Pitch" />
-                </div>
-                <div className="field">
-                  <label>Email Subject</label>
-                  <input id="tplSub" placeholder="e.g. Improving {{Business}} Online" />
-                </div>
-                <div className="field">
-                  <label>Professional Body Content</label>
-                  <textarea id="tplBody" placeholder="Hi {{First Name}}, I saw {{Business}}..."></textarea>
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button className="launch-btn" onClick={handleSaveCustomTemplate} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-                    {editingTemplateId ? <><SaveIcon /> Update Changes</> : <><RocketIcon /> Save New Template</>}
-                  </button>
-                  {editingTemplateId && (
-                    <button className="launch-btn" style={{ background: 'var(--text-muted)' }} onClick={() => {
-                      setEditingTemplateId(null);
-                      document.getElementById('tplName').value = '';
-                      document.getElementById('tplSub').value = '';
-                      document.getElementById('tplBody').value = '';
-                    }}>Cancel Edit</button>
-                  )}
-                </div>
-              </div>
-
-              <div className="log-card full-width" style={{ marginTop: '2rem' }}>
-                <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', fontWeight: '600' }}>Saved Custom Templates</div>
-                <div className="template-list" style={{ padding: '1rem' }}>
-                  {customTemplates.length === 0 ? <p style={{ color: 'var(--text-muted)' }}>No custom templates yet.</p> : (
-                    customTemplates.map(t => (
-                      <div key={t._id} className="stat-card" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', border: '1px solid var(--border)' }}>
-                        <div>
-                          <div style={{ fontWeight: '600' }}>{t.name}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.subject}</div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '5px' }}>
-                          <button className="btn-icon btn-restart" onClick={() => {
-                            setEditingTemplateId(t._id);
-                            document.getElementById('tplName').value = t.name;
-                            document.getElementById('tplSub').value = t.subject;
-                            document.getElementById('tplBody').value = t.body;
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}>Edit</button>
-                          <button className="btn-icon btn-stop" onClick={() => {
-                            setConfirmModal({
-                              open: true,
-                              title: `Delete template "${t.name}"?`,
-                              onConfirm: async () => {
-                                await axios.delete(`/api/email-templates/${t._id}`);
-                                showToast("Template Deleted!", "success");
-                                fetchCustomTemplates();
-                              }
-                            });
-                          }}>Delete</button>
-                        </div>
+            <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+                {/* Editor Area */}
+                <div className="xl:col-span-5 space-y-6">
+                  <Card className={`border-border/50 bg-card/50 backdrop-blur-xl shadow-lg transition-all ${editingTemplateId ? 'border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.15)] ring-1 ring-amber-500/20' : ''}`}>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        {editingTemplateId ? <><Edit size={20} className="text-amber-500" /> Edit Template</> : <><Edit size={20} className="text-primary" /> Design New Template</>}
+                      </CardTitle>
+                      <CardDescription>Create reusable single-email templates for bulk dispatch.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="tplName">Template Name (Internal)</Label>
+                        <Input id="tplName" placeholder="e.g. AC Repair Cold Pitch" className="bg-background/50" />
                       </div>
-                    ))
-                  )}
+                      <div className="space-y-2">
+                        <Label htmlFor="tplSub">Email Subject</Label>
+                        <Input id="tplSub" placeholder="e.g. Improving {{Business}} Online" className="bg-background/50" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tplBody">Email Body</Label>
+                        <Textarea id="tplBody" placeholder="Hi {{First Name}}, I saw {{Business}}..." className="min-h-[250px] bg-background/50" />
+                      </div>
+
+                      <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                        <Button
+                          onClick={handleSaveCustomTemplate}
+                          className={`flex-1 ${editingTemplateId ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'shadow-glow-primary'}`}
+                        >
+                          {editingTemplateId ? <><Save className="mr-2 h-4 w-4" /> Update Changes</> : <><Rocket className="mr-2 h-4 w-4" /> Save New Template</>}
+                        </Button>
+                        {editingTemplateId && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              setEditingTemplateId(null);
+                              document.getElementById('tplName').value = '';
+                              document.getElementById('tplSub').value = '';
+                              document.getElementById('tplBody').value = '';
+                            }}
+                          >
+                            Cancel Edit
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Library Area */}
+                <div className="xl:col-span-7">
+                  <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg h-full">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Folder size={20} className="text-primary" /> Template Library
+                      </CardTitle>
+                      <CardDescription>Your saved templates ready for bulk deployment.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {customTemplates.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground flex flex-col items-center">
+                          <Folder size={48} className="opacity-20 mb-4" />
+                          <p>No custom templates yet.</p>
+                          <p className="text-sm opacity-70 mt-1">Design your first template on the left.</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {customTemplates.map(t => (
+                            <div key={t._id} className="group border border-border/60 hover:border-primary/50 bg-background/40 hover:bg-card rounded-xl p-4 transition-all hover:shadow-lg">
+                              <div className="flex justify-between items-start mb-3">
+                                <div>
+                                  <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t.name}</h4>
+                                  <p className="text-xs text-muted-foreground mt-0.5 max-w-[200px] truncate" title={t.subject}>{t.subject}</p>
+                                </div>
+                              </div>
+                              <div className="text-xs text-foreground/70 bg-muted/30 p-2 rounded max-h-16 overflow-hidden relative mb-4">
+                                {t.body}
+                                <div className="absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-muted/30 to-transparent"></div>
+                              </div>
+                              <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  className="flex-1 h-8"
+                                  onClick={() => {
+                                    setEditingTemplateId(t._id);
+                                    document.getElementById('tplName').value = t.name;
+                                    document.getElementById('tplSub').value = t.subject;
+                                    document.getElementById('tplBody').value = t.body;
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                  }}
+                                >
+                                  <Edit className="mr-1.5 h-3 w-3" /> Edit
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive px-2"
+                                  onClick={() => {
+                                    setConfirmModal({
+                                      open: true,
+                                      title: `Delete template "${t.name}"?`,
+                                      onConfirm: async () => {
+                                        await axios.delete(`/api/email-templates/${t._id}`);
+                                        showToast("Template Deleted!", "success");
+                                        fetchCustomTemplates();
+                                      }
+                                    });
+                                  }}
+                                >
+                                  <Archive className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             </div>
           )}
 
           {activeTab === 'whatsapp_settings' && (
-            <div className="campaign-grid">
-              <div className="config-card">
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><Phone size={20} /> Create WhatsApp Template</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>Define messages that you can quickly send to leads via WhatsApp.</p>
-                <div className="field">
-                  <label>Template Details (e.g. Follow-up 1)</label>
-                  <input
-                    value={newWaTpl.details}
-                    onChange={e => setNewWaTpl({ ...newWaTpl, details: e.target.value })}
-                    placeholder="Enter template name/details"
-                  />
-                </div>
-                <div className="field">
-                  <label>WhatsApp Message</label>
-                  <textarea
-                    value={newWaTpl.message}
-                    onChange={e => setNewWaTpl({ ...newWaTpl, message: e.target.value })}
-                    placeholder="Hi {{First Name}}, I came across {{Business}} and wanted to share a quick idea..."
-                    style={{ height: '150px' }}
-                  ></textarea>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.45rem' }}>
-                    Variables supported: {'{{First Name}}'}, {'{{Business}}'}, {'{{Phone}}'}, {'{{City}}'}, {'{{Address}}'} and your custom lead fields.
-                  </p>
-                </div>
-                <button className="launch-btn" onClick={handleAddWhatsappTemplate}>
-                  <Save size={18} /> Save Template
-                </button>
-              </div>
+            <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
+              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Phone size={20} className="text-emerald-500" /> Create WhatsApp Template
+                  </CardTitle>
+                  <CardDescription>Define messages that you can quickly send to leads via WhatsApp.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>Template Details (e.g. Follow-up 1)</Label>
+                    <Input
+                      value={newWaTpl.details}
+                      onChange={e => setNewWaTpl({ ...newWaTpl, details: e.target.value })}
+                      placeholder="Enter template name/details"
+                      className="bg-background/50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>WhatsApp Message Content</Label>
+                    <Textarea
+                      value={newWaTpl.message}
+                      onChange={e => setNewWaTpl({ ...newWaTpl, message: e.target.value })}
+                      placeholder="Hi {{First Name}}, I came across {{Business}} and wanted to share a quick idea..."
+                      className="min-h-[150px] bg-background/50"
+                    />
+                    <div className="bg-primary/5 text-primary text-xs p-3 rounded-lg border border-primary/10 mt-2">
+                      <span className="font-semibold">Variables supported:</span> {'{{First Name}}'}, {'{{Business}}'}, {'{{Phone}}'}, {'{{City}}'}, {'{{Address}}'} and your custom lead fields.
+                    </div>
+                  </div>
+                  <Button onClick={handleAddWhatsappTemplate} className="shadow-[0_0_15px_rgba(16,185,129,0.3)] bg-emerald-500 hover:bg-emerald-600 text-white border-transparent">
+                    <Save className="mr-2 h-4 w-4" /> Save WhatsApp Template
+                  </Button>
+                </CardContent>
+              </Card>
 
-              <div className="log-card full-width" style={{ marginTop: '2rem' }}>
-                <div style={{ padding: '1.2rem', borderBottom: '1px solid var(--border)', fontWeight: '700', fontSize: '1.1rem' }}>Your WhatsApp Library</div>
-                <div style={{ padding: '1.5rem' }}>
+              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
+                <CardHeader>
+                  <CardTitle className="text-lg">Your WhatsApp Library</CardTitle>
+                </CardHeader>
+                <CardContent>
                   {whatsappTemplates.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                      <Phone size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                      <p>No WhatsApp templates found. Create your first one above!</p>
+                    <div className="text-center py-12 text-muted-foreground flex flex-col items-center">
+                      <Phone size={48} className="opacity-20 mb-4" />
+                      <p>No WhatsApp templates found.</p>
+                      <p className="text-sm opacity-70 mt-1">Create your first one above!</p>
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {whatsappTemplates.map(t => (
-                        <div key={t._id} style={{
-                          border: t.isActive ? '2px solid var(--primary)' : '1px solid var(--border)',
-                          borderRadius: '16px', padding: '1.5rem', background: 'white', position: 'relative',
-                          boxShadow: t.isActive ? '0 10px 25px rgba(99, 102, 241, 0.12)' : '0 4px 6px rgba(0,0,0,0.02)',
-                          transition: 'all 0.3s ease'
-                        }}>
+                        <div key={t._id} className={`relative rounded-xl border ${t.isActive ? 'border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/20' : 'border-border/60 hover:border-primary/50'} bg-background/40 hover:bg-card p-5 transition-all overflow-hidden`}>
                           {t.isActive && (
-                            <div style={{
-                              position: 'absolute', top: '-10px', right: '20px', background: 'var(--primary)',
-                              color: 'white', fontSize: '0.7rem', padding: '4px 12px', borderRadius: '20px', fontWeight: '800',
-                              boxShadow: '0 4px 10px rgba(99, 102, 241, 0.4)'
-                            }}>ACTIVE</div>
+                            <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg shadow-sm z-10">
+                              ACTIVE
+                            </div>
                           )}
-                          <div style={{ fontWeight: '800', fontSize: '1rem', marginBottom: '12px', color: 'var(--text)' }}>{t.details}</div>
-                          <div style={{
-                            fontSize: '0.9rem', color: 'var(--text)', background: '#f8fafc', padding: '15px',
-                            borderRadius: '10px', minHeight: '100px', marginBottom: '20px', whiteSpace: 'pre-wrap',
-                            border: '1px solid #edf2f7', lineHeight: '1.6'
-                          }}>{t.message}</div>
+                          <h4 className="font-bold text-foreground text-lg mb-3 pr-12">{t.details}</h4>
+                          <div className="text-sm text-foreground/80 bg-muted/30 p-3 rounded-lg min-h-[100px] max-h-[150px] overflow-y-auto mb-4 border border-border/40 whitespace-pre-wrap">
+                            {t.message}
+                          </div>
 
-                          <div style={{ display: 'flex', gap: '10px' }}>
+                          <div className="flex items-center gap-2 pt-3 border-t border-border/40">
                             {!t.isActive && (
-                              <button
-                                className="btn-icon btn-restart"
-                                style={{ flex: 1, padding: '10px' }}
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="flex-1 h-8 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-700 border-none"
                                 onClick={() => handleActivateWhatsappTemplate(t._id)}
-                              >Activate Now</button>
+                              >
+                                <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Activate
+                              </Button>
                             )}
-                            <button
-                              className="btn-icon btn-stop"
-                              style={{ flex: 0.4, padding: '10px' }}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`h-8 px-3 text-destructive hover:bg-destructive/10 hover:text-destructive ${t.isActive ? 'w-full' : ''}`}
                               onClick={() => {
                                 setConfirmModal({
                                   open: true,
@@ -2520,702 +2883,964 @@ function App() {
                                   onConfirm: () => handleDeleteWhatsappTemplate(t._id)
                                 });
                               }}
-                            >Delete</button>
+                            >
+                              <Archive className={t.isActive ? "mr-2 h-4 w-4" : "h-4 w-4"} /> {t.isActive && "Delete"}
+                            </Button>
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
           {activeTab === 'campaign' && (
-            <div className="campaign-grid">
-              <div className="config-card">
-                <h3>1. Bulk Outreach (Excel)</h3>
-                <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>Upload your Excel list to start many sequences at once.</p>
-                <div className="upload-box" onClick={() => document.getElementById('f').click()}>
-                  <p>{file ? `File Attached: ${file.name}` : 'Click to Upload Excel/CSV'}</p>
-                  <input id="f" type="file" hidden onChange={handleFileChange} />
-                </div>
-                <button className="launch-btn" onClick={handleStartCampaign} disabled={sending}>
-                  {sending ? 'Starting...' : 'Start Bulk Sequence'}
-                </button>
-              </div>
+            <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* BULK UPLOAD CARD */}
+                <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg h-fit">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <UploadCloud size={20} className="text-primary" /> 1. Bulk Outreach
+                    </CardTitle>
+                    <CardDescription>Upload your Excel or CSV list to initialize multiple sequences simultaneously.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div
+                      className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer ${file ? 'border-primary bg-primary/5' : 'border-border/60 hover:border-primary/50 hover:bg-muted/30'}`}
+                      onClick={() => document.getElementById('f').click()}
+                    >
+                      <input id="f" type="file" hidden onChange={handleFileChange} accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
+                      <div className="flex flex-col items-center justify-center gap-3">
+                        {file ? (
+                          <>
+                            <div className="p-3 bg-primary/20 rounded-full text-primary">
+                              <FileText size={28} />
+                            </div>
+                            <p className="font-semibold text-foreground">{file.name}</p>
+                            <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="p-3 bg-muted rounded-full text-muted-foreground">
+                              <UploadCloud size={28} />
+                            </div>
+                            <div>
+                              <p className="font-medium text-foreground">Click to upload spreadsheet</p>
+                              <p className="text-xs text-muted-foreground mt-1">Supports .csv, .xls, .xlsx</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
 
-              <div className="config-card">
-                <h3>2. Quick Add Single Lead</h3>
-                <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>Add one direct lead manually to your active sequence.</p>
+                    <Button
+                      className="w-full shadow-glow-primary h-12 text-md font-bold"
+                      onClick={handleStartCampaign}
+                      disabled={sending || !file}
+                    >
+                      {sending ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Starting Sequence...</> : <><Rocket className="mr-2 h-5 w-5" /> Launch Bulk Campaign</>}
+                    </Button>
+                  </CardContent>
+                </Card>
 
-                <div className="field">
-                  <label>Lead's Email</label>
-                  <input type="email" id="manual_email" placeholder="client@example.com" />
-                </div>
+                {/* SINGLE LEAD CARD */}
+                <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg h-fit">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <User size={20} className="text-indigo-500" /> 2. Quick Add Lead
+                    </CardTitle>
+                    <CardDescription>Manually inject a single high-priority lead into the active sequence.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="manual_email">Lead Email Address <span className="text-destructive">*</span></Label>
+                      <Input id="manual_email" type="email" placeholder="executive@enterprise.com" className="bg-background/50" />
+                    </div>
 
-                {customFields.filter(f => f.active).map(f => (
-                  <div className="field" key={f._id}>
-                    <label>{f.name}</label>
-                    <input
-                      type="text"
-                      placeholder={`Enter ${f.name}...`}
-                      onChange={(e) => setDynamicValues(prev => ({ ...prev, [f.name]: e.target.value }))}
-                    />
-                  </div>
-                ))}
+                    {customFields.filter(f => f.active).length > 0 && (
+                      <div className="space-y-4 pt-2">
+                        <Separator />
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Dynamic Variables</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {customFields.filter(f => f.active).map(f => (
+                            <div className="space-y-1.5" key={f._id}>
+                              <Label>{f.name}</Label>
+                              <Input
+                                type="text"
+                                placeholder={`Value for {{${f.name}}}`}
+                                className="bg-background/50"
+                                onChange={(e) => setDynamicValues(prev => ({ ...prev, [f.name]: e.target.value }))}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                  <b>Expert Tip:</b> Use Spintax like <code>{'{Hi|Hello|Hey}'}</code> in your templates to avoid spam.
-                </p>
+                    <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 flex gap-3 text-sm mt-4">
+                      <InfoIcon className="text-primary shrink-0 mt-0.5" size={16} />
+                      <div className="text-foreground/80">
+                        <span className="font-bold text-primary">Pro Tip:</span> Use spintax like <code className="bg-background/50 px-1 py-0.5 rounded border border-border text-xs">{'{Hi|Hello|Hey}'}</code> in templates to maximize inbox placement.
+                      </div>
+                    </div>
 
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    className="launch-btn"
-                    style={{ background: 'var(--bg-dark)' }}
-                    onClick={async (e) => {
-                      const btn = e.currentTarget;
-                      const em = document.getElementById('manual_email')?.value;
-                      if (!em) return showToast("Email is required", "error");
-                      if (btn.disabled) return;
-                      btn.disabled = true; btn.innerText = "...";
-                      try {
-                        await axios.post('/api/add-recipient', {
-                          email: em, subject, body1, body2, body3, emailUser, emailPass,
-                          data: dynamicValues
-                        });
-                        showToast("Lead Added & Dispatched!", "success");
-                        if (document.getElementById('manual_email')) document.getElementById('manual_email').value = '';
-                        setDynamicValues({});
-                        fetchStats(); fetchRecipients();
-                        switchTab('logs');
-                        setTimeout(() => { btn.disabled = false; btn.innerText = "Add to Sequence"; }, 1500);
-                      } catch (err) { showToast(err.response?.data?.error || "Error", "error"); btn.disabled = false; btn.innerText = "Add to Sequence"; }
-                    }}>
-                    Add to Sequence
-                  </button>
-                  <button
-                    className="launch-btn"
-                    style={{ background: 'var(--text-muted)' }}
-                    onClick={async (e) => {
-                      const btn = e.currentTarget;
-                      const em = document.getElementById('manual_email')?.value;
-                      if (!em) return showToast("Email is required", "error");
-                      if (btn.disabled) return;
-                      btn.disabled = true; btn.innerText = "...";
-                      try {
-                        await axios.post('/api/add-recipient', {
-                          email: em, subject, body1, body2, body3, emailUser, emailPass,
-                          data: dynamicValues,
-                          status: 'archived'
-                        });
-                        showToast("Lead Archived!", "success");
-                        if (document.getElementById('manual_email')) document.getElementById('manual_email').value = '';
-                        setDynamicValues({});
-                        fetchStats(); fetchRecipients();
-                        switchTab('archive');
-                        setTimeout(() => { btn.disabled = false; btn.innerText = "Add to Archive"; }, 1500);
-                      } catch (err) { showToast(err.response?.data?.error || "Error", "error"); btn.disabled = false; btn.innerText = "Add to Archive"; }
-                    }}>
-                    Add to Archive
-                  </button>
-                </div>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <Button
+                        className="flex-1 font-semibold"
+                        onClick={async (e) => {
+                          const btn = e.currentTarget;
+                          const em = document.getElementById('manual_email')?.value;
+                          if (!em) return showToast("Email is required", "error");
+                          if (btn.disabled) return;
+                          btn.disabled = true;
+                          try {
+                            await axios.post('/api/add-recipient', {
+                              email: em, subject, body1, body2, body3, emailUser, emailPass,
+                              data: dynamicValues
+                            });
+                            showToast("Lead Added & Dispatched!", "success");
+                            if (document.getElementById('manual_email')) document.getElementById('manual_email').value = '';
+                            setDynamicValues({});
+                            fetchStats(); fetchRecipients();
+                            switchTab('logs');
+                            setTimeout(() => { btn.disabled = false; }, 1500);
+                          } catch (err) { showToast(err.response?.data?.error || "Error", "error"); btn.disabled = false; }
+                        }}
+                      >
+                        <Plus className="mr-2 h-4 w-4" /> Add to Sequence
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        className="flex-1"
+                        onClick={async (e) => {
+                          const btn = e.currentTarget;
+                          const em = document.getElementById('manual_email')?.value;
+                          if (!em) return showToast("Email is required", "error");
+                          if (btn.disabled) return;
+                          btn.disabled = true;
+                          try {
+                            await axios.post('/api/add-recipient', {
+                              email: em, subject, body1, body2, body3, emailUser, emailPass,
+                              data: dynamicValues,
+                              status: 'archived'
+                            });
+                            showToast("Lead Archived!", "success");
+                            if (document.getElementById('manual_email')) document.getElementById('manual_email').value = '';
+                            setDynamicValues({});
+                            fetchStats(); fetchRecipients();
+                            switchTab('archive');
+                            setTimeout(() => { btn.disabled = false; }, 1500);
+                          } catch (err) { showToast(err.response?.data?.error || "Error", "error"); btn.disabled = false; }
+                        }}
+                      >
+                        <Archive className="mr-2 h-4 w-4" /> Save to Archive
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
           )}
 
           {activeTab === 'logs' && (
-            <div className="log-card">
-              {selectedIds.length > 0 && (
-                <div className="bulk-bar">
-                  <div className="bulk-info"><InfoIcon /> {selectedIds.length} leads selected</div>
-                  <div className="bulk-actions">
-                    <select
-                      className="pro-select"
-                      style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
-                      onChange={async (e) => {
-                        const tplId = e.target.value;
-                        if (!tplId) return;
-                        setConfirmModal({
-                          open: true,
-                          title: `Send this template to ${selectedIds.length} leads?`,
-                          onConfirm: async () => {
-                            try {
-                              await axios.post('/api/bulk-send', { ids: selectedIds, templateId: tplId });
-                              showToast("Bulk Dispatch Started!", "success");
-                              setSelectedIds([]);
-                              fetchRecipients();
-                            } catch (e) { showToast("Bulk send failed", "error"); }
-                          }
-                        });
-                        e.target.value = "";
-                      }}
-                    >
-                      <option value="" style={{ color: 'var(--bg-dark)' }}>Bulk Send Template...</option>
-                      <optgroup label="Auto Sequence" style={{ color: 'var(--bg-dark)' }}>
-                        <option value="step1">Sequence: Step 1 (Intro)</option>
-                        <option value="step2">Sequence: Step 2 (Follow-up)</option>
-                        <option value="step3">Sequence: Step 3 (Final)</option>
-                      </optgroup>
-                      <optgroup label="Custom Templates" style={{ color: 'var(--bg-dark)' }}>
-                        {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
-                      </optgroup>
-                    </select>
-                    <button className="bulk-btn" onClick={handleBulkArchive}><ArchiveIcon /> Bulk Archive</button>
-                    <button className="bulk-btn" style={{ backgroundColor: 'var(--danger)' }} onClick={() => setSelectedIds([])}>Cancel</button>
+            <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
+              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
+                <CardHeader className="pb-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <History size={20} className="text-primary" /> Delivery Logs
+                      </CardTitle>
+                      <CardDescription>Monitor your active campaigns and past outreaches.</CardDescription>
+                    </div>
                   </div>
-                </div>
-              )}
-              <table className="pro-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '40px' }}>
-                      <input type="checkbox" checked={selectedIds.length > 0 && selectedIds.length === recipients.filter(r => !r.isArchived).length} onChange={() => toggleSelectAll(recipients.filter(r => !r.isArchived))} />
-                    </th>
-                    <th>RECIPIENT</th>
-                    <th>SEQUENCE</th>
-                    <th>STATUS</th>
-                    <th>LAST ACTIVITY</th>
-                    <th>ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recipients
-                    .filter(r => !r.isArchived)
-                    .sort((a, b) => {
-                      const priority = (s) => {
-                        if (s.includes('Step')) return 1;
-                        if (s === 'pending') return 2;
-                        if (s === 'replied') return 3;
-                        if (s === 'finished') return 4;
-                        if (s === 'stopped') return 5;
-                        return 6;
-                      };
-                      return priority(a.status) - priority(b.status);
-                    })
-                    .map((r, i) => (
-                      <tr key={i} className={selectedIds.includes(r._id) ? 'row-selected' : ''}>
-                        <td>
-                          <input type="checkbox" checked={selectedIds.includes(r._id)} onChange={() => toggleSelectOne(r._id)} />
-                        </td>
-                        <td style={{ fontWeight: '500', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setIntelLead(r)}>
-                          {r.email}
-                        </td>
-                        <td>{r.step > 3 ? 'Completed' : `Step ${r.step}`}</td>
-                        <td><StatusBadge status={r.status} /></td>
-                        <td>{r.lastSentAt ? new Date(r.lastSentAt).toLocaleString() : 'Queued'}</td>
-                        <td>
-                          <div className="action-btn-group">
-                            {r.status !== 'finished' && r.status !== 'replied' && r.status !== 'stopped' && r.status !== 'sending' && (
-                              <>
-                                <button className="btn-icon btn-restart" onClick={async () => { await axios.post(`/api/send-now/${r._id}`); fetchRecipients(); fetchStats(); }}>Send Next</button>
-                                <button className="btn-icon btn-stop" onClick={async () => { await axios.post(`/api/stop/${r._id}`); fetchRecipients(); fetchStats(); }}>Stop</button>
-                              </>
-                            )}
+                </CardHeader>
 
-                            {r.status === 'stopped' && (
-                              <>
-                                <button className="btn-icon btn-continue" onClick={async () => { await axios.post(`/api/continue/${r._id}`); fetchRecipients(); fetchStats(); }}>Continue</button>
-                                <button className="btn-icon btn-restart" onClick={async () => { await axios.post(`/api/restart/${r._id}`); fetchRecipients(); fetchStats(); }}>Restart</button>
-                                <button className="btn-icon btn-continue" style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)' }} onClick={async () => { await axios.post(`/api/archive/${r._id}`); fetchRecipients(); fetchStats(); }}>Archive</button>
-                              </>
-                            )}
+                {selectedIds.length > 0 && (
+                  <div className="mx-6 mb-4 p-4 rounded-xl bg-primary/10 border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in shadow-inner">
+                    <div className="flex items-center gap-2 text-primary font-medium">
+                      <Info size={18} /> {selectedIds.length} leads selected
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                      <select
+                        className="flex h-10 w-full sm:w-[200px] items-center justify-between rounded-md border border-primary/30 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        onChange={async (e) => {
+                          const tplId = e.target.value;
+                          if (!tplId) return;
+                          setConfirmModal({
+                            open: true,
+                            title: `Send this template to ${selectedIds.length} leads?`,
+                            onConfirm: async () => {
+                              try {
+                                await axios.post('/api/bulk-send', { ids: selectedIds, templateId: tplId });
+                                showToast("Bulk Dispatch Started!", "success");
+                                setSelectedIds([]);
+                                fetchRecipients();
+                              } catch (e) { showToast("Bulk send failed", "error"); }
+                            }
+                          });
+                          e.target.value = "";
+                        }}
+                      >
+                        <option value="">Bulk Send Template...</option>
+                        <optgroup label="Auto Sequence">
+                          <option value="step1">Sequence: Step 1 (Intro)</option>
+                          <option value="step2">Sequence: Step 2 (Follow-up)</option>
+                          <option value="step3">Sequence: Step 3 (Final)</option>
+                        </optgroup>
+                        <optgroup label="Custom Templates">
+                          {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                        </optgroup>
+                      </select>
+                      <Button variant="secondary" onClick={handleBulkArchive} className="bg-background border border-border hover:bg-muted text-foreground">
+                        <Archive className="mr-2 h-4 w-4" /> Bulk Archive
+                      </Button>
+                      <Button variant="destructive" onClick={() => setSelectedIds([])} className="shadow-[0_0_10px_rgba(239,68,68,0.3)]">
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
-                            {selectedLeadForTpl === r._id ? (
-                              <select
-                                className="pro-select"
-                                style={{ appearance: 'none', background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px 25px 4px 10px', fontSize: '0.8rem' }}
-                                onChange={(e) => {
-                                  if (e.target.value) handleSendCustomTemplate(r._id, e.target.value);
-                                  setSelectedLeadForTpl(null);
-                                }}
-                              >
-                                <option value="">Pick Template...</option>
-                                <optgroup label="Auto Sequence">
-                                  <option value="step1">Sequence: Step 1 (Intro)</option>
-                                  <option value="step2">Sequence: Step 2 (Follow-up)</option>
-                                  <option value="step3">Sequence: Step 3 (Final)</option>
-                                </optgroup>
-                                <optgroup label="Custom Templates">
-                                  {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
-                                </optgroup>
-                                <option value="">Cancel</option>
-                              </select>
-                            ) : (
-                              <button className="btn-icon btn-continue" onClick={() => setSelectedLeadForTpl(r._id)}>Send Custom</button>
-                            )}
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto rounded-b-xl">
+                    <table className="w-full text-sm text-left border-collapse">
+                      <thead className="bg-muted/50 text-muted-foreground text-xs uppercase font-semibold border-y border-border">
+                        <tr>
+                          <th className="px-4 py-3 w-[40px] text-center">
+                            <input
+                              type="checkbox"
+                              className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                              checked={selectedIds.length > 0 && selectedIds.length === recipients.filter(r => !r.isArchived).length}
+                              onChange={() => toggleSelectAll(recipients.filter(r => !r.isArchived))}
+                            />
+                          </th>
+                          <th className="px-4 py-3">Recipient</th>
+                          <th className="px-4 py-3">Sequence</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3">Last Activity</th>
+                          <th className="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {recipients
+                          .filter(r => !r.isArchived)
+                          .sort((a, b) => {
+                            const priority = (s) => {
+                              if (s.includes('Step')) return 1;
+                              if (s === 'pending') return 2;
+                              if (s === 'replied') return 3;
+                              if (s === 'finished') return 4;
+                              if (s === 'stopped') return 5;
+                              return 6;
+                            };
+                            return priority(a.status) - priority(b.status);
+                          })
+                          .map((r, i) => (
+                            <tr key={i} className={`transition-colors hover:bg-muted/30 ${selectedIds.includes(r._id) ? 'bg-primary/5' : ''}`}>
+                              <td className="px-4 py-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                                  checked={selectedIds.includes(r._id)}
+                                  onChange={() => toggleSelectOne(r._id)}
+                                />
+                              </td>
+                              <td className="px-4 py-3 font-medium text-primary hover:text-primary/80 cursor-pointer underline decoration-primary/30 underline-offset-4" onClick={() => setIntelLead(r)}>
+                                {r.email}
+                              </td>
+                              <td className="px-4 py-3 text-muted-foreground">
+                                {r.step > 3 ? <span className="text-emerald-500 font-medium">Completed</span> : `Step ${r.step}`}
+                              </td>
+                              <td className="px-4 py-3">
+                                <StatusBadge status={r.status} />
+                              </td>
+                              <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                                {r.lastSentAt ? new Date(r.lastSentAt).toLocaleString() : 'Queued'}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  {r.status !== 'finished' && r.status !== 'replied' && r.status !== 'stopped' && r.status !== 'sending' && (
+                                    <>
+                                      <Button variant="outline" size="sm" className="h-8 text-xs font-medium border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10" onClick={async () => { await axios.post(`/api/send-now/${r._id}`); fetchRecipients(); fetchStats(); }}>
+                                        Send Next
+                                      </Button>
+                                      <Button variant="outline" size="sm" className="h-8 text-xs font-medium border-amber-500/30 text-amber-600 hover:bg-amber-500/10" onClick={async () => { await axios.post(`/api/stop/${r._id}`); fetchRecipients(); fetchStats(); }}>
+                                        Stop
+                                      </Button>
+                                    </>
+                                  )}
 
-                            <button className="btn-icon" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={() => {
-                              setConfirmModal({
-                                open: true,
-                                title: `Delete ${r.email} forever?`,
-                                onConfirm: async () => {
-                                  await axios.delete(`/api/delete-recipient/${r._id}`);
-                                  showToast("Lead Deleted!", "success");
-                                  fetchRecipients(); fetchStats();
-                                }
-                              });
-                            }}>Delete</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+                                  {r.status === 'stopped' && (
+                                    <>
+                                      <Button variant="outline" size="sm" className="h-8 text-xs font-medium border-primary/30 text-primary hover:bg-primary/10" onClick={async () => { await axios.post(`/api/continue/${r._id}`); fetchRecipients(); fetchStats(); }}>
+                                        Continue
+                                      </Button>
+                                      <Button variant="outline" size="sm" className="h-8 text-xs font-medium border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10" onClick={async () => { await axios.post(`/api/restart/${r._id}`); fetchRecipients(); fetchStats(); }}>
+                                        Restart
+                                      </Button>
+                                      <Button variant="ghost" size="sm" className="h-8 text-xs font-medium text-muted-foreground hover:bg-muted" onClick={async () => { await axios.post(`/api/archive/${r._id}`); fetchRecipients(); fetchStats(); }}>
+                                        Archive
+                                      </Button>
+                                    </>
+                                  )}
+
+                                  {selectedLeadForTpl === r._id ? (
+                                    <select
+                                      className="flex h-8 w-[150px] items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                      onChange={(e) => {
+                                        if (e.target.value) handleSendCustomTemplate(r._id, e.target.value);
+                                        setSelectedLeadForTpl(null);
+                                      }}
+                                    >
+                                      <option value="">Pick Template...</option>
+                                      <optgroup label="Auto Sequence">
+                                        <option value="step1">Step 1 (Intro)</option>
+                                        <option value="step2">Step 2 (Follow-up)</option>
+                                        <option value="step3">Step 3 (Final)</option>
+                                      </optgroup>
+                                      <optgroup label="Custom Templates">
+                                        {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                                      </optgroup>
+                                      <option value="">Cancel</option>
+                                    </select>
+                                  ) : (
+                                    <Button variant="outline" size="sm" className="h-8 text-xs font-medium" onClick={() => setSelectedLeadForTpl(r._id)}>
+                                      Custom
+                                    </Button>
+                                  )}
+
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => {
+                                    setConfirmModal({
+                                      open: true,
+                                      title: `Delete ${r.email} forever?`,
+                                      onConfirm: async () => {
+                                        await axios.delete(`/api/delete-recipient/${r._id}`);
+                                        showToast("Lead Deleted!", "success");
+                                        fetchRecipients(); fetchStats();
+                                      }
+                                    });
+                                  }}>
+                                    <Archive size={14} />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
           {activeTab === 'variables' && (
-            <div className="campaign-grid" style={{ gridTemplateColumns: '1fr' }}>
-              <div className="config-card">
-                <h3>Variable Manager</h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Add or toggle custom fields for your outreach forms.</p>
-
-                <div className="var-input-group">
-                  <input
-                    placeholder="New variable (e.g. City)"
-                    value={newFieldName}
-                    onChange={e => setNewFieldName(e.target.value)}
-                  />
-                  <button className="var-add-btn" onClick={async () => {
-                    if (!newFieldName) return;
-                    await axios.post('/api/custom-fields', { name: newFieldName });
-                    setNewFieldName('');
-                    fetchCustomFields();
-                    showToast("Field Added!", "success");
-                  }}>Add Field</button>
-                </div>
-
-                <div className="variable-list">
-                  {customFields.map(f => (
-                    <div key={f._id} className="variable-item">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <input
-                          type="checkbox"
-                          className="pro-checkbox"
-                          checked={f.active}
-                          onChange={async () => { await axios.put(`/api/custom-fields/${f._id}`, { active: !f.active }); fetchCustomFields(); showToast("Field Updated!", "success"); }}
-                        />
-                        <span style={{ fontWeight: '500', color: f.active ? 'var(--text)' : 'var(--text-muted)' }}>{f.name}</span>
-                      </div>
-                      <button className="btn-icon btn-stop" style={{ padding: '4px 8px' }} onClick={() => {
-                        setConfirmModal({
-                          open: true,
-                          title: `Delete variable "${f.name}"?`,
-                          onConfirm: async () => {
-                            await axios.delete(`/api/custom-fields/${f._id}`);
-                            fetchCustomFields();
-                            showToast("Field Deleted!", "success");
+            <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Database size={20} className="text-primary" /> Variable Manager
+                  </CardTitle>
+                  <CardDescription>Add or toggle custom fields for your outreach forms.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex gap-3 items-end">
+                    <div className="space-y-2 flex-1">
+                      <Label htmlFor="new_var">Create New Variable</Label>
+                      <Input
+                        id="new_var"
+                        placeholder="e.g. City, Industry, Size"
+                        value={newFieldName}
+                        onChange={e => setNewFieldName(e.target.value)}
+                        className="bg-background/50"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && newFieldName) {
+                            axios.post('/api/custom-fields', { name: newFieldName }).then(() => {
+                              setNewFieldName('');
+                              fetchCustomFields();
+                              showToast("Field Added!", "success");
+                            });
                           }
-                        });
-                      }}>Delete</button>
+                        }}
+                      />
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <Button className="shadow-glow-primary" onClick={async () => {
+                      if (!newFieldName) return;
+                      await axios.post('/api/custom-fields', { name: newFieldName });
+                      setNewFieldName('');
+                      fetchCustomFields();
+                      showToast("Field Added!", "success");
+                    }}>
+                      <Plus className="mr-2 h-4 w-4" /> Add Field
+                    </Button>
+                  </div>
+
+                  <div className="pt-4 border-t border-border/50">
+                    <h4 className="font-semibold text-sm mb-4 text-foreground/80 uppercase tracking-wider">Active Variables</h4>
+                    <div className="space-y-3">
+                      {customFields.length === 0 ? (
+                        <p className="text-sm text-muted-foreground italic">No custom variables created yet.</p>
+                      ) : (
+                        customFields.map(f => (
+                          <div key={f._id} className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${f.active ? 'bg-background border-primary/20' : 'bg-muted/30 border-border/50 opacity-70'}`}>
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                                checked={f.active}
+                                onChange={async () => {
+                                  await axios.put(`/api/custom-fields/${f._id}`, { active: !f.active });
+                                  fetchCustomFields();
+                                  showToast("Field Updated!", "success");
+                                }}
+                              />
+                              <span className={`font-medium ${f.active ? 'text-foreground' : 'text-muted-foreground line-through'}`}>{f.name}</span>
+                            </div>
+                            <Button variant="ghost" size="sm" className="h-8 text-destructive hover:bg-destructive/10 hover:text-destructive px-2" onClick={() => {
+                              setConfirmModal({
+                                open: true,
+                                title: `Delete variable "${f.name}"?`,
+                                onConfirm: async () => {
+                                  await axios.delete(`/api/custom-fields/${f._id}`);
+                                  fetchCustomFields();
+                                  showToast("Field Deleted!", "success");
+                                }
+                              });
+                            }}>
+                              <Archive className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
           {activeTab === 'archive' && (
-            <div className="log-card">
-              <div style={{ padding: '1.5rem', background: '#f8fafc', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Records moved here are hidden from Delivery Logs but kept in database.</div>
+            <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
+              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Archive size={20} className="text-primary" /> Archive
+                  </CardTitle>
+                  <CardDescription>Records moved here are hidden from Delivery Logs but kept in database.</CardDescription>
+                </CardHeader>
 
-              {selectedIds.length > 0 && (
-                <div className="bulk-bar" style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '10px 20px', background: 'var(--primary)', color: 'white', borderRadius: '8px', margin: '1rem', animation: 'slideIn 0.3s ease-out' }}>
-                  <span style={{ fontWeight: '600' }}>{selectedIds.length} Selected</span>
-                  <select
-                    className="pro-select"
-                    style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', padding: '5px 10px' }}
-                    onChange={(e) => {
-                      const tplId = e.target.value;
-                      if (!tplId) return;
-                      setConfirmModal({
-                        open: true,
-                        title: `Send this template to ${selectedIds.length} archived leads?`,
-                        onConfirm: async () => {
-                          for (const id of selectedIds) {
-                            try { await axios.post(`/api/send-custom/${id}/${tplId}`); } catch (e) { }
-                          }
-                          showToast("Bulk Dispatch Started!", "success");
-                          setSelectedIds([]);
-                          fetchRecipients();
-                        }
-                      });
-                    }}
-                  >
-                    <option value="" style={{ color: 'black' }}>Bulk Send Template...</option>
-                    <optgroup label="Auto Sequence" style={{ color: 'black' }}>
-                      <option value="step1" style={{ color: 'black' }}>Sequence: Step 1 (Intro)</option>
-                      <option value="step2" style={{ color: 'black' }}>Sequence: Step 2 (Follow-up)</option>
-                      <option value="step3" style={{ color: 'black' }}>Sequence: Step 3 (Final)</option>
-                    </optgroup>
-                    <optgroup label="Custom Templates" style={{ color: 'black' }}>
-                      {customTemplates.map(t => <option key={t._id} value={t._id} style={{ color: 'black' }}>{t.name}</option>)}
-                    </optgroup>
-                  </select>
-                  <button
-                    className="btn-icon"
-                    style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
-                    onClick={() => {
-                      setConfirmModal({
-                        open: true,
-                        title: `Delete ${selectedIds.length} leads forever?`,
-                        onConfirm: async () => {
-                          await axios.post('/api/bulk-delete', { ids: selectedIds });
-                          showToast("Selected Leads Deleted!", "success");
-                          setSelectedIds([]);
-                          fetchRecipients(); fetchStats();
-                        }
-                      });
-                    }}
-                  >Delete Selected</button>
-                  <button
-                    className="btn-icon"
-                    style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
-                    onClick={() => setSelectedIds([])}
-                  >Cancel</button>
-                </div>
-              )}
-
-              <table className="pro-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '40px' }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.length > 0 && recipients.filter(r => r.isArchived).length === selectedIds.length}
+                {selectedIds.length > 0 && (
+                  <div className="mx-6 mb-4 p-4 rounded-xl bg-primary/10 border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-inner">
+                    <div className="flex items-center gap-2 text-primary font-medium">
+                      <span className="font-bold">{selectedIds.length}</span> Selected
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                      <select
+                        className="flex h-10 w-full sm:w-[200px] items-center justify-between rounded-md border border-primary/30 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedIds(recipients.filter(r => r.isArchived).map(r => r._id));
-                          } else {
-                            setSelectedIds([]);
-                          }
+                          const tplId = e.target.value;
+                          if (!tplId) return;
+                          setConfirmModal({
+                            open: true,
+                            title: `Send this template to ${selectedIds.length} archived leads?`,
+                            onConfirm: async () => {
+                              for (const id of selectedIds) {
+                                try { await axios.post(`/api/send-custom/${id}/${tplId}`); } catch (e) { }
+                              }
+                              showToast("Bulk Dispatch Started!", "success");
+                              setSelectedIds([]);
+                              fetchRecipients();
+                            }
+                          });
                         }}
-                      />
-                    </th>
-                    <th>RECIPIENT</th>
-                    <th>LAST STATUS</th>
-                    <th>ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recipients
-                    .filter(r => r.isArchived)
-                    .sort((a, b) => {
-                      const priority = (s) => {
-                        const low = s.toLowerCase();
-                        if (low.includes('step')) return 1;
-                        if (low === 'pending') return 2;
-                        if (low === 'finished') return 3;
-                        if (low === 'replied') return 4;
-                        if (low === 'stopped') return 100; // Force to absolute bottom
-                        return 50;
-                      };
-                      return priority(a.status) - priority(b.status);
-                    })
-                    .map((r, i) => (
-                      <tr key={i} className={selectedIds.includes(r._id) ? 'row-selected' : ''}>
-                        <td>
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(r._id)}
-                            onChange={(e) => {
-                              if (e.target.checked) setSelectedIds(prev => [...prev, r._id]);
-                              else setSelectedIds(prev => prev.filter(id => id !== r._id));
-                            }}
-                          />
-                        </td>
-                        <td style={{ fontWeight: '500', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setIntelLead(r)}>
-                          {r.email}
-                        </td>
-                        <td><StatusBadge status={r.status} /></td>
-                        <td>
-                          <div className="action-btn-group">
-                            <button className="btn-icon btn-restart" onClick={async () => { await axios.post(`/api/restart/${r._id}`); fetchRecipients(); fetchStats(); }}>Restore & Restart</button>
+                      >
+                        <option value="">Bulk Send Template...</option>
+                        <optgroup label="Auto Sequence">
+                          <option value="step1">Sequence: Step 1 (Intro)</option>
+                          <option value="step2">Sequence: Step 2 (Follow-up)</option>
+                          <option value="step3">Sequence: Step 3 (Final)</option>
+                        </optgroup>
+                        <optgroup label="Custom Templates">
+                          {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                        </optgroup>
+                      </select>
+                      <Button variant="destructive" onClick={() => {
+                        setConfirmModal({
+                          open: true,
+                          title: `Delete ${selectedIds.length} leads forever?`,
+                          onConfirm: async () => {
+                            await axios.post('/api/bulk-delete', { ids: selectedIds });
+                            showToast("Selected Leads Deleted!", "success");
+                            setSelectedIds([]);
+                            fetchRecipients(); fetchStats();
+                          }
+                        });
+                      }} className="shadow-[0_0_10px_rgba(239,68,68,0.3)]">
+                        Delete Selected
+                      </Button>
+                      <Button variant="outline" onClick={() => setSelectedIds([])} className="border-border">
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
-                            {selectedLeadForTpl === r._id ? (
-                              <select
-                                className="pro-select"
-                                style={{ appearance: 'none', background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px 25px 4px 10px', fontSize: '0.8rem' }}
-                                onChange={(e) => {
-                                  if (e.target.value) handleSendCustomTemplate(r._id, e.target.value);
-                                  setSelectedLeadForTpl(null);
-                                }}
-                              >
-                                <option value="">Pick Template...</option>
-                                <optgroup label="Auto Sequence">
-                                  <option value="step1">Sequence: Step 1 (Intro)</option>
-                                  <option value="step2">Sequence: Step 2 (Follow-up)</option>
-                                  <option value="step3">Sequence: Step 3 (Final)</option>
-                                </optgroup>
-                                <optgroup label="Custom Templates">
-                                  {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
-                                </optgroup>
-                                <option value="">Cancel</option>
-                              </select>
-                            ) : (
-                              <button className="btn-icon btn-continue" onClick={() => setSelectedLeadForTpl(r._id)}>Send Custom</button>
-                            )}
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto rounded-b-xl">
+                    <table className="w-full text-sm text-left border-collapse">
+                      <thead className="bg-muted/50 text-muted-foreground text-xs uppercase font-semibold border-y border-border">
+                        <tr>
+                          <th className="px-4 py-3 w-[40px] text-center">
+                            <input
+                              type="checkbox"
+                              className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                              checked={selectedIds.length > 0 && recipients.filter(r => r.isArchived).length === selectedIds.length}
+                              onChange={(e) => {
+                                if (e.target.checked) setSelectedIds(recipients.filter(r => r.isArchived).map(r => r._id));
+                                else setSelectedIds([]);
+                              }}
+                            />
+                          </th>
+                          <th className="px-4 py-3">Recipient</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {recipients
+                          .filter(r => r.isArchived)
+                          .sort((a, b) => {
+                            const priority = (s) => {
+                              const low = s.toLowerCase();
+                              if (low.includes('step')) return 1;
+                              if (low === 'pending') return 2;
+                              if (low === 'finished') return 3;
+                              if (low === 'replied') return 4;
+                              if (low === 'stopped') return 100;
+                              return 50;
+                            };
+                            return priority(a.status) - priority(b.status);
+                          })
+                          .map((r, i) => (
+                            <tr key={i} className={`transition-colors hover:bg-muted/30 ${selectedIds.includes(r._id) ? 'bg-primary/5' : ''}`}>
+                              <td className="px-4 py-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                                  checked={selectedIds.includes(r._id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) setSelectedIds(prev => [...prev, r._id]);
+                                    else setSelectedIds(prev => prev.filter(id => id !== r._id));
+                                  }}
+                                />
+                              </td>
+                              <td className="px-4 py-3 font-medium text-primary hover:text-primary/80 cursor-pointer underline decoration-primary/30 underline-offset-4" onClick={() => setIntelLead(r)}>
+                                {r.email}
+                              </td>
+                              <td className="px-4 py-3">
+                                <StatusBadge status={r.status} />
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <Button variant="outline" size="sm" className="h-8 text-xs font-medium border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10" onClick={async () => { await axios.post(`/api/restart/${r._id}`); fetchRecipients(); fetchStats(); }}>
+                                    Restore & Restart
+                                  </Button>
 
-                            <button className="btn-icon" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={() => {
-                              setConfirmModal({
-                                open: true,
-                                title: `Delete ${r.email} forever?`,
-                                onConfirm: async () => {
-                                  await axios.delete(`/api/delete-recipient/${r._id}`);
-                                  showToast("Lead Deleted!", "success");
-                                  fetchRecipients(); fetchStats();
-                                }
-                              });
-                            }}>Delete</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+                                  {selectedLeadForTpl === r._id ? (
+                                    <select
+                                      className="flex h-8 w-[150px] items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                                      onChange={(e) => {
+                                        if (e.target.value) handleSendCustomTemplate(r._id, e.target.value);
+                                        setSelectedLeadForTpl(null);
+                                      }}
+                                    >
+                                      <option value="">Pick Template...</option>
+                                      <optgroup label="Auto Sequence">
+                                        <option value="step1">Step 1 (Intro)</option>
+                                        <option value="step2">Step 2 (Follow-up)</option>
+                                        <option value="step3">Step 3 (Final)</option>
+                                      </optgroup>
+                                      <optgroup label="Custom Templates">
+                                        {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                                      </optgroup>
+                                      <option value="">Cancel</option>
+                                    </select>
+                                  ) : (
+                                    <Button variant="outline" size="sm" className="h-8 text-xs font-medium" onClick={() => setSelectedLeadForTpl(r._id)}>
+                                      Custom
+                                    </Button>
+                                  )}
+
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => {
+                                    setConfirmModal({
+                                      open: true,
+                                      title: `Delete ${r.email} forever?`,
+                                      onConfirm: async () => {
+                                        await axios.delete(`/api/delete-recipient/${r._id}`);
+                                        showToast("Lead Deleted!", "success");
+                                        fetchRecipients(); fetchStats();
+                                      }
+                                    });
+                                  }}>
+                                    <Archive size={14} />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
+
+          {activeTab === 'profile' && (
+            <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-10">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Profile Settings</h2>
+                <p className="text-muted-foreground text-sm font-medium">Manage your personal information and account preferences.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <Card className="md:col-span-1 border-border/40 bg-card/40 backdrop-blur-sm shadow-sm h-fit">
+                  <CardContent className="pt-6 flex flex-col items-center text-center">
+                    <Avatar className="h-24 w-24 border-4 border-background shadow-xl mb-4">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-black">XP</AvatarFallback>
+                    </Avatar>
+                    <h3 className="text-lg font-bold text-foreground">Muntazir</h3>
+                    <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold mt-1">Administrator</p>
+                    <Button variant="outline" size="sm" className="mt-6 w-full rounded-xl border-border/60">Change Avatar</Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="md:col-span-2 border-border/40 bg-card/40 backdrop-blur-sm shadow-sm">
+                  <CardHeader className="border-b border-border/40 bg-muted/20">
+                    <CardTitle className="text-sm font-bold">Personal Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Full Name</Label>
+                        <Input defaultValue="Muntazir" className="bg-background/50 border-border/40 focus:border-primary/50" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Email Address</Label>
+                        <Input defaultValue="admin@leadpulse.io" className="bg-background/50 border-border/40 focus:border-primary/50" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Professional Title</Label>
+                      <Input defaultValue="Growth Lead & Founder" className="bg-background/50 border-border/40 focus:border-primary/50" />
+                    </div>
+                    <div className="pt-4">
+                      <Button className="rounded-xl shadow-glow-primary px-8">Save Changes</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'security' && (
+            <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-10">
+              <div className="flex flex-col gap-1">
+                <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Security & Access</h2>
+                <p className="text-muted-foreground text-sm font-medium">Configure your password, 2FA, and session management.</p>
+              </div>
+
+              <div className="space-y-6">
+                <Card className="border-border/40 bg-card/40 backdrop-blur-sm shadow-sm">
+                  <CardHeader className="border-b border-border/40 bg-muted/20">
+                    <CardTitle className="text-sm font-bold">Change Password</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Current Password</Label>
+                        <Input type="password" placeholder="••••••••" className="bg-background/50 border-border/40" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">New Password</Label>
+                        <Input type="password" placeholder="••••••••" className="bg-background/50 border-border/40" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Confirm New</Label>
+                        <Input type="password" placeholder="••••••••" className="bg-background/50 border-border/40" />
+                      </div>
+                    </div>
+                    <div className="pt-2">
+                      <Button className="rounded-xl shadow-glow-primary">Update Password</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/40 bg-card/40 backdrop-blur-sm shadow-sm">
+                  <CardHeader className="border-b border-border/40 bg-muted/20">
+                    <CardTitle className="text-sm font-bold flex items-center justify-between">
+                      Two-Factor Authentication
+                      <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/20 uppercase tracking-wider">Disabled</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-bold text-foreground">Authenticator App</p>
+                      <p className="text-xs text-muted-foreground">Use an app like Google Authenticator or 1Password to generate codes.</p>
+                    </div>
+                    <Button variant="outline" className="rounded-xl border-border/60">Configure</Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/40 bg-destructive/5 border-destructive/20 shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-sm font-bold text-destructive">Danger Zone</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">Permanently delete your account and all associated lead data. This action is irreversible.</p>
+                    <Button variant="destructive" className="rounded-xl shadow-sm">Delete Account</Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'replied_leads' && (
-            <div className="content-area">
-              <div className="log-card">
-                <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-                  <h3 style={{ margin: 0 }}>Email Replied Leads</h3>
-                  <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>All leads who have responded to your emails.</p>
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table className="pro-table">
-                    <thead>
-                      <tr>
-                        <th>RECIPIENT</th>
-                        <th>LATEST REPLY</th>
-                        <th>REPLIES</th>
-                        <th>ACTION</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(() => {
-                        const repliedEmailLeads = recipients.filter(r => r.status === 'replied' && !r.email.includes('@whatsapp.com'));
-                        return repliedEmailLeads.length > 0 ? (
-                          repliedEmailLeads
-                            .sort((a, b) => {
-                              const dateA = a.replies && a.replies.length > 0 ? new Date(a.replies[a.replies.length - 1].receivedAt) : 0;
-                              const dateB = b.replies && b.replies.length > 0 ? new Date(b.replies[b.replies.length - 1].receivedAt) : 0;
-                              return dateB - dateA;
-                            })
-                            .map((r, i) => (
-                              <React.Fragment key={i}>
-                                <tr
-                                  onClick={() => setExpandedLeadId(expandedLeadId === r._id ? null : r._id)}
-                                  style={{
-                                    cursor: 'pointer',
-                                    background: expandedLeadId === r._id ? 'linear-gradient(90deg, rgba(99, 102, 241, 0.08) 0%, transparent 100%)' : 'transparent',
-                                    transition: 'all 0.3s ease',
-                                    borderLeft: expandedLeadId === r._id ? '4px solid var(--primary)' : '4px solid transparent'
-                                  }}
-                                  className="lead-row-hover"
-                                >
-                                  <td style={{ padding: '1.2rem 1rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '1rem', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)' }}>
-                                        {r.email.charAt(0).toUpperCase()}
-                                      </div>
-                                      <div>
-                                        <div style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--text)' }}>{r.email}</div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                          <MessageSquare size={10} /> {(r.replies || []).length} interactions
+            <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
+              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare size={20} className="text-primary" /> Email Replied Leads
+                  </CardTitle>
+                  <CardDescription>All leads who have responded to your emails.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto rounded-b-xl">
+                    <table className="w-full text-sm text-left border-collapse">
+                      <thead className="bg-muted/50 text-muted-foreground text-xs uppercase font-semibold border-y border-border">
+                        <tr>
+                          <th className="px-6 py-3">Recipient</th>
+                          <th className="px-6 py-3">Latest Reply</th>
+                          <th className="px-6 py-3">Time</th>
+                          <th className="px-6 py-3 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {(() => {
+                          const repliedEmailLeads = recipients.filter(r => r.status === 'replied' && !r.email.includes('@whatsapp.com'));
+                          return repliedEmailLeads.length > 0 ? (
+                            repliedEmailLeads
+                              .sort((a, b) => {
+                                const dateA = a.replies && a.replies.length > 0 ? new Date(a.replies[a.replies.length - 1].receivedAt) : 0;
+                                const dateB = b.replies && b.replies.length > 0 ? new Date(b.replies[b.replies.length - 1].receivedAt) : 0;
+                                return dateB - dateA;
+                              })
+                              .map((r, i) => (
+                                <React.Fragment key={i}>
+                                  <tr
+                                    onClick={() => setExpandedLeadId(expandedLeadId === r._id ? null : r._id)}
+                                    className={`transition-colors cursor-pointer hover:bg-muted/30 ${expandedLeadId === r._id ? 'bg-primary/5 border-l-4 border-l-primary' : 'border-l-4 border-l-transparent'}`}
+                                  >
+                                    <td className="px-6 py-4">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-indigo-500 text-white flex items-center justify-center font-bold text-lg shadow-md shrink-0">
+                                          {r.email.charAt(0).toUpperCase()}
                                         </div>
-                                      </div>
-                                    </div>
-                                  </td>
-                                  <td style={{ maxWidth: '280px' }}>
-                                    <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                      {r.replies && r.replies.length > 0 ? r.replies[r.replies.length - 1].subject : 'No content'}
-                                    </div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                      {r.replies && r.replies.length > 0 ? (r.replies[r.replies.length - 1].body || '').substring(0, 60) + '...' : ''}
-                                    </div>
-                                  </td>
-                                  <td>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                      <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>
-                                        {r.replies && r.replies.length > 0 ? new Date(r.replies[r.replies.length - 1].receivedAt).toLocaleDateString() : 'N/A'}
-                                      </span>
-                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                        {r.replies && r.replies.length > 0 ? new Date(r.replies[r.replies.length - 1].receivedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                                      </span>
-                                    </div>
-                                  </td>
-                                  <td style={{ textAlign: 'right', paddingRight: '1.5rem' }}>
-                                    <div style={{
-                                      display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px',
-                                      background: expandedLeadId === r._id ? 'var(--text)' : 'rgba(99, 102, 241, 0.1)',
-                                      color: expandedLeadId === r._id ? 'white' : 'var(--primary)',
-                                      fontSize: '0.75rem', fontWeight: '700', transition: 'all 0.3s ease'
-                                    }}>
-                                      {expandedLeadId === r._id ? 'Close' : 'View Thread'} <ChevronDown size={14} style={{ transform: expandedLeadId === r._id ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
-                                    </div>
-                                  </td>
-                                </tr>
-                                {expandedLeadId === r._id && (
-                                  <tr>
-                                    <td colSpan="4" style={{ padding: '0 1.5rem 2rem 1.5rem', background: 'rgba(99, 102, 241, 0.02)' }}>
-                                      <div style={{ padding: '2rem', border: '1px solid var(--border)', borderRadius: '16px', background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(10px)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'relative' }}>
-                                          {/* Vertical Line Connector */}
-                                          <div style={{ position: 'absolute', left: '20px', top: '20px', bottom: '20px', width: '2px', background: 'linear-gradient(to bottom, var(--primary) 0%, transparent 100%)', opacity: 0.2 }}></div>
-
-                                          {[...(r.replies || [])].sort((a, b) => new Date(b.receivedAt) - new Date(a.receivedAt)).map((reply, idx) => (
-                                            <div key={idx} style={{ position: 'relative', paddingLeft: '45px' }}>
-                                              {/* Message Node */}
-                                              <div style={{ position: 'absolute', left: '13px', top: '0', width: '16px', height: '16px', borderRadius: '50%', background: idx === 0 ? 'var(--primary)' : 'white', border: '3px solid var(--primary)', zIndex: 2 }}></div>
-
-                                              <div style={{
-                                                background: 'white', borderRadius: '12px', border: '1px solid var(--border)',
-                                                boxShadow: idx === 0 ? '0 10px 25px rgba(99, 102, 241, 0.1)' : '0 4px 12px rgba(0,0,0,0.03)',
-                                                overflow: 'hidden', animation: `slideIn 0.3s ease-out ${idx * 0.1}s both`
-                                              }}>
-                                                <div
-                                                  style={{
-                                                    padding: '12px 20px', background: idx === 0 ? 'linear-gradient(90deg, #6366f1 0%, #818cf8 100%)' : '#f8fafc',
-                                                    color: idx === 0 ? 'white' : 'var(--text)', cursor: 'pointer',
-                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                                                  }}
-                                                  onClick={() => setExpandedReplyIdx(expandedReplyIdx === idx ? null : idx)}
-                                                >
-                                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                    {idx === 0 && <span style={{ background: 'white', color: 'var(--primary)', fontSize: '0.65rem', fontWeight: '900', padding: '2px 8px', borderRadius: '10px', textTransform: 'uppercase' }}>Latest</span>}
-                                                    <span style={{ fontWeight: '700', fontSize: '0.9rem' }}>{reply.subject}</span>
-                                                  </div>
-                                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', opacity: 0.8 }}>
-                                                    {reply.type === 'whatsapp' ? <MessageSquare size={12} /> : <Mail size={12} />}
-                                                    <span style={{ fontWeight: '600' }}>{reply.type === 'whatsapp' ? 'WhatsApp' : 'Email'}</span>
-                                                    <span style={{ opacity: 0.5 }}>•</span>
-                                                    <Calendar size={12} /> {new Date(reply.receivedAt).toLocaleString()}
-                                                  </div>
-                                                </div>
-                                                {expandedReplyIdx === idx && (
-                                                  <div style={{ padding: '25px', background: 'white', position: 'relative' }}>
-                                                    <div style={{
-                                                      whiteSpace: 'pre-wrap', fontSize: '0.95rem', lineHeight: '1.7', color: 'var(--text)',
-                                                      fontFamily: 'Inter, system-ui, sans-serif'
-                                                    }}>
-                                                      {reply.body}
-                                                    </div>
-                                                    <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)', display: 'flex', gap: '10px' }}>
-                                                      <button
-                                                        style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-                                                        onClick={() => handleWhatsappReply(r.email)}
-                                                      >
-                                                        <Reply size={14} /> Direct WhatsApp
-                                                      </button>
-                                                      <button style={{ background: 'white', color: 'var(--text)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}>
-                                                        Mark as Important
-                                                      </button>
-                                                    </div>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            </div>
-                                          ))}
+                                        <div>
+                                          <div className="font-bold text-foreground text-sm">{r.email}</div>
+                                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                            <MessageSquare size={10} /> {(r.replies || []).length} interactions
+                                          </div>
                                         </div>
                                       </div>
                                     </td>
+                                    <td className="px-6 py-4 max-w-[280px]">
+                                      <div className="text-sm font-semibold text-foreground mb-1 truncate">
+                                        {r.replies && r.replies.length > 0 ? r.replies[r.replies.length - 1].subject : 'No content'}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground truncate">
+                                        {r.replies && r.replies.length > 0 ? (r.replies[r.replies.length - 1].body || '').substring(0, 60) + '...' : ''}
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="text-xs font-semibold text-primary">
+                                          {r.replies && r.replies.length > 0 ? new Date(r.replies[r.replies.length - 1].receivedAt).toLocaleDateString() : 'N/A'}
+                                        </span>
+                                        <span className="text-[11px] text-muted-foreground">
+                                          {r.replies && r.replies.length > 0 ? new Date(r.replies[r.replies.length - 1].receivedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                      <Badge variant={expandedLeadId === r._id ? "default" : "secondary"} className="cursor-pointer">
+                                        {expandedLeadId === r._id ? 'Close' : 'View Thread'} <ChevronDown size={14} className={`ml-1 transition-transform ${expandedLeadId === r._id ? 'rotate-180' : ''}`} />
+                                      </Badge>
+                                    </td>
                                   </tr>
-                                )}
-                              </React.Fragment>
-                            ))
-                        ) : (
-                          <tr>
-                            <td colSpan="4" style={{ padding: '4rem', textAlign: 'center' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
-                                <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <MessageSquare size={30} />
+                                  {expandedLeadId === r._id && (
+                                    <tr>
+                                      <td colSpan="4" className="p-0 bg-muted/10">
+                                        <div className="p-6 m-4 border border-border/60 rounded-xl bg-card shadow-sm">
+                                          <div className="flex flex-col gap-6 relative">
+                                            {/* Vertical Line Connector */}
+                                            <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-gradient-to-b from-primary/30 to-transparent"></div>
+
+                                            {[...(r.replies || [])].sort((a, b) => new Date(b.receivedAt) - new Date(a.receivedAt)).map((reply, idx) => (
+                                              <div key={idx} className="relative pl-11">
+                                                {/* Message Node */}
+                                                <div className={`absolute left-[11px] top-1.5 w-4 h-4 rounded-full border-[3px] border-primary z-10 ${idx === 0 ? 'bg-primary shadow-[0_0_10px_rgba(66,120,244,0.4)]' : 'bg-background'}`}></div>
+
+                                                <div className={`bg-background rounded-xl border border-border/60 overflow-hidden transition-all duration-300 ${idx === 0 ? 'shadow-md ring-1 ring-primary/20' : 'shadow-sm'}`}>
+                                                  <div
+                                                    className={`px-4 py-3 cursor-pointer flex justify-between items-center ${idx === 0 ? 'bg-primary/5 border-b border-primary/10' : 'bg-muted/30 border-b border-border/40 hover:bg-muted/50'}`}
+                                                    onClick={() => setExpandedReplyIdx(expandedReplyIdx === idx ? null : idx)}
+                                                  >
+                                                    <div className="flex items-center gap-3">
+                                                      {idx === 0 && <Badge className="bg-primary/20 text-primary border-primary/30 hover:bg-primary/30 text-[10px] px-2 py-0">LATEST</Badge>}
+                                                      <span className="font-bold text-sm text-foreground">{reply.subject}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                                                      {reply.type === 'whatsapp' ? <MessageSquare size={12} className="text-emerald-500" /> : <Mail size={12} className="text-primary" />}
+                                                      <span>{reply.type === 'whatsapp' ? 'WhatsApp' : 'Email'}</span>
+                                                      <span>•</span>
+                                                      <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(reply.receivedAt).toLocaleString()}</span>
+                                                    </div>
+                                                  </div>
+                                                  {expandedReplyIdx === idx && (
+                                                    <div className="p-5 bg-background">
+                                                      <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90 font-medium">
+                                                        {reply.body}
+                                                      </div>
+                                                      <div className="mt-5 pt-4 border-t border-border/50 flex gap-3">
+                                                        <Button size="sm" className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm border-transparent" onClick={() => handleWhatsappReply(r.email)}>
+                                                          <Reply size={14} className="mr-2" /> Direct WhatsApp
+                                                        </Button>
+                                                        <Button size="sm" variant="outline">
+                                                          Mark as Important
+                                                        </Button>
+                                                      </div>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              ))
+                          ) : (
+                            <tr>
+                              <td colSpan="4" className="p-16 text-center">
+                                <div className="flex flex-col items-center gap-4">
+                                  <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                                    <MessageSquare size={32} />
+                                  </div>
+                                  <div>
+                                    <h4 className="text-lg font-semibold text-foreground mb-1">No replies detected yet</h4>
+                                    <p className="text-sm text-muted-foreground">Your leads will appear here as soon as they respond to your emails.</p>
+                                  </div>
                                 </div>
-                                <div>
-                                  <h4 style={{ margin: '0 0 5px 0' }}>No replies detected yet</h4>
-                                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>Your leads will appear here as soon as they respond to your emails.</p>
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                              </td>
+                            </tr>
+                          );
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
           {activeTab === 'whatsapp_linker' && (
-            <div className="tab-content" style={{ animation: 'fadeIn 0.5s ease-out' }}>
-              <div className="log-card" style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center', padding: '3rem 2rem' }}>
-                <div style={{ marginBottom: '2rem' }}>
-                  <div style={{
-                    width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(37, 211, 102, 0.1)',
-                    color: '#25D366', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem'
-                  }}>
+            <div className="max-w-2xl mx-auto space-y-6 animate-fade-in py-10">
+              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-xl overflow-hidden relative">
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
+                <CardContent className="p-10 text-center flex flex-col items-center">
+                  <div className="w-20 h-20 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-6 shadow-inner border border-emerald-500/20">
                     <Phone size={40} />
                   </div>
-                  <h2 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>WhatsApp Automation Linker</h2>
-                  <p style={{ color: 'var(--text-muted)' }}>Scan the QR code to sync your WhatsApp and start receiving replies directly here.</p>
-                </div>
+                  <h2 className="text-3xl font-extrabold tracking-tight text-foreground mb-3">WhatsApp Automation Linker</h2>
+                  <p className="text-muted-foreground mb-10 max-w-md">Scan the QR code to sync your WhatsApp and start receiving replies directly here.</p>
 
-                <div style={{
-                  background: '#f8fafc', padding: '2rem', borderRadius: '24px', border: '2px dashed #e2e8f0',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem'
-                }}>
-                  {waStatus === 'connected' ? (
-                    <div style={{ color: '#10b981', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                      <CheckCircle size={60} />
-                      <h3 style={{ margin: 0 }}>WhatsApp Connected!</h3>
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>System is now monitoring your messages for lead replies.</p>
-                      <button
-                        onClick={async () => { try { await axios.post('/api/whatsapp/logout'); fetchWaStatus(); } catch (e) { } }}
-                        style={{ marginTop: '1rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: '600' }}
-                      >Disconnect WhatsApp</button>
-                    </div>
-                  ) : waStatus === 'qr-ready' && waQr ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
-                      <div style={{ background: 'white', padding: '15px', borderRadius: '15px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
-                        <img
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(waQr)}`}
-                          alt="WhatsApp QR Code"
-                          style={{ width: '250px', height: '250px' }}
-                        />
+                  <div className="w-full bg-muted/30 p-8 rounded-3xl border-2 border-dashed border-border/60 flex flex-col items-center gap-6">
+                    {waStatus === 'connected' ? (
+                      <div className="flex flex-col items-center gap-4 text-emerald-500 animate-in zoom-in duration-300">
+                        <CheckCircle size={72} className="drop-shadow-sm" />
+                        <div>
+                          <h3 className="text-xl font-bold text-foreground m-0">WhatsApp Connected!</h3>
+                          <p className="text-sm text-muted-foreground mt-1">System is now monitoring your messages for lead replies.</p>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          className="mt-4 font-semibold shadow-sm"
+                          onClick={async () => { try { await axios.post('/api/whatsapp/logout'); fetchWaStatus(); } catch (e) { } }}
+                        >
+                          Disconnect WhatsApp
+                        </Button>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#f59e0b' }}>
-                        <Loader2 className="animate-spin" size={20} />
-                        <span style={{ fontWeight: '600' }}>Waiting for scan...</span>
+                    ) : waStatus === 'qr-ready' && waQr ? (
+                      <div className="flex flex-col items-center gap-6 animate-in fade-in duration-500">
+                        <div className="bg-white p-4 rounded-2xl shadow-xl border border-border/50">
+                          <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(waQr)}`}
+                            alt="WhatsApp QR Code"
+                            className="w-[250px] h-[250px]"
+                          />
+                        </div>
+                        <div className="flex items-center gap-3 text-amber-500 bg-amber-500/10 px-4 py-2 rounded-full border border-amber-500/20">
+                          <Loader2 className="animate-spin" size={18} />
+                          <span className="font-semibold text-sm">Waiting for scan...</span>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', color: 'var(--text-muted)' }}>
-                      <Loader2 className="animate-spin" size={40} />
-                      <p>Initializing WhatsApp Engine...</p>
-                      <button
-                        onClick={async () => {
-                          try { await axios.post('/api/whatsapp/restart'); } catch (e) { }
-                          setTimeout(fetchWaStatus, 2000);
-                        }}
-                        style={{ background: 'rgba(99,102,241,0.1)', color: 'var(--primary)', border: '1px solid rgba(99,102,241,0.3)', padding: '8px 18px', borderRadius: '12px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}
-                      >🔄 Restart Engine & Get QR</button>
-                    </div>
-                  )}
-                </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-5 text-muted-foreground py-8">
+                        <Loader2 className="animate-spin text-primary" size={48} />
+                        <p className="font-medium">Initializing WhatsApp Engine...</p>
+                        <Button
+                          variant="outline"
+                          className="mt-2 border-primary/30 text-primary hover:bg-primary/10 font-semibold"
+                          onClick={async () => {
+                            try { await axios.post('/api/whatsapp/restart'); } catch (e) { }
+                            setTimeout(fetchWaStatus, 2000);
+                          }}
+                        >
+                          🔄 Restart Engine & Get QR
+                        </Button>
+                      </div>
+                    )}
+                  </div>
 
-                <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', textAlign: 'left' }}>
-                  <div style={{ padding: '15px', background: 'white', borderRadius: '15px', border: '1px solid var(--border)' }}>
-                    <h4 style={{ margin: '0 0 5px 0', fontSize: '0.9rem' }}>Real-time Sync</h4>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Replies appear in your dashboard instantly.</p>
+                  <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full text-left">
+                    <div className="p-5 bg-card rounded-2xl border border-border/50 shadow-sm flex gap-4 items-start">
+                      <div className="mt-1 p-2 bg-primary/10 text-primary rounded-lg">
+                        <Globe size={18} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-foreground text-sm mb-1">Real-time Sync</h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed">Replies appear in your dashboard instantly without refreshing.</p>
+                      </div>
+                    </div>
+                    <div className="p-5 bg-card rounded-2xl border border-border/50 shadow-sm flex gap-4 items-start">
+                      <div className="mt-1 p-2 bg-primary/10 text-primary rounded-lg">
+                        <Phone size={18} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-foreground text-sm mb-1">Multi-device</h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed">Keep using WhatsApp on your phone normally while linked.</p>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ padding: '15px', background: 'white', borderRadius: '15px', border: '1px solid var(--border)' }}>
-                    <h4 style={{ margin: '0 0 5px 0', fontSize: '0.9rem' }}>Multi-device</h4>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Keep using WhatsApp on your phone normally.</p>
-                  </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
@@ -3238,119 +3863,132 @@ function App() {
             });
             const isAutoActive = (status) => ['pending', 'sending', 'replied'].includes(status) || (status || '').toLowerCase().includes('step');
             return (
-              <div className="content-area">
-                <div className="log-card">
-                  <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                    <div>
-                      <h3 style={{ margin: 0 }}>Email Enricher</h3>
-                      <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>All globally enriched emails — deduplicated across every scraped folder.</p>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                      <div style={{ padding: '8px 14px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.35)', borderRadius: '8px', fontSize: '0.85rem', color: '#6366f1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Mail size={14} /> Total: {uniqueEmailLeads.length}
+              <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
+                <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
+                  <CardHeader className="pb-4 border-b border-border/50">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Mail size={20} className="text-primary" /> Email Enricher
+                        </CardTitle>
+                        <CardDescription>All globally enriched emails — deduplicated across every scraped folder.</CardDescription>
                       </div>
-                      <button
-                        className="launch-btn"
-                        style={{ width: 'auto', height: 'auto', padding: '6px 14px', fontSize: '0.8rem', borderRadius: '8px' }}
-                        onClick={() => { setAddEmailForm({ email: '', name: '', phone: '', city: '', keyword: '' }); setAddEmailModal(true); }}
-                      >
-                        + Add Email
-                      </button>
-                      {pendingLeads.length > 0 && (
-                        <button
-                          className="launch-btn"
-                          style={{ width: 'auto', height: 'auto', padding: '6px 14px', fontSize: '0.8rem', borderRadius: '8px', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
-                          disabled={isBulkFinding}
-                          onClick={() => handleBulkFindEmails(pendingLeads.map(l => l._id))}
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 py-1.5 px-3">
+                          Total: {uniqueEmailLeads.length}
+                        </Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => { setAddEmailForm({ email: '', name: '', phone: '', city: '', keyword: '' }); setAddEmailModal(true); }}
                         >
-                          {isBulkFinding ? <><Loader2 size={16} className="animate-spin" /> Searching...</> : <><Search size={16} /> Find Emails ({pendingLeads.length})</>}
-                        </button>
-                      )}
-                      {uniqueEmailLeads.length > 0 && (
-                        enricherBulkPicker ? (
-                          <select
-                            className="pro-select"
-                            autoFocus
-                            style={{ appearance: 'none', background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px 25px 6px 12px', fontSize: '0.8rem' }}
-                            onChange={(e) => {
-                              const tplId = e.target.value;
-                              setEnricherBulkPicker(false);
-                              if (!tplId) return;
-                              if (!emailUser || !emailPass) return showToast('SMTP credentials missing — Campaign tab pe set karo!', 'error');
-                              const stepMap = {
-                                step1: { name: 'Sequence: Step 1', subject, body: body1 },
-                                step2: { name: 'Sequence: Step 2', subject, body: body2 },
-                                step3: { name: 'Sequence: Step 3', subject, body: body3 }
-                              };
-                              const isStep = !!stepMap[tplId];
-                              const tplName = isStep ? stepMap[tplId].name : (customTemplates.find(t => t._id === tplId)?.name || 'template');
-                              setConfirmModal({
-                                open: true,
-                                title: `Send "${tplName}" to all ${uniqueEmailLeads.length} emails?`,
-                                onConfirm: async () => {
-                                  setIsEnricherSending(true);
-                                  try {
-                                    const payload = {
-                                      leadIds: uniqueEmailLeads.map(l => l._id),
-                                      emailUser, emailPass, customVars: {}
-                                    };
-                                    if (isStep) payload.template = { subject: stepMap[tplId].subject, body: stepMap[tplId].body };
-                                    else payload.templateId = tplId;
-                                    const res = await axios.post('/api/enricher-send', payload);
-                                    showToast(res.data.message, 'success');
-                                    fetchSavedLeads();
-                                  } catch (err) {
-                                    showToast('Send failed: ' + (err.response?.data?.error || err.message), 'error');
-                                  } finally { setIsEnricherSending(false); }
-                                }
-                              });
-                            }}
+                          <Plus size={16} className="mr-1.5" /> Add Email
+                        </Button>
+
+                        {pendingLeads.length > 0 && (
+                          <Button
+                            size="sm"
+                            className="bg-primary hover:bg-primary/90 text-white shadow-glow-primary"
+                            disabled={isBulkFinding}
+                            onClick={() => handleBulkFindEmails(pendingLeads.map(l => l._id))}
                           >
-                            <option value="">Pick Template...</option>
-                            <optgroup label="Auto Sequence">
-                              <option value="step1">Sequence: Step 1 (Intro)</option>
-                              <option value="step2">Sequence: Step 2 (Follow-up)</option>
-                              <option value="step3">Sequence: Step 3 (Final)</option>
-                            </optgroup>
-                            <optgroup label="Custom Templates">
-                              {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
-                            </optgroup>
-                          </select>
-                        ) : (
-                          <button
-                            className="launch-btn"
-                            style={{ width: 'auto', height: 'auto', padding: '6px 14px', fontSize: '0.8rem', borderRadius: '8px', background: 'linear-gradient(135deg,#10b981,#059669)' }}
-                            disabled={isEnricherSending}
-                            onClick={() => setEnricherBulkPicker(true)}
+                            {isBulkFinding ? <><Loader2 size={16} className="animate-spin mr-1.5" /> Searching...</> : <><Search size={16} className="mr-1.5" /> Find Emails ({pendingLeads.length})</>}
+                          </Button>
+                        )}
+
+                        {uniqueEmailLeads.length > 0 && (
+                          enricherBulkPicker ? (
+                            <select
+                              className="flex h-9 w-[200px] items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                              autoFocus
+                              onChange={(e) => {
+                                const tplId = e.target.value;
+                                setEnricherBulkPicker(false);
+                                if (!tplId) return;
+                                if (!emailUser || !emailPass) return showToast('SMTP credentials missing — Campaign tab pe set karo!', 'error');
+                                const stepMap = {
+                                  step1: { name: 'Sequence: Step 1', subject, body: body1 },
+                                  step2: { name: 'Sequence: Step 2', subject, body: body2 },
+                                  step3: { name: 'Sequence: Step 3', subject, body: body3 }
+                                };
+                                const isStep = !!stepMap[tplId];
+                                const tplName = isStep ? stepMap[tplId].name : (customTemplates.find(t => t._id === tplId)?.name || 'template');
+                                setConfirmModal({
+                                  open: true,
+                                  title: `Send "${tplName}" to all ${uniqueEmailLeads.length} emails?`,
+                                  onConfirm: async () => {
+                                    setIsEnricherSending(true);
+                                    try {
+                                      const payload = {
+                                        leadIds: uniqueEmailLeads.map(l => l._id),
+                                        emailUser, emailPass, customVars: {}
+                                      };
+                                      if (isStep) payload.template = { subject: stepMap[tplId].subject, body: stepMap[tplId].body };
+                                      else payload.templateId = tplId;
+                                      const res = await axios.post('/api/enricher-send', payload);
+                                      showToast(res.data.message, 'success');
+                                      fetchSavedLeads();
+                                    } catch (err) {
+                                      showToast('Send failed: ' + (err.response?.data?.error || err.message), 'error');
+                                    } finally { setIsEnricherSending(false); }
+                                  }
+                                });
+                              }}
+                            >
+                              <option value="">Pick Template...</option>
+                              <optgroup label="Auto Sequence">
+                                <option value="step1">Sequence: Step 1 (Intro)</option>
+                                <option value="step2">Sequence: Step 2 (Follow-up)</option>
+                                <option value="step3">Sequence: Step 3 (Final)</option>
+                              </optgroup>
+                              <optgroup label="Custom Templates">
+                                {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                              </optgroup>
+                            </select>
+                          ) : (
+                            <Button
+                              size="sm"
+                              className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm"
+                              disabled={isEnricherSending}
+                              onClick={() => setEnricherBulkPicker(true)}
+                            >
+                              {isEnricherSending ? <><Loader2 size={16} className="animate-spin mr-1.5" /> Sending...</> : <><Send size={16} className="mr-1.5" /> Send All ({uniqueEmailLeads.length})</>}
+                            </Button>
+                          )
+                        )}
+
+                        {uniqueEmailLeads.length > 0 && (
+                          <Button
+                            variant={enricherEditMode ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => { setEnricherEditMode(m => !m); if (enricherEditMode) setSelectedIds([]); }}
                           >
-                            {isEnricherSending ? <><Loader2 size={16} className="animate-spin" /> Sending...</> : <><Mail size={16} /> Send All ({uniqueEmailLeads.length})</>}
-                          </button>
-                        )
-                      )}
-                      {uniqueEmailLeads.length > 0 && (
-                        <button
-                          className={enricherEditMode ? 'launch-btn' : 'glass-btn'}
-                          style={{ width: 'auto', height: 'auto', padding: '6px 14px', fontSize: '0.8rem', borderRadius: '8px' }}
-                          onClick={() => { setEnricherEditMode(m => !m); if (enricherEditMode) setSelectedIds([]); }}
-                        >
-                          {enricherEditMode ? 'Done' : 'Edit'}
-                        </button>
-                      )}
-                      <button className="glass-btn" onClick={fetchSavedLeads} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Refresh</button>
+                            {enricherEditMode ? 'Done' : 'Edit'}
+                          </Button>
+                        )}
+
+                        <Button variant="ghost" size="sm" onClick={fetchSavedLeads}>
+                          Refresh
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  </CardHeader>
+
                   {(isBulkFinding || emailFindLog) && (
-                    <div style={{ margin: '1rem 1.5rem 0', padding: '10px 16px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', fontSize: '0.8rem', color: '#6366f1' }}>
-                      {isBulkFinding && <Loader2 size={14} className="animate-spin" style={{ display: 'inline', marginRight: '6px' }} />}{emailFindLog || 'Starting...'}
+                    <div className="mx-6 mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm text-primary flex items-center">
+                      {isBulkFinding && <Loader2 size={16} className="animate-spin mr-2" />}
+                      {emailFindLog || 'Starting...'}
                     </div>
                   )}
+
                   {enricherEditMode && selectedIds.length > 0 && uniqueEmailLeads.some(l => selectedIds.includes(l._id)) && (
-                    <div className="bulk-bar">
-                      <div className="bulk-info"><InfoIcon /> {selectedIds.filter(id => uniqueEmailLeads.some(l => l._id === id)).length} emails selected</div>
-                      <div className="bulk-actions">
-                        <button
-                          className="bulk-btn"
-                          style={{ background: 'linear-gradient(135deg,#10b981,#059669)', color: 'white', fontWeight: 600 }}
+                    <div className="mx-6 mt-4 p-4 rounded-xl bg-primary/10 border border-primary/20 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-inner">
+                      <div className="flex items-center gap-2 text-primary font-medium">
+                        <Info size={18} /> {selectedIds.filter(id => uniqueEmailLeads.some(l => l._id === id)).length} emails selected
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <Button
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold shadow-sm"
                           disabled={isEnricherSending}
                           onClick={() => {
                             const ids = selectedIds.filter(id => uniqueEmailLeads.some(l => l._id === id));
@@ -3378,11 +4016,10 @@ function App() {
                             });
                           }}
                         >
-                          {isEnricherSending ? <><Loader2 size={14} className="animate-spin" style={{ display: 'inline', marginRight: '4px' }} /> Starting...</> : <><Rocket size={14} /> Start Email Marketing (3-Step Auto)</>}
-                        </button>
+                          {isEnricherSending ? <><Loader2 size={16} className="animate-spin mr-1.5" /> Starting...</> : <><Rocket size={16} className="mr-1.5" /> Start Email Marketing (3-Step Auto)</>}
+                        </Button>
                         <select
-                          className="pro-select"
-                          style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)' }}
+                          className="flex h-10 w-[200px] items-center justify-between rounded-md border border-primary/30 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                           onChange={(e) => {
                             const tplId = e.target.value;
                             e.target.value = '';
@@ -3416,182 +4053,197 @@ function App() {
                             });
                           }}
                         >
-                          <option value="" style={{ color: 'var(--bg-dark)' }}>Bulk Send Template...</option>
-                          <optgroup label="Auto Sequence" style={{ color: 'var(--bg-dark)' }}>
+                          <option value="">Bulk Send Template...</option>
+                          <optgroup label="Auto Sequence">
                             <option value="step1">Sequence: Step 1 (Intro)</option>
                             <option value="step2">Sequence: Step 2 (Follow-up)</option>
                             <option value="step3">Sequence: Step 3 (Final)</option>
                           </optgroup>
-                          <optgroup label="Custom Templates" style={{ color: 'var(--bg-dark)' }}>
+                          <optgroup label="Custom Templates">
                             {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
                           </optgroup>
                         </select>
-                        <button className="bulk-btn" style={{ backgroundColor: 'var(--danger)' }} onClick={() => setSelectedIds([])}>Cancel</button>
+                        <Button variant="destructive" onClick={() => setSelectedIds([])} className="shadow-sm">Cancel</Button>
                       </div>
                     </div>
                   )}
-                  {isLoadingSavedLeads ? (
-                    <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</p>
-                  ) : uniqueEmailLeads.length === 0 ? (
-                    <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No emails enriched yet. Use "Find Emails" above to start enriching scraped leads.</p>
-                  ) : (
-                    <div style={{ overflowX: 'auto', width: '100%' }}>
-                      <table className="pro-table" style={{ minWidth: '950px' }}>
-                        <thead>
-                          <tr>
-                            {enricherEditMode && (
-                              <th style={{ width: '40px' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={uniqueEmailLeads.length > 0 && uniqueEmailLeads.every(l => selectedIds.includes(l._id))}
-                                  onChange={() => {
-                                    const allSelected = uniqueEmailLeads.every(l => selectedIds.includes(l._id));
-                                    if (allSelected) setSelectedIds(prev => prev.filter(id => !uniqueEmailLeads.some(l => l._id === id)));
-                                    else setSelectedIds(prev => [...new Set([...prev, ...uniqueEmailLeads.map(l => l._id)])]);
-                                  }}
-                                />
-                              </th>
-                            )}
-                            <th style={{ width: '50px' }}>#</th>
-                            <th style={{ minWidth: '220px' }}><Mail size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} /> Email</th>
-                            <th style={{ minWidth: '160px' }}>Business</th>
-                            <th style={{ minWidth: '120px' }}>Phone</th>
-                            <th style={{ minWidth: '90px' }}>Source</th>
-                            <th style={{ minWidth: '120px' }}>Location</th>
-                            <th style={{ minWidth: '230px' }}>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {uniqueEmailLeads.map((lead, idx) => {
-                            const recipient = recipientByEmail[lead.email.trim().toLowerCase()];
-                            const autoActive = recipient && isAutoActive(recipient.status);
-                            const rowClass = (enricherEditMode && selectedIds.includes(lead._id)) ? 'row-selected' : '';
-                            const rowStyle = autoActive ? { background: 'rgba(16, 185, 129, 0.08)' } : (recipient ? { background: 'rgba(99, 102, 241, 0.05)' } : {});
-                            return (
-                              <tr key={lead._id} className={rowClass} style={rowStyle}>
-                                {enricherEditMode && (
-                                  <td>
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedIds.includes(lead._id)}
-                                      onChange={() => toggleSelectOne(lead._id)}
-                                    />
-                                  </td>
-                                )}
-                                <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{idx + 1}</td>
-                                <td>
-                                  {inlineEditLeadId === lead._id ? (
-                                    <input
-                                      className="pro-input"
-                                      style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }}
-                                      value={inlineEditData.email || ''}
-                                      onChange={e => setInlineEditData({ ...inlineEditData, email: e.target.value })}
-                                    />
-                                  ) : recipient ? (
-                                    <span
-                                      onClick={() => setIntelLead(recipient)}
-                                      style={{ color: autoActive ? '#10b981' : '#6366f1', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                      title="Click to view delivery logs"
-                                    >
-                                      <Mail size={14} /> {lead.email}
-                                      {autoActive && (
-                                        <span style={{ marginLeft: '6px', padding: '2px 8px', background: '#10b981', color: 'white', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 700 }}>
-                                          AUTO • Step {recipient.step}
-                                        </span>
-                                      )}
-                                      {!autoActive && recipient && (
-                                        <span style={{ marginLeft: '6px', padding: '2px 8px', background: 'var(--text-muted)', color: 'white', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 700 }}>
-                                          {(recipient.status || '').toUpperCase()}
-                                        </span>
-                                      )}
-                                    </span>
-                                  ) : (
-                                    <a href={`mailto:${lead.email}`} style={{ color: '#6366f1', fontWeight: '600', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}><Mail size={14} /> {lead.email}</a>
+
+                  <CardContent className="p-0 mt-4">
+                    {isLoadingSavedLeads ? (
+                      <div className="py-12 flex justify-center items-center">
+                        <Loader2 className="animate-spin text-primary mr-2" size={24} />
+                        <span className="text-muted-foreground">Loading leads...</span>
+                      </div>
+                    ) : uniqueEmailLeads.length === 0 ? (
+                      <div className="py-16 flex flex-col items-center justify-center text-center px-4">
+                        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
+                          <Mail size={32} />
+                        </div>
+                        <h3 className="text-xl font-semibold text-foreground mb-2">No emails enriched yet</h3>
+                        <p className="text-muted-foreground max-w-md">Use "Find Emails" above to start enriching scraped leads or manually add new contacts.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-b-xl border-t border-border/50">
+                        <table className="w-full text-sm text-left border-collapse">
+                          <thead className="bg-muted/50 text-muted-foreground text-xs uppercase font-semibold border-b border-border">
+                            <tr>
+                              {enricherEditMode && (
+                                <th className="px-4 py-3 w-[40px] text-center border-r border-border/50">
+                                  <input
+                                    type="checkbox"
+                                    className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                                    checked={uniqueEmailLeads.length > 0 && uniqueEmailLeads.every(l => selectedIds.includes(l._id))}
+                                    onChange={() => {
+                                      const allSelected = uniqueEmailLeads.every(l => selectedIds.includes(l._id));
+                                      if (allSelected) setSelectedIds(prev => prev.filter(id => !uniqueEmailLeads.some(l => l._id === id)));
+                                      else setSelectedIds(prev => [...new Set([...prev, ...uniqueEmailLeads.map(l => l._id)])]);
+                                    }}
+                                  />
+                                </th>
+                              )}
+                              <th className="px-4 py-3 w-[50px] text-center border-r border-border/50">#</th>
+                              <th className="px-4 py-3 min-w-[220px]">Email</th>
+                              <th className="px-4 py-3 min-w-[160px]">Business</th>
+                              <th className="px-4 py-3 min-w-[120px]">Phone</th>
+                              <th className="px-4 py-3 min-w-[110px]">Source</th>
+                              <th className="px-4 py-3 min-w-[120px]">Location</th>
+                              <th className="px-4 py-3 min-w-[180px] text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/50">
+                            {uniqueEmailLeads.map((lead, idx) => {
+                              const recipient = recipientByEmail[lead.email.trim().toLowerCase()];
+                              const autoActive = recipient && isAutoActive(recipient.status);
+
+                              return (
+                                <tr
+                                  key={lead._id}
+                                  className={`transition-colors hover:bg-muted/30 
+                                    ${enricherEditMode && selectedIds.includes(lead._id) ? 'bg-primary/5' : ''} 
+                                    ${autoActive ? 'bg-emerald-500/5' : (recipient ? 'bg-indigo-500/5' : '')}`
+                                  }
+                                >
+                                  {enricherEditMode && (
+                                    <td className="px-4 py-3 text-center border-r border-border/50">
+                                      <input
+                                        type="checkbox"
+                                        className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                                        checked={selectedIds.includes(lead._id)}
+                                        onChange={() => toggleSelectOne(lead._id)}
+                                      />
+                                    </td>
                                   )}
-                                </td>
-                                <td style={{ fontWeight: '600' }}>
-                                  {inlineEditLeadId === lead._id ? (
-                                    <input
-                                      className="pro-input"
-                                      style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }}
-                                      value={inlineEditData.name || ''}
-                                      onChange={e => setInlineEditData({ ...inlineEditData, name: e.target.value })}
-                                    />
-                                  ) : lead.name}
-                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px' }}>{lead.keyword}</div>
-                                </td>
-                                <td style={{ color: 'var(--success)', fontWeight: '500' }}>
-                                  {inlineEditLeadId === lead._id ? (
-                                    <input
-                                      className="pro-input"
-                                      style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%', color: 'var(--success)' }}
-                                      value={inlineEditData.phone || ''}
-                                      onChange={e => setInlineEditData({ ...inlineEditData, phone: e.target.value })}
-                                    />
-                                  ) : (lead.phone || '—')}
-                                </td>
-                                <td style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{(() => {
-                                  const map = { ig: 'Instagram', instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', website: 'Website', search_engine: 'Search Engine', google_dork: 'Google Search', google: 'Google' };
-                                  const s = (lead.emailSource || '').toLowerCase();
-                                  return map[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—');
-                                })()}</td>
-                                <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{lead.city}</td>
-                                <td>
-                                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                  <td className="px-4 py-3 text-center text-xs text-muted-foreground font-medium border-r border-border/50">{idx + 1}</td>
+                                  <td className="px-4 py-3">
                                     {inlineEditLeadId === lead._id ? (
-                                      <>
-                                        <button
-                                          className="btn-icon"
-                                          style={{ borderColor: '#10b981', color: '#10b981', fontSize: '0.78rem' }}
-                                          onClick={handleSaveInlineEdit}
-                                        >Save</button>
-                                        <button
-                                          className="btn-icon"
-                                          style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)', fontSize: '0.78rem' }}
-                                          onClick={() => setInlineEditLeadId(null)}
-                                        >Cancel</button>
-                                      </>
-                                    ) : selectedLeadForTpl === lead._id ? (
-                                      <select
-                                        className="pro-select"
-                                        style={{ appearance: 'none', background: 'white', border: '1px solid var(--border)', borderRadius: '8px', padding: '4px 25px 4px 10px', fontSize: '0.8rem' }}
-                                        onChange={(e) => {
-                                          if (e.target.value) handleSendCustomTemplate(lead._id, e.target.value);
-                                          setSelectedLeadForTpl(null);
-                                        }}
+                                      <Input
+                                        className="h-8 text-xs font-medium"
+                                        value={inlineEditData.email || ''}
+                                        onChange={e => setInlineEditData({ ...inlineEditData, email: e.target.value })}
+                                      />
+                                    ) : recipient ? (
+                                      <span
+                                        onClick={() => setIntelLead(recipient)}
+                                        className={`font-semibold text-sm cursor-pointer flex items-center gap-1.5 underline underline-offset-4 decoration-primary/30 hover:opacity-80 transition-opacity ${autoActive ? 'text-emerald-600' : 'text-primary'}`}
+                                        title="Click to view delivery logs"
                                       >
-                                        <option value="">Pick Template...</option>
-                                        <optgroup label="Auto Sequence">
-                                          <option value="step1">Sequence: Step 1 (Intro)</option>
-                                          <option value="step2">Sequence: Step 2 (Follow-up)</option>
-                                          <option value="step3">Sequence: Step 3 (Final)</option>
-                                        </optgroup>
-                                        <optgroup label="Custom Templates">
-                                          {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
-                                        </optgroup>
-                                        <option value="">Cancel</option>
-                                      </select>
+                                        <Mail size={14} />
+                                        <span className="truncate max-w-[180px] block">{lead.email}</span>
+                                        {autoActive ? (
+                                          <Badge className="ml-1 bg-emerald-500 text-[10px] uppercase px-1.5 py-0 h-4">
+                                            Auto • S{recipient.step}
+                                          </Badge>
+                                        ) : (
+                                          <Badge variant="outline" className="ml-1 border-muted-foreground/30 text-muted-foreground text-[10px] uppercase px-1.5 py-0 h-4">
+                                            {(recipient.status || '')}
+                                          </Badge>
+                                        )}
+                                      </span>
+                                    ) : (
+                                      <a href={`mailto:${lead.email}`} className="text-primary font-medium text-sm flex items-center gap-1.5 hover:underline decoration-primary/30 underline-offset-4">
+                                        <Mail size={14} /> <span className="truncate max-w-[180px] block">{lead.email}</span>
+                                      </a>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {inlineEditLeadId === lead._id ? (
+                                      <Input
+                                        className="h-8 text-xs"
+                                        value={inlineEditData.name || ''}
+                                        onChange={e => setInlineEditData({ ...inlineEditData, name: e.target.value })}
+                                      />
                                     ) : (
                                       <>
-                                        <button
-                                          className="btn-icon"
-                                          style={{ borderColor: '#10b981', color: '#10b981', fontSize: '0.78rem' }}
-                                          onClick={() => setSelectedLeadForTpl(lead._id)}
-                                          title="Send email"
-                                        >Send</button>
-                                        <button
-                                          className="btn-icon"
-                                          style={{ borderColor: '#6366f1', color: '#6366f1', fontSize: '0.78rem' }}
-                                          onClick={() => {
-                                            setInlineEditLeadId(lead._id);
-                                            setInlineEditData({ email: lead.email, name: lead.name, phone: lead.phone });
-                                          }}
-                                          title="Edit lead"
-                                        >Edit</button>
+                                        <div className="font-semibold text-foreground text-sm truncate max-w-[140px]">{lead.name}</div>
+                                        {lead.keyword && <div className="text-[11px] text-muted-foreground mt-0.5 truncate max-w-[140px] bg-muted/50 inline-block px-1.5 rounded">{lead.keyword}</div>}
                                       </>
                                     )}
-                                    <button
-                                      onClick={() => {
+                                  </td>
+                                  <td className="px-4 py-3 font-medium text-emerald-600 text-sm">
+                                    {inlineEditLeadId === lead._id ? (
+                                      <Input
+                                        className="h-8 text-xs text-emerald-600 border-emerald-200 focus-visible:ring-emerald-500"
+                                        value={inlineEditData.phone || ''}
+                                        onChange={e => setInlineEditData({ ...inlineEditData, phone: e.target.value })}
+                                      />
+                                    ) : (lead.phone || <span className="text-muted-foreground/50 font-normal">—</span>)}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <Badge variant="outline" className="text-[10px] font-medium bg-background border-border/60 text-muted-foreground">
+                                      {(() => {
+                                        const map = { ig: 'Instagram', instagram: 'Instagram', facebook: 'Facebook', linkedin: 'LinkedIn', website: 'Website', search_engine: 'Search Engine', google_dork: 'Google Search', google: 'Google' };
+                                        const s = (lead.emailSource || '').toLowerCase();
+                                        return map[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1) : '—');
+                                      })()}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-muted-foreground truncate max-w-[100px]">
+                                    {lead.city || '—'}
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      {inlineEditLeadId === lead._id ? (
+                                        <>
+                                          <Button variant="outline" size="sm" className="h-8 px-2 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 text-xs" onClick={handleSaveInlineEdit}>
+                                            Save
+                                          </Button>
+                                          <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setInlineEditLeadId(null)}>
+                                            Cancel
+                                          </Button>
+                                        </>
+                                      ) : selectedLeadForTpl === lead._id ? (
+                                        <select
+                                          className="flex h-8 w-[140px] items-center justify-between rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                                          onChange={(e) => {
+                                            if (e.target.value) handleSendCustomTemplate(lead._id, e.target.value);
+                                            setSelectedLeadForTpl(null);
+                                          }}
+                                        >
+                                          <option value="">Pick Template...</option>
+                                          <optgroup label="Auto Sequence">
+                                            <option value="step1">Step 1 (Intro)</option>
+                                            <option value="step2">Step 2 (Follow-up)</option>
+                                            <option value="step3">Step 3 (Final)</option>
+                                          </optgroup>
+                                          <optgroup label="Custom Templates">
+                                            {customTemplates.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
+                                          </optgroup>
+                                          <option value="">Cancel</option>
+                                        </select>
+                                      ) : (
+                                        <>
+                                          <Button variant="outline" size="sm" className="h-7 px-2 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 text-xs" onClick={() => setSelectedLeadForTpl(lead._id)}>
+                                            Send
+                                          </Button>
+                                          <Button variant="outline" size="sm" className="h-7 px-2 border-primary/30 text-primary hover:bg-primary/10 text-xs" onClick={() => {
+                                            setInlineEditLeadId(lead._id);
+                                            setInlineEditData({ email: lead.email, name: lead.name, phone: lead.phone });
+                                          }}>
+                                            Edit
+                                          </Button>
+                                        </>
+                                      )}
+                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => {
                                         setConfirmModal({
                                           open: true,
                                           title: `Delete this lead (${lead.email})?`,
@@ -3605,483 +4257,519 @@ function App() {
                                             }
                                           }
                                         });
-                                      }}
-                                      className="btn-icon btn-stop"
-                                    >Del</button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+                                      }}>
+                                        <X size={14} />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             );
           })()}
 
 
           {activeTab === 'saved_leads' && (
-            <div className="content-area">
-              <div className="log-card">
-                <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <h3 style={{ margin: 0 }}>Lead Automation CRM</h3>
-                    <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Centralized vault for all AI-scraped high-intent leads.</p>
-                  </div>
-                  <div>
-                    <button className="glass-btn" onClick={fetchSavedLeads} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>Refresh CRM</button>
-                  </div>
-                </div>
-                {isLoadingSavedLeads ? (
-                  <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' }}>
-                    {[1, 2, 3, 4].map(i => (
-                      <div key={i} className="config-card skeleton-pulse" style={{ height: '180px', border: '1px solid var(--border)' }}></div>
-                    ))}
-                  </div>
-                ) : savedLeads.length === 0 ? (
-                  <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No saved leads yet. Go to Lead Scraper to extract some!</p>
-                ) : !selectedGroup ? (
-                  <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' }}>
-                    {Object.entries(savedLeads.reduce((acc, lead) => {
-                      const groupName = `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}`;
-                      if (!acc[groupName]) acc[groupName] = [];
-                      acc[groupName].push(lead);
-                      return acc;
-                    }, {})).map(([groupName, leads]) => {
-                      const sample = leads[0] || {};
-                      return (
-                        <div key={groupName} className="config-card" style={{ cursor: 'pointer', textAlign: 'center', border: '1px solid var(--primary)', transition: 'all 0.2s ease', position: 'relative', animation: 'fadeInScale 0.4s ease forwards' }}>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteGroup(sample.keyword, sample.city); }}
-                            style={{ position: 'absolute', top: '10px', right: '10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}
-                            title="Delete Folder"
-                          ><X size={14} /></button>
-                          <div onClick={() => setSelectedGroup(groupName)}>
-                            <div style={{ marginBottom: '1rem', color: 'var(--primary)' }}><FolderIcon /></div>
-                            <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)', fontSize: '1rem' }}>{groupName}</h4>
-                            <p style={{ color: 'var(--success)', fontWeight: 'bold', fontSize: '0.85rem' }}>{leads.length} Target Leads</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <button className="btn-icon btn-continue" onClick={() => { setSelectedGroup(null); setSelectedIds([]); }} style={{ fontSize: '0.8rem' }}>← Back</button>
-                      <span style={{ fontWeight: '600', color: 'var(--text-main)', flex: 1 }}>{selectedGroup}</span>
+            <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
+              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
+                <CardHeader className="pb-4 border-b border-border/50">
+                  <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <Database size={20} className="text-primary" /> Lead Automation CRM
+                      </CardTitle>
+                      <CardDescription>Centralized vault for all AI-scraped high-intent leads.</CardDescription>
                     </div>
+                    <div>
+                      <Button variant="outline" size="sm" onClick={fetchSavedLeads}>
+                        <RefreshCw size={14} className="mr-2" /> Refresh CRM
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
 
-                    {(() => {
-                      const groupLeads = savedLeads.filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup);
-                      const allSelected = groupLeads.length > 0 && groupLeads.every(l => selectedIds.includes(l._id));
-                      const someSelected = groupLeads.some(l => selectedIds.includes(l._id));
+                <CardContent className="p-6">
+                  {isLoadingSavedLeads ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="h-40 rounded-xl bg-muted/50 border border-border animate-pulse"></div>
+                      ))}
+                    </div>
+                  ) : savedLeads.length === 0 ? (
+                    <div className="py-16 flex flex-col items-center justify-center text-center">
+                      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
+                        <Database size={32} />
+                      </div>
+                      <h3 className="text-xl font-semibold text-foreground mb-2">No saved leads yet</h3>
+                      <p className="text-muted-foreground max-w-md">Go to Lead Scraper to extract some and build your lists!</p>
+                    </div>
+                  ) : !selectedGroup ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {Object.entries(savedLeads.reduce((acc, lead) => {
+                        const groupName = `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}`;
+                        if (!acc[groupName]) acc[groupName] = [];
+                        acc[groupName].push(lead);
+                        return acc;
+                      }, {})).map(([groupName, leads]) => {
+                        const sample = leads[0] || {};
+                        return (
+                          <div key={groupName} className="group relative bg-card rounded-2xl border border-border shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-300 cursor-pointer overflow-hidden animate-in zoom-in duration-300" onClick={() => setSelectedGroup(groupName)}>
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/60 to-indigo-500/60 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
 
-                      return (
-                        <>
-                          {someSelected && (
-                            <div className="bulk-bar" style={{ margin: '1rem 1.5rem', borderRadius: '12px', background: 'var(--primary)', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', boxShadow: '0 10px 15px -3px rgba(79, 102, 241, 0.3)' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontWeight: '600' }}>
-                                <Info size={18} />
-                                {selectedIds.filter(id => groupLeads.some(l => l._id === id)).length} leads selected from this folder
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-3 right-3 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteGroup(sample.keyword, sample.city); }}
+                              title="Delete Folder"
+                            >
+                              <X size={14} />
+                            </Button>
+
+                            <div className="p-6 flex flex-col items-center text-center">
+                              <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <Folder size={24} />
                               </div>
-                              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                <button
-                                  className="bulk-btn"
-                                  style={{ background: '#10b981', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)' }}
-                                  disabled={isScraperBroadcasting}
-                                  onClick={() => {
-                                    const selectedLeads = groupLeads.filter(l => selectedIds.includes(l._id) && l.phone && l.phone !== 'N/A');
-                                    const phones = selectedLeads.map(l => l.phone.replace(/\D/g, ''));
-                                    if (phones.length === 0) return showToast('No leads with valid phone numbers selected!', 'error');
-
-                                    const activeWaTpl = whatsappTemplates.find(t => t.isActive);
-                                    if (!activeWaTpl) return showToast("Please activate a WhatsApp template in WhatsApp Settings first!", 'error');
-                                    if (waStatus !== 'connected') return showToast("WhatsApp is not connected!", 'error');
-
-                                    setConfirmModal({
-                                      open: true,
-                                      title: `Send Active WA Msg to ${phones.length} leads?`,
-                                      onConfirm: async () => {
-                                        setIsScraperBroadcasting(true);
-                                        try {
-                                          const res = await axios.post('/api/whatsapp/broadcast', {
-                                            phones: phones,
-                                            message: activeWaTpl.message,
-                                            messages: selectedLeads.map(lead => renderTemplateMessage(activeWaTpl.message, lead)),
-                                            delay: scraperWaDelay * 1000 || 3000
-                                          });
-                                          showToast(`WhatsApp done. Sent: ${res.data.sent} | Failed: ${res.data.failed}`, res.data.failed ? 'info' : 'success');
-                                          setSelectedIds([]);
-
-                                          if (res.data.details) {
-                                            setWaStatuses(prev => {
-                                              const newStats = { ...prev };
-                                              res.data.details.forEach(d => {
-                                                newStats[d.phone] = d.status;
-                                              });
-                                              return newStats;
-                                            });
-                                          }
-
-                                        } catch (err) {
-                                          showToast('WA Broadcast failed: ' + (err.response?.data?.error || err.message), 'error');
-                                        } finally { setIsScraperBroadcasting(false); }
-                                      }
-                                    });
-                                  }}
-                                >
-                                  {isScraperBroadcasting ? <><Loader2 size={16} className="animate-spin" /> Sending...</> : <><Phone size={16} /> Send WA Msg</>}
-                                </button>
-                                <button
-                                  className="bulk-btn"
-                                  style={{ background: 'white', color: 'var(--primary)', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: '700', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
-                                  onClick={() => {
-                                    const ids = selectedIds.filter(id => groupLeads.some(l => l._id === id && l.email && l.emailFound));
-                                    if (ids.length === 0) return showToast('No leads with emails selected!', 'error');
-                                    if (!emailUser || !emailPass) return showToast('SMTP credentials missing — Campaign tab pe set karo!', 'error');
-                                    if (!subject || !body1) return showToast('Campaign subject & Step 1 body missing — Campaign tab pe set karo!', 'error');
-
-                                    setConfirmModal({
-                                      open: true,
-                                      title: `Start 3-step Email Automation for ${ids.length} selected leads?`,
-                                      onConfirm: async () => {
-                                        setIsEnricherSending(true);
-                                        try {
-                                          const res = await axios.post('/api/enricher-enroll', {
-                                            leadIds: ids, emailUser, emailPass, subject, body1, body2, body3
-                                          });
-                                          showToast(res.data.message, 'success');
-                                          setSelectedIds([]);
-                                          fetchSavedLeads();
-                                          fetchRecipients();
-                                          fetchStats();
-                                        } catch (err) {
-                                          showToast('Enroll failed: ' + (err.response?.data?.error || err.message), 'error');
-                                        } finally { setIsEnricherSending(false); }
-                                      }
-                                    });
-                                  }}
-                                >
-                                  {isEnricherSending ? <><Loader2 size={16} className="animate-spin" /> Starting...</> : <><Rocket size={16} /> Start Automation</>}
-                                </button>
-                                <button
-                                  style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.4)', padding: '8px 16px', borderRadius: '8px', fontWeight: '600', fontSize: '0.85rem', cursor: 'pointer' }}
-                                  onClick={() => setSelectedIds([])}
-                                >Cancel</button>
-                              </div>
+                              <h4 className="font-bold text-foreground text-sm mb-2 line-clamp-2">{groupName}</h4>
+                              <Badge className="bg-emerald-500/10 text-emerald-600 border-transparent hover:bg-emerald-500/20">
+                                {leads.length} Target Leads
+                              </Badge>
                             </div>
-                          )}
-                          <table className="pro-table">
-                            <thead>
-                              <tr>
-                                <th style={{ width: '50px', textAlign: 'center', paddingLeft: '1.5rem' }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={allSelected}
-                                    ref={el => { if (el) el.indeterminated = someSelected && !allSelected; }}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        const newIds = Array.from(new Set([...selectedIds, ...groupLeads.map(l => l._id)]));
-                                        setSelectedIds(newIds);
-                                      } else {
-                                        const idsToKeep = selectedIds.filter(id => !groupLeads.some(l => l._id === id));
-                                        setSelectedIds(idsToKeep);
-                                      }
-                                    }}
-                                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                                  />
-                                </th>
-                                <th>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <BusinessIcon size={14} /> Business Name
-                                  </div>
-                                </th>
-                                <th>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <ContactIcon size={14} /> Contact / Link
-                                  </div>
-                                </th>
-                                <th>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <LocationIcon size={14} /> Location
-                                  </div>
-                                </th>
-                                <th>Status</th>
-                                <th style={{ paddingRight: '1.5rem' }}>Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {groupLeads.map((lead) => (
-                                <tr key={lead._id} style={{ borderBottom: '1px solid var(--border)', background: selectedIds.includes(lead._id) ? 'rgba(79, 102, 241, 0.04)' : 'transparent' }}>
-                                  <td style={{ textAlign: 'center', paddingLeft: '1.5rem' }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedIds.includes(lead._id)}
-                                      onChange={() => {
-                                        if (selectedIds.includes(lead._id)) setSelectedIds(selectedIds.filter(id => id !== lead._id));
-                                        else setSelectedIds([...selectedIds, lead._id]);
-                                      }}
-                                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                                    />
-                                  </td>
-                                  <td style={{ padding: '1.25rem 1.5rem' }}>
-                                    {inlineEditLeadId === lead._id ? (
-                                      <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} value={inlineEditData.name || ''} onChange={e => setInlineEditData({ ...inlineEditData, name: e.target.value })} />
-                                    ) : (
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <span style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.95rem' }}>{lead.name}</span>
-                                        <span style={{ fontSize: '0.7rem', color: 'var(--primary)', background: 'rgba(79, 102, 241, 0.1)', padding: '2px 8px', borderRadius: '4px', width: 'fit-content', fontWeight: '600', textTransform: 'uppercase' }}>{lead.keyword || 'Lead'}</span>
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td style={{ padding: '1.25rem 1.5rem' }}>
-                                    {inlineEditLeadId === lead._id ? (
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                        <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} placeholder="Phone" value={inlineEditData.phone || ''} onChange={e => setInlineEditData({ ...inlineEditData, phone: e.target.value })} />
-                                        <input className="pro-input" style={{ padding: '4px 8px', fontSize: '0.8rem', width: '100%' }} placeholder="Email" value={inlineEditData.email || ''} onChange={e => setInlineEditData({ ...inlineEditData, email: e.target.value })} />
-                                      </div>
-                                    ) : (
-                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                        {lead.phone && lead.phone !== 'N/A' ? (
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            {(() => {
-                                              const cleanP = lead.phone.replace(/\D/g, '');
-                                              const stat = waStatuses[cleanP];
-                                              const waStatusColor = stat === 'failed' ? '#ef4444' : stat === 'sent' ? '#eab308' : 'var(--success)';
-                                              return (
-                                                <span style={{ color: waStatusColor, fontWeight: '600', fontSize: '0.9rem' }}>{lead.phone}</span>
-                                              );
-                                            })()}
-                                            <button
-                                              onClick={() => {
-                                                const activeTpl = whatsappTemplates.find(t => t.isActive);
-                                                const cleanPhone = lead.phone.replace(/\D/g, '');
-                                                let msg = activeTpl ? renderTemplateMessage(activeTpl.message, lead) : '';
-                                                setWaModal({ open: true, phone: cleanPhone, message: msg });
-                                              }}
-                                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', padding: '2px' }}
-                                              title="Send WhatsApp Message"
-                                            ><MessageSquare size={16} /></button>
-                                          </div>
-                                        ) : <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>—</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
+                      <div className="flex items-center gap-4 pb-2 border-b border-border/50">
+                        <Button variant="ghost" size="sm" onClick={() => { setSelectedGroup(null); setSelectedIds([]); }} className="text-muted-foreground hover:text-foreground">
+                          <ChevronLeft size={16} className="mr-1" /> Back to Folders
+                        </Button>
+                        <h3 className="font-bold text-foreground flex-1 truncate">{selectedGroup}</h3>
+                      </div>
 
-                                        {lead.emailFound ? (
-                                          <a href={`mailto:${lead.email}`} style={{ color: 'var(--primary)', fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
-                                            <Mail size={12} /> {lead.email}
-                                          </a>
-                                        ) : lead.email ? (
-                                          <a href={`mailto:${lead.email}`} style={{ color: 'var(--primary)', fontSize: '0.8rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
-                                            <Mail size={12} /> {lead.email}
-                                          </a>
-                                        ) : null}
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td style={{ padding: '1.25rem 1.5rem' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                      <span style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: '500' }}>{lead.city || 'Unknown'}</span>
-                                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{lead.address && lead.address !== 'N/A' ? lead.address : 'Address not found'}</span>
-                                    </div>
-                                  </td>
-                                  <td style={{ padding: '1.25rem 1.5rem' }}>
-                                    <button
-                                      onClick={async () => { await axios.put(`/api/saved-leads/${lead._id}/contacted`); fetchSavedLeads(); }}
-                                      className={`status-badge ${lead.isContacted ? 'status-sent' : 'status-pending'}`}
-                                      style={{ cursor: 'pointer', border: 'none', padding: '6px 12px', borderRadius: '20px', fontWeight: '600', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                                    >
-                                      {lead.isContacted ? <><Check size={14} /> Contacted</> : <><Clock size={14} /> Pending</>}
-                                    </button>
-                                  </td>
-                                  <td style={{ padding: '1.25rem 1.5rem' }}>
-                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                      {inlineEditLeadId === lead._id ? (
-                                        <>
-                                          <button className="btn-icon" style={{ borderColor: 'var(--success)', color: 'var(--success)', fontSize: '0.75rem' }} onClick={handleSaveInlineEdit}>Save</button>
-                                          <button className="btn-icon" style={{ borderColor: 'var(--text-muted)', color: 'var(--text-muted)', fontSize: '0.75rem' }} onClick={() => setInlineEditLeadId(null)}>Cancel</button>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <button className="btn-icon" style={{ borderColor: 'var(--primary)', color: 'var(--primary)', fontSize: '0.75rem', padding: '6px 12px' }} onClick={() => { setInlineEditLeadId(lead._id); setInlineEditData({ name: lead.name, phone: lead.phone, email: lead.email, address: lead.address, city: lead.city }); }}>Edit</button>
-                                          {lead.mapsLink && (
-                                            <a href={lead.mapsLink} target="_blank" rel="noreferrer" className="btn-icon" style={{ borderColor: 'var(--warning)', color: 'var(--warning)', textDecoration: 'none', fontSize: '0.75rem', padding: '6px 12px' }}>Map</a>
-                                          )}
-                                          <button
-                                            onClick={() => {
-                                              setConfirmModal({
-                                                open: true,
-                                                title: `Delete ${lead.name}?`,
-                                                onConfirm: async () => {
-                                                  await axios.delete(`/api/saved-leads/${lead._id}`);
-                                                  fetchSavedLeads();
-                                                }
+                      {(() => {
+                        const groupLeads = savedLeads.filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup);
+                        const allSelected = groupLeads.length > 0 && groupLeads.every(l => selectedIds.includes(l._id));
+                        const someSelected = groupLeads.some(l => selectedIds.includes(l._id));
+
+                        return (
+                          <>
+                            {someSelected && (
+                              <div className="p-4 rounded-xl bg-primary text-primary-foreground flex flex-col sm:flex-row justify-between items-center gap-4 shadow-lg animate-in slide-in-from-top-2">
+                                <div className="flex items-center gap-2 font-semibold">
+                                  <Info size={18} />
+                                  <span>{selectedIds.filter(id => groupLeads.some(l => l._id === id)).length} leads selected</span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                                  <Button
+                                    className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm border-transparent font-bold"
+                                    disabled={isScraperBroadcasting}
+                                    onClick={() => {
+                                      const selectedLeads = groupLeads.filter(l => selectedIds.includes(l._id) && l.phone && l.phone !== 'N/A');
+                                      const phones = selectedLeads.map(l => l.phone.replace(/\D/g, ''));
+                                      if (phones.length === 0) return showToast('No leads with valid phone numbers selected!', 'error');
+
+                                      const activeWaTpl = whatsappTemplates.find(t => t.isActive);
+                                      if (!activeWaTpl) return showToast("Please activate a WhatsApp template in WhatsApp Settings first!", 'error');
+                                      if (waStatus !== 'connected') return showToast("WhatsApp is not connected!", 'error');
+
+                                      setConfirmModal({
+                                        open: true,
+                                        title: `Send Active WA Msg to ${phones.length} leads?`,
+                                        onConfirm: async () => {
+                                          setIsScraperBroadcasting(true);
+                                          try {
+                                            const res = await axios.post('/api/whatsapp/broadcast', {
+                                              phones: phones,
+                                              message: activeWaTpl.message,
+                                              messages: selectedLeads.map(lead => renderTemplateMessage(activeWaTpl.message, lead)),
+                                              delay: scraperWaDelay * 1000 || 3000
+                                            });
+                                            showToast(`WhatsApp done. Sent: ${res.data.sent} | Failed: ${res.data.failed}`, res.data.failed ? 'info' : 'success');
+                                            setSelectedIds([]);
+
+                                            if (res.data.details) {
+                                              setWaStatuses(prev => {
+                                                const newStats = { ...prev };
+                                                res.data.details.forEach(d => {
+                                                  newStats[d.phone] = d.status;
+                                                });
+                                                return newStats;
                                               });
-                                            }}
-                                            className="btn-icon"
-                                            style={{ borderColor: 'var(--danger)', color: 'var(--danger)', fontSize: '0.75rem', padding: '6px 12px' }}
-                                          >Del</button>
-                                        </>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </>
-                      );
-                    })()}
-                  </>
-                )}
-              </div>
+                                            }
+
+                                          } catch (err) {
+                                            showToast('WA Broadcast failed: ' + (err.response?.data?.error || err.message), 'error');
+                                          } finally { setIsScraperBroadcasting(false); }
+                                        }
+                                      });
+                                    }}
+                                  >
+                                    {isScraperBroadcasting ? <><Loader2 size={16} className="animate-spin mr-2" /> Sending...</> : <><Phone size={16} className="mr-2" /> Send WA Msg</>}
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    className="font-bold text-primary"
+                                    onClick={() => {
+                                      const ids = selectedIds.filter(id => groupLeads.some(l => l._id === id && l.email && l.emailFound));
+                                      if (ids.length === 0) return showToast('No leads with emails selected!', 'error');
+                                      if (!emailUser || !emailPass) return showToast('SMTP credentials missing — Campaign tab pe set karo!', 'error');
+                                      if (!subject || !body1) return showToast('Campaign subject & Step 1 body missing — Campaign tab pe set karo!', 'error');
+
+                                      setConfirmModal({
+                                        open: true,
+                                        title: `Start 3-step Email Automation for ${ids.length} selected leads?`,
+                                        onConfirm: async () => {
+                                          setIsEnricherSending(true);
+                                          try {
+                                            const res = await axios.post('/api/enricher-enroll', {
+                                              leadIds: ids, emailUser, emailPass, subject, body1, body2, body3
+                                            });
+                                            showToast(res.data.message, 'success');
+                                            setSelectedIds([]);
+                                            fetchSavedLeads();
+                                            fetchRecipients();
+                                            fetchStats();
+                                          } catch (err) {
+                                            showToast('Enroll failed: ' + (err.response?.data?.error || err.message), 'error');
+                                          } finally { setIsEnricherSending(false); }
+                                        }
+                                      });
+                                    }}
+                                  >
+                                    {isEnricherSending ? <><Loader2 size={16} className="animate-spin mr-2" /> Starting...</> : <><Rocket size={16} className="mr-2" /> Start Automation</>}
+                                  </Button>
+                                  <Button variant="ghost" className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10" onClick={() => setSelectedIds([])}>
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                            <div className="overflow-x-auto rounded-xl border border-border/50">
+                              <table className="w-full text-sm text-left border-collapse">
+                                <thead className="bg-muted/50 text-muted-foreground text-xs uppercase font-semibold border-b border-border">
+                                  <tr>
+                                    <th className="px-4 py-3 w-[50px] text-center border-r border-border/50">
+                                      <input
+                                        type="checkbox"
+                                        className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                                        checked={allSelected}
+                                        ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            const newIds = Array.from(new Set([...selectedIds, ...groupLeads.map(l => l._id)]));
+                                            setSelectedIds(newIds);
+                                          } else {
+                                            const idsToKeep = selectedIds.filter(id => !groupLeads.some(l => l._id === id));
+                                            setSelectedIds(idsToKeep);
+                                          }
+                                        }}
+                                      />
+                                    </th>
+                                    <th className="px-4 py-3 min-w-[200px]">Business Name</th>
+                                    <th className="px-4 py-3 min-w-[220px]">Contact / Link</th>
+                                    <th className="px-4 py-3 min-w-[150px]">Location</th>
+                                    <th className="px-4 py-3 min-w-[120px]">Status</th>
+                                    <th className="px-4 py-3 min-w-[150px] text-right">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/50">
+                                  {groupLeads.map((lead) => (
+                                    <tr key={lead._id} className={`transition-colors hover:bg-muted/30 ${selectedIds.includes(lead._id) ? 'bg-primary/5' : ''}`}>
+                                      <td className="px-4 py-3 text-center border-r border-border/50">
+                                        <input
+                                          type="checkbox"
+                                          className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                                          checked={selectedIds.includes(lead._id)}
+                                          onChange={() => {
+                                            if (selectedIds.includes(lead._id)) setSelectedIds(selectedIds.filter(id => id !== lead._id));
+                                            else setSelectedIds([...selectedIds, lead._id]);
+                                          }}
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        {inlineEditLeadId === lead._id ? (
+                                          <Input className="h-8 text-xs" value={inlineEditData.name || ''} onChange={e => setInlineEditData({ ...inlineEditData, name: e.target.value })} />
+                                        ) : (
+                                          <div className="flex flex-col gap-1">
+                                            <span className="font-bold text-foreground text-sm">{lead.name}</span>
+                                            <Badge variant="outline" className="w-fit text-[10px] uppercase font-semibold text-primary border-primary/20 bg-primary/5 px-1.5 py-0 h-4">
+                                              {lead.keyword || 'Lead'}
+                                            </Badge>
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        {inlineEditLeadId === lead._id ? (
+                                          <div className="flex flex-col gap-2">
+                                            <Input className="h-8 text-xs border-emerald-200 focus-visible:ring-emerald-500 text-emerald-600" placeholder="Phone" value={inlineEditData.phone || ''} onChange={e => setInlineEditData({ ...inlineEditData, phone: e.target.value })} />
+                                            <Input className="h-8 text-xs" placeholder="Email" value={inlineEditData.email || ''} onChange={e => setInlineEditData({ ...inlineEditData, email: e.target.value })} />
+                                          </div>
+                                        ) : (
+                                          <div className="flex flex-col gap-2">
+                                            {lead.phone && lead.phone !== 'N/A' ? (
+                                              <div className="flex items-center gap-2">
+                                                {(() => {
+                                                  const cleanP = lead.phone.replace(/\D/g, '');
+                                                  const stat = waStatuses[cleanP];
+                                                  const waStatusClass = stat === 'failed' ? 'text-destructive' : stat === 'sent' ? 'text-amber-500' : 'text-emerald-600';
+                                                  return (
+                                                    <span className={`font-semibold text-sm ${waStatusClass}`}>{lead.phone}</span>
+                                                  );
+                                                })()}
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-6 w-6 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
+                                                  onClick={() => {
+                                                    const activeTpl = whatsappTemplates.find(t => t.isActive);
+                                                    const cleanPhone = lead.phone.replace(/\D/g, '');
+                                                    let msg = activeTpl ? renderTemplateMessage(activeTpl.message, lead) : '';
+                                                    setWaModal({ open: true, phone: cleanPhone, message: msg });
+                                                  }}
+                                                  title="Send WhatsApp Message"
+                                                >
+                                                  <MessageSquare size={14} />
+                                                </Button>
+                                              </div>
+                                            ) : <span className="text-muted-foreground/50 text-sm">—</span>}
+
+                                            {(lead.emailFound || lead.email) && (
+                                              <a href={`mailto:${lead.email}`} className="text-primary text-xs font-medium flex items-center gap-1.5 hover:underline decoration-primary/30 underline-offset-4 w-fit">
+                                                <Mail size={12} /> <span className="truncate max-w-[150px]">{lead.email}</span>
+                                              </a>
+                                            )}
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm">
+                                        <div className="flex flex-col gap-1">
+                                          <span className="font-medium text-foreground">{lead.city || 'Unknown'}</span>
+                                          <span className="text-xs text-muted-foreground truncate max-w-[130px]">{lead.address && lead.address !== 'N/A' ? lead.address : 'Address not found'}</span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <Badge
+                                          variant={lead.isContacted ? "default" : "secondary"}
+                                          className={`cursor-pointer ${lead.isContacted ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20'}`}
+                                          onClick={async () => { await axios.put(`/api/saved-leads/${lead._id}/contacted`); fetchSavedLeads(); }}
+                                        >
+                                          {lead.isContacted ? <><Check size={12} className="mr-1" /> Contacted</> : <><Clock size={12} className="mr-1" /> Pending</>}
+                                        </Badge>
+                                      </td>
+                                      <td className="px-4 py-3 text-right">
+                                        <div className="flex items-center justify-end gap-1.5">
+                                          {inlineEditLeadId === lead._id ? (
+                                            <>
+                                              <Button variant="outline" size="sm" className="h-7 px-2 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 text-xs" onClick={handleSaveInlineEdit}>Save</Button>
+                                              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setInlineEditLeadId(null)}>Cancel</Button>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Button variant="outline" size="sm" className="h-7 px-2 text-xs border-primary/30 text-primary hover:bg-primary/10" onClick={() => { setInlineEditLeadId(lead._id); setInlineEditData({ name: lead.name, phone: lead.phone, email: lead.email, address: lead.address, city: lead.city }); }}>Edit</Button>
+                                              {lead.mapsLink && (
+                                                <Button variant="outline" size="sm" className="h-7 px-2 text-xs border-amber-500/30 text-amber-600 hover:bg-amber-500/10" asChild>
+                                                  <a href={lead.mapsLink} target="_blank" rel="noreferrer">Map</a>
+                                                </Button>
+                                              )}
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                                onClick={() => {
+                                                  setConfirmModal({
+                                                    open: true,
+                                                    title: `Delete ${lead.name}?`,
+                                                    onConfirm: async () => {
+                                                      await axios.delete(`/api/saved-leads/${lead._id}`);
+                                                      fetchSavedLeads();
+                                                    }
+                                                  });
+                                                }}
+                                              >
+                                                <X size={14} />
+                                              </Button>
+                                            </>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           )}
         </section>
       </main>
 
       {intelLead && (
-        <div className="modal-overlay">
-          <div className="modal-content intel-modal">
-            <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div className="intel-avatar">{intelLead.email[0].toUpperCase()}</div>
+        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-2xl shadow-xl animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-start p-6 border-b border-border/50">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold">
+                  {intelLead.email[0].toUpperCase()}
+                </div>
                 <div>
-                  <h3 style={{ margin: 0 }}>{intelLead.email}</h3>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Intelligence View Enabled</span>
+                  <h3 className="text-xl font-bold text-foreground">{intelLead.email}</h3>
+                  <span className="text-sm text-primary font-medium">Intelligence View Enabled</span>
                 </div>
               </div>
-              <button className="btn-close" onClick={() => setIntelLead(null)}><CloseIcon /></button>
+              <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:bg-muted" onClick={() => setIntelLead(null)}>
+                <X size={20} />
+              </Button>
             </div>
-            <div className="modal-body">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                  <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--bg-dark)' }}>Profile Information</h4>
-                  <div className="intel-info-box">
-                    <div className="intel-field"><strong>Campaign:</strong> {intelLead.campaignId}</div>
-                    <div className="intel-field"><strong>Status:</strong> {intelLead.status}</div>
-                    <div className="intel-field"><strong>Current Step:</strong> {intelLead.step}</div>
-                    <hr style={{ margin: '1rem 0', borderColor: '#f1f5f9' }} />
-                    <p style={{ fontSize: '0.75rem', fontWeight: '600', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>CUSTOM DATA</p>
-                    {intelLead.data ? Object.keys(intelLead.data).map(k => (
-                      <div key={k} className="intel-field"><strong>{k}:</strong> {intelLead.data[k]}</div>
-                    )) : <p>No data</p>}
-                  </div>
-                </div>
-                <div>
-                  <h4 style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--bg-dark)' }}>Communication Timeline</h4>
-                  <div className="timeline">
-                    {intelLead.history && intelLead.history.length > 0 ? intelLead.history.slice().reverse().map((h, idx) => (
-                      <div key={idx} className="timeline-item">
-                        <div className="timeline-date">{new Date(h.sentAt).toLocaleString()}</div>
-                        <div className="timeline-event">{h.event}</div>
-                        <div className="timeline-subject">{h.subject}</div>
+                  <h4 className="font-bold text-foreground mb-4 flex items-center gap-2"><Info size={16} className="text-primary" /> Profile Information</h4>
+                  <div className="bg-muted/50 rounded-xl p-4 border border-border/50 space-y-3 text-sm">
+                    <div className="flex justify-between items-center pb-2 border-b border-border/50"><strong className="text-foreground">Campaign:</strong> <span className="text-muted-foreground truncate max-w-[150px]">{intelLead.campaignId}</span></div>
+                    <div className="flex justify-between items-center pb-2 border-b border-border/50"><strong className="text-foreground">Status:</strong> <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5 capitalize">{intelLead.status}</Badge></div>
+                    <div className="flex justify-between items-center"><strong className="text-foreground">Current Step:</strong> <Badge className="bg-emerald-500 text-white">{intelLead.step}</Badge></div>
+
+                    {intelLead.data && Object.keys(intelLead.data).length > 0 && (
+                      <div className="pt-4 mt-2 border-t border-border/50">
+                        <p className="text-[10px] font-bold uppercase text-muted-foreground mb-2">Custom Data</p>
+                        <div className="space-y-2">
+                          {Object.keys(intelLead.data).map(k => (
+                            <div key={k} className="flex justify-between text-xs"><strong className="text-foreground">{k}:</strong> <span className="text-muted-foreground truncate max-w-[120px]">{intelLead.data[k]}</span></div>
+                          ))}
+                        </div>
                       </div>
-                    )) : <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No communication logs yet.</p>}
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-bold text-foreground mb-4 flex items-center gap-2"><Clock size={16} className="text-primary" /> Communication Timeline</h4>
+                  <div className="relative pl-4 border-l-2 border-primary/20 space-y-6 max-h-[300px] overflow-y-auto pr-2">
+                    {intelLead.history && intelLead.history.length > 0 ? intelLead.history.slice().reverse().map((h, idx) => (
+                      <div key={idx} className="relative">
+                        <div className="absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-background"></div>
+                        <div className="text-xs text-primary font-semibold mb-1">{new Date(h.sentAt).toLocaleString()}</div>
+                        <div className="font-medium text-sm text-foreground mb-1">{h.event}</div>
+                        <div className="text-xs text-muted-foreground bg-muted p-2 rounded-md">{h.subject}</div>
+                      </div>
+                    )) : <p className="text-sm text-muted-foreground">No communication logs yet.</p>}
                   </div>
                 </div>
               </div>
+            </CardContent>
+            <div className="p-4 border-t border-border/50 flex justify-end bg-muted/20">
+              <Button onClick={() => setIntelLead(null)}>Close Intelligence View</Button>
             </div>
-            <div className="modal-footer" style={{ marginTop: '2rem' }}>
-              <button className="launch-btn" onClick={() => setIntelLead(null)}>Close Intelligence View</button>
-            </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* WhatsApp Send Modal */}
       {waModal.open && (
-        <div className="modal-overlay" style={{ zIndex: 9998 }}>
-          <div className="log-card" style={{ maxWidth: '520px', width: '100%', padding: '2rem', animation: 'slideIn 0.3s ease-out' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Phone size={22} style={{ color: '#25D366' }} /> Send WhatsApp Message
-              </h3>
-              <button onClick={() => setWaModal({ open: false, phone: '', message: '' })} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--text-muted)' }}>✕</button>
+        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-[520px] shadow-xl border-[#25D366]/30 animate-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold flex items-center gap-2 text-foreground">
+                  <Phone size={24} className="text-[#25D366]" /> Send WhatsApp
+                </h3>
+                <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:bg-muted" onClick={() => setWaModal({ open: false, phone: '', message: '' })}>
+                  <X size={20} />
+                </Button>
+              </div>
+
+              <div className="mb-4 flex items-center gap-2 bg-muted/50 p-3 rounded-lg border border-border/50">
+                <span className="text-2xl">📱</span>
+                <div>
+                  <div className="text-xs text-muted-foreground font-medium">Recipient</div>
+                  <div className="font-bold text-foreground">+{waModal.phone}</div>
+                </div>
+              </div>
+
+              <div className="space-y-2 mb-6">
+                <label className="text-sm font-semibold text-foreground">Your Active Message</label>
+                <textarea
+                  readOnly
+                  value={waModal.message}
+                  className="w-full h-[180px] p-4 rounded-xl border-2 border-[#25D366]/50 bg-[#25D366]/5 text-foreground text-sm leading-relaxed resize-none focus:outline-none focus:border-[#25D366]"
+                  onClick={e => e.target.select()}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1 h-12 border-2 border-[#25D366] text-[#25D366] hover:bg-[#25D366]/10 font-bold"
+                  onClick={copyWaMessage}
+                >
+                  <Copy size={18} className="mr-2" /> Copy Message
+                </Button>
+                <Button
+                  className="flex-1 h-12 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold border-none"
+                  onClick={() => {
+                    const encodedMsg = encodeURIComponent(waModal.message);
+                    window.open(`https://web.whatsapp.com/send?phone=${waModal.phone}&text=${encodedMsg}`, '_blank');
+                  }}
+                >
+                  <Phone size={18} className="mr-2" /> Open WhatsApp
+                </Button>
+              </div>
+
+              <p className="text-center text-muted-foreground text-xs mt-4">
+                Tip: Click <strong className="text-foreground">Copy Message</strong> first, then <strong className="text-foreground">Open WhatsApp</strong> and paste with Ctrl+V
+              </p>
             </div>
-
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-              📱 To: <strong>+{waModal.phone}</strong>
-            </p>
-
-            <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
-              <label style={{ fontWeight: '600', display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Your Active Message</label>
-              <textarea
-                id="wa-msg-textarea"
-                readOnly
-                value={waModal.message}
-                style={{
-                  width: '100%', height: '180px', padding: '14px', borderRadius: '12px',
-                  border: '2px solid #25D366', background: '#f0fdf4', color: '#1a1a1a',
-                  fontSize: '0.9rem', lineHeight: '1.6', resize: 'none', boxSizing: 'border-box',
-                  fontFamily: 'inherit'
-                }}
-                onClick={e => e.target.select()}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button
-                onClick={copyWaMessage}
-                style={{
-                  flex: 1, padding: '13px', borderRadius: '10px', border: '2px solid #25D366',
-                  background: 'white', color: '#25D366', fontWeight: '700', fontSize: '0.95rem',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                }}
-              >
-                📋 Copy Message
-              </button>
-              <button
-                onClick={() => {
-                  const encodedMsg = encodeURIComponent(waModal.message);
-                  window.open(`https://web.whatsapp.com/send?phone=${waModal.phone}&text=${encodedMsg}`, '_blank');
-                }}
-                style={{
-                  flex: 1, padding: '13px', borderRadius: '10px', border: 'none',
-                  background: '#25D366', color: 'white', fontWeight: '700', fontSize: '0.95rem',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
-                }}
-              >
-                <Phone size={18} /> Open WhatsApp
-              </button>
-            </div>
-
-            <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '1rem' }}>
-              Tip: Click <strong>Copy Message</strong> first, then <strong>Open WhatsApp</strong> and paste with Ctrl+V
-            </p>
-          </div>
+          </Card>
         </div>
       )}
 
       {confirmModal.open && (
-        <div className="modal-overlay" style={{ zIndex: 9999 }}>
-          <div className="log-card" style={{ maxWidth: '400px', width: '100%', padding: '2rem', textAlign: 'center', animation: 'slideIn 0.3s ease-out' }}>
-            <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center' }}><AlertIcon /></div>
-            <h3 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>{confirmModal.title}</h3>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-              <button className="launch-btn" style={{ padding: '10px 25px' }} onClick={() => { confirmModal.onConfirm(); setConfirmModal({ open: false }); }}>Yes, Proceed</button>
-              <button className="bulk-btn" style={{ backgroundColor: 'var(--danger)', padding: '10px 25px', color: 'white' }} onClick={() => setConfirmModal({ open: false })}>Cancel</button>
+        <div className="fixed inset-0 z-[110] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-sm shadow-xl border-border/50 animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto mb-4">
+                <AlertCircle size={32} />
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-6">{confirmModal.title}</h3>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button variant="secondary" className="w-full sm:w-auto font-medium" onClick={() => setConfirmModal({ open: false })}>Cancel</Button>
+                <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white font-bold shadow-glow-primary" onClick={() => { confirmModal.onConfirm(); setConfirmModal({ open: false }); }}>Yes, Proceed</Button>
+              </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {addEmailModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Add Email Manually</h3>
-              <button className="btn-close" onClick={() => !isAddingEmail && setAddEmailModal(false)}><CloseIcon /></button>
+        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-md shadow-xl border-border/50 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-5 border-b border-border/50">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2"><Plus size={18} className="text-primary" /> Add Email Manually</h3>
+              <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 text-muted-foreground hover:bg-muted" onClick={() => !isAddingEmail && setAddEmailModal(false)}>
+                <X size={16} />
+              </Button>
             </div>
-            <div className="modal-body">
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+            <CardContent className="p-5 space-y-4">
+              <p className="text-sm text-muted-foreground">
                 Add a contact directly to the Email Enricher list. Email is required, others optional.
               </p>
-              <div className="field">
-                <label>Email <span style={{ color: 'var(--danger)' }}>*</span></label>
-                <input
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-foreground">Email <span className="text-destructive">*</span></label>
+                <Input
                   type="email"
                   value={addEmailForm.email}
                   onChange={e => setAddEmailForm({ ...addEmailForm, email: e.target.value })}
@@ -4089,47 +4777,58 @@ function App() {
                   autoFocus
                 />
               </div>
-              <div className="field">
-                <label>Business / Name</label>
-                <input
-                  type="text"
-                  value={addEmailForm.name}
-                  onChange={e => setAddEmailForm({ ...addEmailForm, name: e.target.value })}
-                  placeholder="Acme Corp"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-foreground">Business / Name</label>
+                  <Input
+                    type="text"
+                    value={addEmailForm.name}
+                    onChange={e => setAddEmailForm({ ...addEmailForm, name: e.target.value })}
+                    placeholder="Acme Corp"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-foreground">Phone</label>
+                  <Input
+                    type="text"
+                    value={addEmailForm.phone}
+                    onChange={e => setAddEmailForm({ ...addEmailForm, phone: e.target.value })}
+                    placeholder="+1 555 1234"
+                  />
+                </div>
               </div>
-              <div className="field">
-                <label>Phone</label>
-                <input
-                  type="text"
-                  value={addEmailForm.phone}
-                  onChange={e => setAddEmailForm({ ...addEmailForm, phone: e.target.value })}
-                  placeholder="+1 555 1234"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-foreground">City</label>
+                  <Input
+                    type="text"
+                    value={addEmailForm.city}
+                    onChange={e => setAddEmailForm({ ...addEmailForm, city: e.target.value })}
+                    placeholder="New York"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold text-foreground">Keyword</label>
+                  <Input
+                    type="text"
+                    value={addEmailForm.keyword}
+                    onChange={e => setAddEmailForm({ ...addEmailForm, keyword: e.target.value })}
+                    placeholder="Plumber, etc."
+                  />
+                </div>
               </div>
-              <div className="field">
-                <label>City</label>
-                <input
-                  type="text"
-                  value={addEmailForm.city}
-                  onChange={e => setAddEmailForm({ ...addEmailForm, city: e.target.value })}
-                  placeholder="New York"
-                />
-              </div>
-              <div className="field">
-                <label>Category / Keyword</label>
-                <input
-                  type="text"
-                  value={addEmailForm.keyword}
-                  onChange={e => setAddEmailForm({ ...addEmailForm, keyword: e.target.value })}
-                  placeholder="Plumber, Restaurant, etc."
-                />
-              </div>
-            </div>
-            <div className="modal-footer" style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
-              <button
-                className="launch-btn"
-                style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+            </CardContent>
+            <div className="p-4 border-t border-border/50 flex gap-3 bg-muted/20">
+              <Button
+                variant="secondary"
+                className="flex-1 font-medium"
+                disabled={isAddingEmail}
+                onClick={() => setAddEmailModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold shadow-glow-primary"
                 disabled={isAddingEmail || !addEmailForm.email.trim()}
                 onClick={async () => {
                   setIsAddingEmail(true);
@@ -4143,86 +4842,96 @@ function App() {
                   } finally { setIsAddingEmail(false); }
                 }}
               >
-                {isAddingEmail ? <><Loader2 size={16} className="animate-spin" /> Adding...</> : <>Add Email <RocketIcon /></>}
-              </button>
-              <button
-                className="launch-btn"
-                style={{ flex: 1, backgroundColor: 'var(--bg-dark)' }}
-                disabled={isAddingEmail}
-                onClick={() => setAddEmailModal(false)}
-              >Cancel</button>
+                {isAddingEmail ? <><Loader2 size={16} className="animate-spin mr-2" /> Adding...</> : <><Plus size={16} className="mr-2" /> Add Email</>}
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {isVarModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Fill Template Variables</h3>
-              <button className="btn-close" onClick={() => setIsVarModalOpen(false)}><CloseIcon /></button>
+        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-md shadow-xl border-border/50 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-5 border-b border-border/50">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2"><PenTool size={18} className="text-primary" /> Fill Template Variables</h3>
+              <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 text-muted-foreground hover:bg-muted" onClick={() => setIsVarModalOpen(false)}>
+                <X size={16} />
+              </Button>
             </div>
-            <div className="modal-body">
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                Template: <b>{modalTpl?.name}</b> <br />
-                Sending to: <b>{modalLead?.email}</b>
-              </p>
-              {Object.keys(modalData).map(key => (
-                <div className="field" key={key}>
-                  <label>Value for <code>{`{{${key}}}`}</code></label>
-                  <input
-                    type="text"
-                    value={modalData[key]}
-                    onChange={e => setModalData({ ...modalData, [key]: e.target.value })}
-                    placeholder={`Enter ${key}...`}
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="modal-footer" style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
-              <button className="launch-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }} onClick={confirmAndSendCustom}>Confirm & Send Email <RocketIcon /></button>
-              <button className="launch-btn" style={{ flex: 1, backgroundColor: 'var(--bg-dark)' }} onClick={() => setIsVarModalOpen(false)}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {notification && (
-        <div className={`toast toast-${notification.type}`}>
-          {notification.type === 'success' ? <SuccessIcon /> : <ErrorIcon />}
-          {notification.msg}
-        </div>
-      )}
-      {viewReplyModal.open && (
-        <div className="modal-overlay" style={{ zIndex: 10000 }}>
-          <div className="modal-content" style={{ maxWidth: '700px' }}>
-            <div className="modal-header">
-              <h3>Replies from {viewReplyModal.lead?.email}</h3>
-              <button className="close-btn" onClick={() => setViewReplyModal({ open: false, lead: null })}>&times;</button>
-            </div>
-            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-              {(viewReplyModal.lead?.replies || []).length > 0 ? (
-                viewReplyModal.lead.replies.map((reply, idx) => (
-                  <div key={idx} style={{ marginBottom: '2rem', padding: '1.5rem', background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '12px' }}>
-                    <div style={{ marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-                      <div style={{ fontWeight: '700', fontSize: '1rem' }}>Subject: {reply.subject}</div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Received: {new Date(reply.receivedAt).toLocaleString()}</div>
-                    </div>
-                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.95rem', lineHeight: '1.6', color: 'var(--text)' }}>
-                      {reply.body}
-                    </div>
+            <CardContent className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+              <div className="bg-muted/50 p-3 rounded-lg border border-border/50 text-sm">
+                <div className="flex gap-2 mb-1"><span className="text-muted-foreground w-16">Template:</span> <span className="font-bold text-foreground">{modalTpl?.name}</span></div>
+                <div className="flex gap-2"><span className="text-muted-foreground w-16">To:</span> <span className="font-bold text-primary">{modalLead?.email}</span></div>
+              </div>
+
+              <div className="space-y-4 mt-4">
+                {Object.keys(modalData).map(key => (
+                  <div className="space-y-1.5" key={key}>
+                    <label className="text-sm font-semibold text-foreground flex items-center justify-between">
+                      <span>Value for <code className="bg-muted px-1.5 py-0.5 rounded text-primary text-xs ml-1">{`{{${key}}}`}</code></span>
+                    </label>
+                    <Input
+                      type="text"
+                      value={modalData[key]}
+                      onChange={e => setModalData({ ...modalData, [key]: e.target.value })}
+                      placeholder={`Enter ${key}...`}
+                    />
                   </div>
-                ))
-              ) : (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                  No reply content found.
-                </div>
-              )}
+                ))}
+              </div>
+            </CardContent>
+            <div className="p-4 border-t border-border/50 flex gap-3 bg-muted/20">
+              <Button variant="secondary" className="flex-1 font-medium" onClick={() => setIsVarModalOpen(false)}>Cancel</Button>
+              <Button className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold shadow-glow-primary" onClick={confirmAndSendCustom}>
+                <Send size={16} className="mr-2" /> Send Email
+              </Button>
             </div>
-            <div className="modal-footer" style={{ marginTop: '2rem', textAlign: 'right' }}>
-              <button className="bulk-btn" onClick={() => setViewReplyModal({ open: false, lead: null })}>Close</button>
+          </Card>
+        </div>
+      )}
+
+      {viewReplyModal.open && (
+        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-2xl shadow-xl border-border/50 flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-5 border-b border-border/50 bg-muted/20">
+              <div>
+                <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                  <MessageSquare size={18} className="text-primary" />
+                  Replies from <span className="text-primary ml-1">{viewReplyModal.lead?.email}</span>
+                </h3>
+              </div>
+              <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 text-muted-foreground hover:bg-muted" onClick={() => setViewReplyModal({ open: false, lead: null })}>
+                <X size={16} />
+              </Button>
             </div>
-          </div>
+            <CardContent className="p-0 overflow-y-auto flex-1">
+              <div className="p-6 space-y-6">
+                {(viewReplyModal.lead?.replies || []).length > 0 ? (
+                  viewReplyModal.lead.replies.map((reply, idx) => (
+                    <div key={idx} className="bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm">
+                      <div className="bg-muted/30 px-4 py-3 border-b border-border/50 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                        <div className="font-bold text-sm text-foreground">Re: {reply.subject}</div>
+                        <div className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                          <Clock size={12} /> {new Date(reply.receivedAt).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="p-4 text-sm text-foreground whitespace-pre-wrap leading-relaxed font-mono bg-muted/10">
+                        {reply.body}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-12 flex flex-col items-center justify-center text-center text-muted-foreground">
+                    <MessageSquare size={32} className="opacity-20 mb-3" />
+                    <p>No reply content found.</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+            <div className="p-4 border-t border-border/50 flex justify-end bg-muted/20">
+              <Button onClick={() => setViewReplyModal({ open: false, lead: null })}>Close</Button>
+            </div>
+          </Card>
         </div>
       )}
     </div>
