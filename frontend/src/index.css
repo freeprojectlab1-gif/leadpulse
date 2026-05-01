@@ -8,6 +8,14 @@
    Primary: #4278f4  (HSL: 221 89% 60%)
    ============================================================ */
 
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.animate-shimmer {
+  animation: shimmer 3s infinite linear;
+}
+
 @layer base {
   /* ── MODERN SAAS DESIGN SYSTEM ── */
   :root {
@@ -441,8 +449,8 @@ body.theme-light {
 .pro-select:focus  { border-color: hsl(var(--primary)); box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12); outline: none; }
 .pro-select option { background-color: hsl(var(--card)); color: hsl(var(--foreground)); }
 
-/* ── XSTAR STAT CARDS ── */
-.xstar-stat-card {
+/* ── BRAND STAT CARDS ── */
+.leadpulse-stat-card {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: 1rem;
@@ -450,31 +458,31 @@ body.theme-light {
   transition: all 0.25s ease;
   position: relative; overflow: hidden;
 }
-.xstar-stat-card::after {
+.leadpulse-stat-card::after {
   content: '';
   position: absolute; top:0; left:0; right:0; height:3px;
   background: linear-gradient(90deg, #4278f4, #2a5ddd);
   opacity: 0;
   transition: opacity 0.25s ease;
 }
-.xstar-stat-card:hover { box-shadow: 0 12px 32px rgba(66,120,244,0.12); transform: translateY(-2px); }
-.xstar-stat-card:hover::after { opacity: 1; }
+.leadpulse-stat-card:hover { box-shadow: 0 12px 32px rgba(66,120,244,0.12); transform: translateY(-2px); }
+.leadpulse-stat-card:hover::after { opacity: 1; }
 
-/* ── XSTAR GLOW BUTTON ── */
-.xstar-btn-primary {
+/* ── BRAND GLOW BUTTON ── */
+.leadpulse-btn-primary {
   background: linear-gradient(135deg, #4278f4 0%, #2a5ddd 100%);
   color: #fff; font-weight: 700; border: none;
   padding: 0.65rem 1.5rem; border-radius: 0.625rem;
   cursor: pointer; transition: all 0.25s ease; font-size: 0.9rem;
   box-shadow: 0 4px 16px rgba(66,120,244,0.3);
 }
-.xstar-btn-primary:hover {
+.leadpulse-btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 8px 28px rgba(66,120,244,0.5);
   filter: brightness(1.08);
 }
-.xstar-btn-primary:active { transform: scale(0.98); }
-.xstar-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.leadpulse-btn-primary:active { transform: scale(0.98); }
+.leadpulse-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 /* ── SCROLLBAR THIN ── */
 .wa-conversation-scroll { scrollbar-width: thin; scrollbar-color: rgba(100,116,139,0.3) transparent; }

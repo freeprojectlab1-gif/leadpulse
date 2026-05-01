@@ -16,14 +16,14 @@ Already a pro? Just edit this README.md and make it your own. Want to make it ea
 
 ```
 cd existing_repo
-git remote add origin https://gitlab.com/xstar3/bulkemail-sender.git
+git remote add origin https://gitlab.com/bulkemail-sender/bulkemail-sender.git
 git branch -M main
 git push -uf origin main
 ```
 
 ## Integrate with your tools
 
-* [Set up project integrations](https://gitlab.com/xstar3/bulkemail-sender/-/settings/integrations)
+* [Set up project integrations](https://gitlab.com/bulkemail-sender/bulkemail-sender/-/settings/integrations)
 
 ## Collaborate with your team
 

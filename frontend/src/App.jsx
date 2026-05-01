@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Textarea, Label, Badge, Separator, Progress, Switch, Tabs, TabsList, TabsTrigger, TabsContent, Dialog, DialogContent, DialogHeader, DialogTitle, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Avatar, AvatarFallback, AvatarImage, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, Checkbox } from '@/components/ui';
 import {
@@ -48,6 +48,9 @@ import {
   TrendingUp,
   UploadCloud,
   Plus,
+  ArrowRight,
+  Shield,
+  Camera,
   Database,
   RefreshCw,
   ChevronLeft,
@@ -55,7 +58,8 @@ import {
   PenTool,
   Copy,
   Sun,
-  Moon
+  Moon,
+  Upload
 } from 'lucide-react';
 
 // --- ICONS (SVG) ---
@@ -94,6 +98,43 @@ const StatusBadge = ({ status }) => {
       <Icon /> {status}
     </span>
   );
+};
+
+const BRAND_NAME = 'LeadPulse';
+const BRAND_SUBTITLE = 'Social Lead Generation & Outreach';
+const PAGE_TITLES = {
+  dashboard: 'Dashboard',
+  campaign: 'Campaign Studio',
+  template: 'Email Templates',
+  custom_templates: 'Custom Folders',
+  whatsapp_settings: 'WhatsApp Settings',
+  whatsapp_linker: 'WhatsApp Linker',
+  whatsapp_inbox: 'WhatsApp Inbox',
+  variables: 'Variables',
+  logs: 'Delivery Logs',
+  replied_leads: 'Email Replies',
+  scraper: 'Lead Scraper',
+  map_finder: 'Maps Finder',
+  email_finder: 'Enrichment',
+  saved_leads: 'Automation CRM',
+  archive: 'Archive',
+  profile: 'Profile',
+  security: 'Security',
+};
+
+const BACKEND_ORIGIN = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
+const postApiWithFallback = async (url, data, config = {}) => {
+  try {
+    return await axios.post(url, data, config);
+  } catch (err) {
+    const status = err?.response?.status;
+    if (status === 404 && url.startsWith('/api/')) {
+      const fallbackUrl = new URL(url, BACKEND_ORIGIN).toString();
+      return axios.post(fallbackUrl, data, config);
+    }
+    throw err;
+  }
 };
 
 // ==================== WhatsApp Inbox Tab ====================
@@ -203,7 +244,7 @@ const WhatsAppInboxTab = ({ waStatus }) => {
   };
   const filtered = conversations.filter(r => getName(r).toLowerCase().includes(search.toLowerCase()) || getPhone(r).includes(search));
 
-  // Premium Palette based on WhatsApp Emerald but adjusted for LeadPulse
+  // Premium Palette based on WhatsApp Emerald but adjusted for the current brand
   const primaryBrand = '#10b981'; // Emerald 500
   const primaryHover = '#059669'; // Emerald 600
 
@@ -1183,6 +1224,7 @@ function App() {
   const [editingTemplateId, setEditingTemplateId] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [profile, setProfile] = useState({ userName: 'Muntazir', userRole: 'Admin', publicEmail: '', profilePic: '' });
   const [customFields, setCustomFields] = useState([]);
   const [newFieldName, setNewFieldName] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
@@ -1228,6 +1270,8 @@ function App() {
   const [waModal, setWaModal] = useState({ open: false, phone: '', message: '' });
   const [waStatus, setWaStatus] = useState('disconnected');
   const [waQr, setWaQr] = useState('');
+  const lastSavedPublicEmailRef = useRef('');
+  const publicEmailSaveTimerRef = useRef(null);
 
   const fetchWaStatus = async () => {
     try {
@@ -1261,6 +1305,10 @@ function App() {
     localStorage.setItem('pro_theme', currentTheme);
   }, [currentTheme]);
 
+  useEffect(() => {
+    document.title = `${PAGE_TITLES[activeTab] || 'Workspace'} | ${BRAND_NAME}`;
+  }, [activeTab]);
+
   // HEART-TOUCHING TEMPLATES FOR NO-WEBSITE CLIENTS
   useEffect(() => {
     localStorage.removeItem('saved_body1');
@@ -1286,6 +1334,21 @@ function App() {
       return () => clearInterval(interval);
     }
   }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (profile.publicEmail === lastSavedPublicEmailRef.current) return;
+    clearTimeout(publicEmailSaveTimerRef.current);
+    publicEmailSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await axios.post('/api/settings', { publicEmail: profile.publicEmail });
+        lastSavedPublicEmailRef.current = profile.publicEmail;
+      } catch (e) {
+        console.error('Auto-save public email failed:', e);
+      }
+    }, 600);
+    return () => clearTimeout(publicEmailSaveTimerRef.current);
+  }, [isLoggedIn, profile.publicEmail]);
 
   // Auto-fetch saved leads when entering Enricher / CRM tab (handles page reload too)
   useEffect(() => {
@@ -1414,8 +1477,45 @@ function App() {
         if (res.data.liAt) setLiAt(res.data.liAt);
         if (res.data.fbCUser) setFbCUser(res.data.fbCUser);
         if (res.data.fbXs) setFbXs(res.data.fbXs);
+        lastSavedPublicEmailRef.current = res.data.publicEmail || '';
+        setProfile({
+          userName: res.data.userName || 'Muntazir',
+          userRole: res.data.userRole || 'Admin',
+          publicEmail: res.data.publicEmail || '',
+          profilePic: res.data.profilePic || ''
+        });
       }
     } catch (e) { console.error("Error fetching settings:", e); }
+  };
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('avatar', file);
+    
+    try {
+      showToast('Uploading avatar...', 'info');
+      const res = await postApiWithFallback('/api/upload-avatar', formData);
+      setProfile(prev => ({ ...prev, profilePic: res.data.url }));
+      showToast('✅ Avatar updated!', 'success');
+    } catch (err) {
+      showToast('Upload failed', 'error');
+    }
+  };
+
+  const handleSaveProfile = async (data) => {
+    try {
+      await axios.post('/api/settings', data);
+      if (typeof data.publicEmail === 'string') {
+        lastSavedPublicEmailRef.current = data.publicEmail;
+      }
+      setProfile(prev => ({ ...prev, ...data }));
+      showToast('✅ Profile saved!', 'success');
+    } catch (err) {
+      showToast('Save failed', 'error');
+    }
   };
 
   const handleSaveCookie = async (field, value) => {
@@ -1889,47 +1989,71 @@ function App() {
 
   if (!isLoggedIn) {
     return (
-      <div className="hero-vibe">
-        <video
-          className="hero-video"
-          autoPlay
-          muted
-          loop
-          playsInline
-        >
-          <source src="/bg-video.mp4" type="video/mp4" />
-        </video>
-        <div className="hero-overlay"></div>
-        <div className="cyber-scanner"></div>
-
-        {/* PREMIUM THEME SWITCHER - LANDING PAGE */}
-        <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', zIndex: 100 }}>
-          <select
-            value={currentTheme}
-            onChange={(e) => setCurrentTheme(e.target.value)}
-            className="pro-select"
-            style={{ padding: '8px 16px', fontSize: '0.85rem', background: 'rgba(0,0,0,0.5)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', backdropFilter: 'blur(20px)', cursor: 'pointer', outline: 'none' }}
-          >
-            <option value="theme-dark" style={{ color: '#000' }}>Dark Premium</option>
-            <option value="theme-light" style={{ color: '#000' }}>Light Minimal</option>
-            <option value="theme-cyber" style={{ color: '#000' }}>Neon Cyber</option>
-            <option value="theme-abstract" style={{ color: '#000' }}>Creative Abstract</option>
-            <option value="theme-glass-neon" style={{ color: '#000' }}>Dark Glass Neon</option>
-            <option value="theme-light-gradient" style={{ color: '#000' }}>Light Soft Gradient</option>
-          </select>
+      <div className="hero-vibe bg-background relative overflow-hidden flex items-center justify-center">
+        {/* Animated Background Blobs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] animate-pulse"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[100px] animate-pulse delay-700"></div>
+          <div className="absolute top-[20%] right-[10%] w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] animate-pulse delay-1000"></div>
         </div>
 
-        <div className="hero-content">
-          <div className="brand" style={{ justifyContent: 'center', marginBottom: '1.5rem', fontSize: '1.5rem', color: '#fff', letterSpacing: '4px' }}>
-            <img src="/logo.png" alt="logo" style={{ height: '40px', borderRadius: '10px' }} />
-            PRO EMAILER
+        {/* Floating Grid Pattern */}
+        <div className="absolute inset-0 bg-grid-white opacity-[0.03] pointer-events-none"></div>
+
+        <div className="relative z-10 w-full max-w-md px-6 flex flex-col items-center text-center space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+          <div className="flex flex-col items-center gap-4">
+            <div className="bg-primary p-3 rounded-2xl shadow-glow-primary animate-bounce-slow">
+              <Rocket className="w-10 h-10 text-primary-foreground" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <h2 className="text-3xl font-black tracking-tighter text-foreground uppercase">{BRAND_NAME}</h2>
+              <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{BRAND_SUBTITLE}</span>
+              </div>
+            </div>
           </div>
-          <h1 className="hero-title">Automate Cold Outreach.</h1>
-          <p className="hero-subtitle">Scale your conversions with the most powerful, dynamic, and intelligent bulk-email infrastructure built for modern enterprises.</p>
-          <form className="glass-card" onSubmit={handleLogin}>
-            <input type="password" placeholder="Enter Secure Passcode" value={passcode} onChange={e => setPasscode(e.target.value)} />
-            <button type="submit" className="glass-btn">Deploy Dashboard →</button>
-          </form>
+
+          <div className="space-y-3">
+            <h1 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+              Automate Your <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500">Cold Outreach.</span>
+            </h1>
+            <p className="text-muted-foreground text-sm max-w-[320px] mx-auto leading-relaxed">
+              The most powerful, dynamic, and intelligent outreach infrastructure built for modern growth teams.
+            </p>
+          </div>
+
+          <Card className="w-full border-border/40 bg-card/40 backdrop-blur-xl shadow-2xl overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <CardContent className="p-8 relative z-10">
+              <form onSubmit={handleLogin} className="space-y-6">
+                <div className="space-y-2 text-left">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60 ml-1">Secure Access</Label>
+                  <div className="relative">
+                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground opacity-50" />
+                    <Input 
+                      type="password" 
+                      placeholder="Enter Master Passcode" 
+                      value={passcode} 
+                      onChange={e => setPasscode(e.target.value)}
+                      className="bg-background/40 border-border/40 pl-10 h-12 text-center font-mono tracking-[0.2em] focus:ring-primary/20 focus:border-primary/40 rounded-xl"
+                    />
+                  </div>
+                </div>
+                <Button type="submit" className="w-full h-12 rounded-xl text-sm font-bold shadow-glow-primary group relative overflow-hidden">
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    Deploy Dashboard <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary via-blue-500 to-primary bg-[length:200%_auto] animate-shimmer opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <p className="text-[10px] text-muted-foreground/40 font-medium uppercase tracking-[0.2em]">
+            Protected by Advanced Neural Security
+          </p>
         </div>
       </div>
     );
@@ -1946,7 +2070,7 @@ function App() {
             <div className="bg-primary p-1.5 rounded-lg shrink-0">
               <Rocket className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span>LeadPulse</span>
+            <span>{BRAND_NAME}</span>
           </div>
           
           <button 
@@ -2128,12 +2252,18 @@ function App() {
         <div className={`mt-auto p-4 border-t border-sidebar-border/30 ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
           <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} p-2 rounded-xl bg-sidebar-accent/30 overflow-hidden`}>
             <Avatar className="h-8 w-8 border border-sidebar-border/50 shrink-0">
-              <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs uppercase">XP</AvatarFallback>
+              {profile.profilePic ? (
+                <AvatarImage src={profile.profilePic} className="object-cover" />
+              ) : (
+                <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs uppercase">
+                  {profile.userName.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              )}
             </Avatar>
             {!isSidebarCollapsed && (
               <div className="flex flex-col min-w-0">
-                <span className="text-[11px] font-bold text-sidebar-foreground truncate">Muntazir</span>
-                <span className="text-[9px] text-sidebar-foreground/50 truncate">Premium Plan</span>
+                <span className="text-[11px] font-bold text-sidebar-foreground truncate">{profile.userName}</span>
+                <span className="text-[9px] text-sidebar-foreground/50 truncate">{profile.userRole}</span>
               </div>
             )}
           </div>
@@ -2153,20 +2283,7 @@ function App() {
               <span className="text-muted-foreground/40 text-sm font-medium">Pages</span>
               <ChevronLeft size={14} className="rotate-180 text-muted-foreground/40" />
               <h1 className="text-sm font-semibold tracking-tight text-foreground">
-                {activeTab === 'dashboard' ? 'Dashboard' :
-                  activeTab === 'campaign' ? 'Campaign Studio' :
-                    activeTab === 'template' ? 'Email Templates' :
-                      activeTab === 'custom_templates' ? 'Custom Folders' :
-                        activeTab === 'whatsapp_settings' ? 'WhatsApp Settings' :
-                          activeTab === 'whatsapp_linker' ? 'WhatsApp Linker' :
-                            activeTab === 'whatsapp_inbox' ? 'WhatsApp Inbox' :
-                              activeTab === 'variables' ? 'Variables' :
-                                activeTab === 'logs' ? 'Delivery Logs' :
-                                  activeTab === 'replied_leads' ? 'Email Replies' :
-                                    activeTab === 'scraper' ? 'Lead Scraper' :
-                                      activeTab === 'map_finder' ? 'Maps Finder' :
-                                        activeTab === 'email_finder' ? 'Enrichment' :
-                                          activeTab === 'saved_leads' ? 'Automation CRM' : 'Archive'}
+                {PAGE_TITLES[activeTab] || 'Workspace'}
               </h1>
             </div>
           </div>
@@ -2191,11 +2308,17 @@ function App() {
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2.5 pl-2 pr-1 py-1 rounded-full border border-transparent hover:border-border hover:bg-accent/50 transition-all">
                   <div className="flex flex-col items-end hidden lg:flex">
-                    <span className="text-[11px] font-bold text-foreground leading-tight">Muntazir</span>
-                    <span className="text-[9px] text-muted-foreground leading-tight">Admin</span>
+                    <span className="text-[11px] font-bold text-foreground leading-tight">{profile.userName}</span>
+                    <span className="text-[9px] text-muted-foreground leading-tight">{profile.userRole}</span>
                   </div>
                   <Avatar className="h-8 w-8 border border-border shadow-sm">
-                    <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">XP</AvatarFallback>
+                    {profile.profilePic ? (
+                      <AvatarImage src={profile.profilePic} className="object-cover" />
+                    ) : (
+                      <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xs">
+                        {profile.userName.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    )}
                   </Avatar>
                 </button>
               </DropdownMenuTrigger>
@@ -3504,18 +3627,38 @@ function App() {
             <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-10">
               <div className="flex flex-col gap-1">
                 <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Profile Settings</h2>
-                <p className="text-muted-foreground text-sm font-medium">Manage your personal information and account preferences.</p>
+                <p className="text-muted-foreground text-sm font-medium">Update your professional identity and presence.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <Card className="md:col-span-1 border-border/40 bg-card/40 backdrop-blur-sm shadow-sm h-fit">
-                  <CardContent className="pt-6 flex flex-col items-center text-center">
-                    <Avatar className="h-24 w-24 border-4 border-background shadow-xl mb-4">
-                      <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-black">XP</AvatarFallback>
-                    </Avatar>
-                    <h3 className="text-lg font-bold text-foreground">Muntazir</h3>
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold mt-1">Administrator</p>
-                    <Button variant="outline" size="sm" className="mt-6 w-full rounded-xl border-border/60">Change Avatar</Button>
+                <Card className="md:col-span-1 border-border/40 bg-card/40 backdrop-blur-sm shadow-sm overflow-hidden h-fit sticky top-24">
+                  <div className="h-24 bg-gradient-to-br from-primary/20 to-primary/5 border-b border-border/40"></div>
+                  <CardContent className="p-6 -mt-12 text-center">
+                    <div className="relative inline-block group">
+                      <Avatar className="h-24 w-24 border-4 border-background shadow-2xl mx-auto mb-4 transition-transform group-hover:scale-105 duration-300">
+                        {profile.profilePic ? (
+                          <AvatarImage src={profile.profilePic} className="object-cover" />
+                        ) : (
+                          <AvatarFallback className="bg-primary text-primary-foreground font-bold text-2xl">
+                            {profile.userName.substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <label className="absolute bottom-4 right-0 h-8 w-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:bg-primary/90 transition-colors border-2 border-background">
+                        <Camera size={14} />
+                        <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+                      </label>
+                    </div>
+                    <h3 className="text-lg font-bold text-foreground">{profile.userName}</h3>
+                    <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold mt-1">{profile.userRole}</p>
+                    <div className="mt-6 pt-6 border-t border-border/30">
+                       <Button variant="outline" size="sm" className="w-full rounded-xl border-border/60 relative overflow-hidden group">
+                         <span className="relative z-10 flex items-center gap-2">
+                           <Upload size={14} /> Change Avatar
+                         </span>
+                         <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={handleAvatarUpload} />
+                       </Button>
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -3526,20 +3669,33 @@ function App() {
                   <CardContent className="p-6 space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Full Name</Label>
-                        <Input defaultValue="Muntazir" className="bg-background/50 border-border/40 focus:border-primary/50" />
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Display Name</Label>
+                        <Input 
+                          value={profile.userName} 
+                          onChange={(e) => setProfile(prev => ({ ...prev, userName: e.target.value }))}
+                          className="bg-background/50 border-border/40 focus:border-primary/50" 
+                        />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Email Address</Label>
-                        <Input defaultValue="admin@leadpulse.io" className="bg-background/50 border-border/40 focus:border-primary/50" />
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Your Role</Label>
+                        <Input 
+                          value={profile.userRole}
+                          onChange={(e) => setProfile(prev => ({ ...prev, userRole: e.target.value }))}
+                          className="bg-background/50 border-border/40 focus:border-primary/50" 
+                        />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Professional Title</Label>
-                      <Input defaultValue="Growth Lead & Founder" className="bg-background/50 border-border/40 focus:border-primary/50" />
+                      <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Public Email (Optional)</Label>
+                      <Input 
+                        value={profile.publicEmail}
+                        onChange={(e) => setProfile(prev => ({ ...prev, publicEmail: e.target.value }))}
+                        placeholder="admin@leadpulse.io"
+                        className="bg-background/50 border-border/40 focus:border-primary/50" 
+                      />
                     </div>
                     <div className="pt-4">
-                      <Button className="rounded-xl shadow-glow-primary px-8">Save Changes</Button>
+                      <Button onClick={() => handleSaveProfile({ userName: profile.userName, userRole: profile.userRole, publicEmail: profile.publicEmail })} className="rounded-xl shadow-glow-primary px-8">Save Profile</Button>
                     </div>
                   </CardContent>
                 </Card>

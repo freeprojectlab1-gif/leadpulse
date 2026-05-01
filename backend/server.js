@@ -6,6 +6,7 @@ const xlsx = require('xlsx');
 const cors = require('cors');
 const cron = require('node-cron');
 const path = require('path');
+const fs = require('fs');
 const { ImapFlow } = require('imapflow');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const puppeteer = require('puppeteer');
@@ -15,6 +16,9 @@ const BROWSER_SESSION_DIR = path.join(__dirname, 'browser_session');
 const app = express();
 app.use(cors());
 app.use(express.json());
+const uploadsDir = path.join(__dirname, 'uploads');
+fs.mkdirSync(uploadsDir, { recursive: true });
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 const { simpleParser } = require('mailparser');
 
@@ -58,7 +62,11 @@ const settingsSchema = new mongoose.Schema({
   igSession: { type: String, default: '' },
   liAt: { type: String, default: '' },
   fbCUser: { type: String, default: '' },
-  fbXs: { type: String, default: '' }
+  fbXs: { type: String, default: '' },
+  profilePic: { type: String, default: '' },
+  publicEmail: { type: String, default: '' },
+  userName: { type: String, default: 'Muntazir' },
+  userRole: { type: String, default: 'Admin' }
 });
 const Settings = mongoose.models.Settings || mongoose.model('Settings', settingsSchema);
 
@@ -343,7 +351,16 @@ const initWhatsapp = async () => {
 initWhatsapp();
 
 
-const upload = multer({ dest: 'uploads/' });
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir)
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
+  }
+});
+const upload = multer({ storage: storage });
 
 // SPINTAX ENGINE (Support {Hi|Hello|Hey} format - MUST contain a pipe |)
 const applySpintax = (text) => {
@@ -1933,8 +1950,26 @@ app.post('/api/settings', async (req, res) => {
     if (req.body.liAt !== undefined) settings.liAt = req.body.liAt;
     if (req.body.fbCUser !== undefined) settings.fbCUser = req.body.fbCUser;
     if (req.body.fbXs !== undefined) settings.fbXs = req.body.fbXs;
+    if (req.body.userName !== undefined) settings.userName = req.body.userName;
+    if (req.body.userRole !== undefined) settings.userRole = req.body.userRole;
+    if (req.body.profilePic !== undefined) settings.profilePic = req.body.profilePic;
+    if (req.body.publicEmail !== undefined) settings.publicEmail = req.body.publicEmail;
     await settings.save();
     res.json(settings);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/upload-avatar', upload.single('avatar'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    const avatarUrl = `/uploads/${req.file.filename}`;
+    
+    let settings = await Settings.findOne();
+    if (!settings) settings = new Settings();
+    settings.profilePic = avatarUrl;
+    await settings.save();
+    
+    res.json({ url: avatarUrl });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
