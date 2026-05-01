@@ -1512,7 +1512,14 @@ const launchScraperBrowser = async () => {
     executablePath: executablePath(),
     userDataDir: BROWSER_SESSION_DIR,
     headless: "new",
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    args: [
+      '--no-sandbox', 
+      '--disable-setuid-sandbox', 
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-features=IsolateOrigins,site-per-process',
+      '--blink-settings=imagesEnabled=false'
+    ],
     timeout: 60000
   };
 
