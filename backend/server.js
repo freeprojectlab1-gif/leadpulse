@@ -2312,8 +2312,13 @@ app.get('/api/scrape-leads', async (req, res) => {
   });
 
   const sendData = (data) => {
-    if (!isCancelled) res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (!isCancelled) {
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+      if (typeof res.flush === 'function') res.flush();
+    }
   };
+
+  sendData({ type: 'status', message: "🚀 Scraper Engine Initializing..." });
 
   let browser;
   const processedLinks = new Set();
@@ -2323,7 +2328,16 @@ app.get('/api/scrape-leads', async (req, res) => {
       executablePath: executablePath(),
       userDataDir: BROWSER_SESSION_DIR,
       headless: "new",
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox', 
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process'
+      ],
       timeout: 60000
     };
 
