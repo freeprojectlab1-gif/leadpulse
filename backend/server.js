@@ -2384,9 +2384,18 @@ app.get('/api/scrape-leads', async (req, res) => {
 
         if (newLinks.length === 0) {
           consecutiveNoResults++;
-          sendData({ type: 'status', message: `Iteration ${loop + 1}: Scrolling for more... (${consecutiveNoResults}/100)` });
-          if (consecutiveNoResults >= 22) break;
-          await new Promise(r => setTimeout(r, 320));
+          const msg = `Iteration ${loop + 1}: Scrolling for more... (${consecutiveNoResults}/200)`;
+          console.log(`[Scraper] ${msg}`);
+          sendData({ type: 'status', message: msg });
+          
+          // More aggressive scroll
+          await page.evaluate(() => {
+            const feed = document.querySelector('div[role="feed"]');
+            if (feed) feed.scrollBy(0, 1500);
+          });
+
+          if (consecutiveNoResults >= 50) break; // Increased threshold for infinite effect
+          await new Promise(r => setTimeout(r, 200));
           continue;
         }
 
@@ -2395,6 +2404,9 @@ app.get('/api/scrape-leads', async (req, res) => {
         const processLink = async (link, workerPage) => {
           if (isCancelled) return;
           processedLinks.add(link);
+          console.log(`[Scraper] Visiting: ${link}`);
+          sendData({ type: 'status', message: `Visiting business: ${link.split('!1s')[0].split('/').pop()}` });
+
           try {
             const details = await extractGoogleMapsLead(workerPage, link, {
               noWebsiteOnly: true,
