@@ -547,3 +547,31 @@ body.theme-light {
 .animate-in {
   animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Premium Card Design System */
+:root {
+  --shadow-premium: 0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 4px 15px -5px rgba(0, 0, 0, 0.02), 0 0 0 1px rgba(0, 0, 0, 0.01);
+  --shadow-glow: 0 0 25px -5px hsl(var(--primary) / 0.1);
+  --card-border: rgba(0, 0, 0, 0.06);
+}
+
+.dark {
+  --shadow-premium: 0 20px 40px -10px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-glow: 0 0 30px -10px hsl(var(--primary) / 0.2);
+  --card-border: rgba(255, 255, 255, 0.05);
+}
+
+.premium-card {
+  background: hsl(var(--card));
+  border: 1px solid var(--card-border) !important;
+  box-shadow: var(--shadow-premium) !important;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1) !important;
+  border-radius: 1.25rem !important;
+}
+
+.premium-card:hover {
+  transform: translateY(-5px) scale(1.01) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(66, 120, 244, 0.1), var(--shadow-glow) !important;
+  border-color: hsl(var(--primary) / 0.3) !important;
+  background: hsl(var(--card) / 0.95) !important;
+}

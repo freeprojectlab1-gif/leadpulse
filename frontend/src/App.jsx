@@ -2683,7 +2683,7 @@ function App() {
                     border: 'border-amber-500/20'
                   }
                 ].map((stat, i) => (
-                  <Card key={i} className="border-border/40 bg-card/40 backdrop-blur-sm shadow-sm hover:shadow-md hover:border-border/80 transition-all duration-300 group">
+                  <Card key={i} className="premium-card bg-card/50 backdrop-blur-sm shadow-none hover:shadow-none">
                     <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
                       <CardTitle className="text-sm font-bold text-muted-foreground">{stat.label}</CardTitle>
                       <div className={`p-2 ${stat.bg} ${stat.color} rounded-xl border ${stat.border} group-hover:scale-110 transition-transform`}>
@@ -2707,7 +2707,7 @@ function App() {
                   { label: 'WA Failed', value: whatsappLeadStats.failed, icon: AlertTriangle, color: 'text-destructive' },
                   { label: 'WA Pending', value: whatsappLeadStats.pending, icon: Clock, color: 'text-amber-500' }
                 ].map((stat, i) => (
-                  <div key={i} className="bg-muted/30 border border-border/50 rounded-2xl p-5 flex items-center justify-between group hover:bg-muted/50 transition-colors">
+                  <div key={i} className="premium-card bg-muted/20 rounded-2xl p-5 flex items-center justify-between group">
                     <div>
                       <p className="text-xs font-bold text-muted-foreground mb-1">{stat.label}</p>
                       <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
@@ -2727,7 +2727,7 @@ function App() {
                   { label: 'Stopped', value: getStatCount('stopped'), icon: X, color: 'text-destructive' },
                   { label: 'Failed', value: getStatCount('failed'), icon: AlertTriangle, color: 'text-amber-500' }
                 ].map((stat, i) => (
-                  <div key={i} className="bg-muted/30 border border-border/50 rounded-2xl p-5 flex items-center justify-between group hover:bg-muted/50 transition-colors">
+                  <div key={i} className="premium-card bg-muted/20 rounded-2xl p-5 flex items-center justify-between group">
                     <div>
                       <p className="text-xs font-bold text-muted-foreground mb-1">{stat.label}</p>
                       <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
