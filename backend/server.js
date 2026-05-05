@@ -2675,29 +2675,37 @@ app.post('/api/saved-leads/manual', async (req, res) => {
     if (!email || !email.trim()) return res.status(400).json({ error: 'Email is required' });
     const cleanEmail = email.trim().toLowerCase();
 
-    // Reject duplicates
-    const existing = await ScrapedLead.findOne({ email: cleanEmail });
-    if (existing) return res.status(409).json({ error: 'Email already exists' });
+    // Auto-Capitalization Helper
+    const cap = (str) => {
+      if (!str) return 'N/A';
+      return str.trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    };
 
     const mobile = String(phone || '').trim() ? extractMobileDigits(phone) : '';
     if (String(phone || '').trim() && !mobile) {
       return res.status(400).json({ error: 'Please enter a valid mobile number' });
     }
 
-    const lead = await ScrapedLead.create({
-      name: (name || '').trim() || cleanEmail.split('@')[0],
+    const leadData = {
+      name: cap(name) !== 'N/A' ? cap(name) : cleanEmail.split('@')[0],
       phone: mobile || 'N/A',
       address: (address || '').trim() || 'N/A',
-      mapsLink: `manual:${cleanEmail}:${Date.now()}`,
-      keyword: (keyword || '').trim() || 'manual',
-      city: (city || '').trim() || 'N/A',
+      keyword: cap(keyword) !== 'N/A' ? cap(keyword) : 'Manual',
+      city: cap(city) !== 'N/A' ? cap(city) : 'N/A',
       email: cleanEmail,
       emailFound: true,
       emailSource: 'manual'
-    });
+    };
+
+    // UPSERT: Update if exists, otherwise create
+    const lead = await ScrapedLead.findOneAndUpdate(
+      { email: cleanEmail },
+      { $set: leadData, $setOnInsert: { mapsLink: `manual:${cleanEmail}:${Date.now()}` } },
+      { upsert: true, new: true }
+    );
+
     res.json(lead);
   } catch (e) {
-    if (e.code === 11000) return res.status(409).json({ error: 'Duplicate entry' });
     res.status(500).json({ error: e.message });
   }
 });
