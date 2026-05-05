@@ -1497,27 +1497,36 @@ const distanceKm = (aLat, aLng, bLat, bLng) => {
 };
 
 const extractMobileDigits = (value) => {
-  const raw = String(value || '');
-  const digits = raw.replace(/\D/g, '');
-  if (!digits) return null;
+  const raw = String(value || '').trim();
+  if (!raw) return null;
 
-  const mobileMatch = raw.match(/(?:\+?91[\s-]*)?([6-9]\d{9})\b/);
-  if (mobileMatch) return `91${mobileMatch[1]}`;
-
-  if (digits.length === 12 && digits.startsWith('91') && /^[6-9]\d{9}$/.test(digits.slice(2))) {
-    return digits;
+  // Priority 1: +91 prefix with possible spaces/dashes, followed by 10 digits (allowing spaces)
+  const withPlusPrefix = raw.match(/\+91[\s\-\.]?([\d][\s\-\.\d]{10,14})/);
+  if (withPlusPrefix) {
+    const d = withPlusPrefix[1].replace(/\D/g, '');
+    if (d.length === 10 && /^[6-9]/.test(d)) return `91${d}`;
   }
 
-  if (digits.length === 11 && digits.startsWith('0') && /^[6-9]\d{9}$/.test(digits.slice(1))) {
-    return `91${digits.slice(1)}`;
-  }
+  // Priority 2: 91 prefix (no +) with 10 digit mobile
+  const with91 = raw.replace(/[\s\-\.]/g, '').match(/^91([6-9]\d{9})$/);
+  if (with91) return `91${with91[1]}`;
 
-  if (digits.length === 10 && /^[6-9]\d{9}$/.test(digits)) {
-    return `91${digits}`;
+  // Priority 3: Standalone 10-digit mobile (strip spaces/dashes first)
+  // Use negative lookbehind to reject embedded numbers like 079XXXXXXXX
+  const cleaned = raw.replace(/[\s\-\.]/g, '');
+  const standalone = cleaned.match(/(?<!\d)([6-9]\d{9})(?!\d)/);
+  if (standalone) return `91${standalone[1]}`;
+
+  // Priority 4: Find mobile anywhere in string (handles formats like '+91 98765 43210')
+  const anyMobile = raw.match(/(?:\+?91[\s\-\.]{0,3})?([6-9][\s\-\.]{0,3}(?:\d[\s\-\.]{0,3}){9})/);
+  if (anyMobile) {
+    const d = anyMobile[1].replace(/\D/g, '');
+    if (d.length === 10 && /^[6-9]/.test(d)) return `91${d}`;
   }
 
   return null;
 };
+
 
 const hasValidMobileNumber = (value) => !!extractMobileDigits(value);
 const hasAnyPhone = (value) => {
@@ -1916,81 +1925,53 @@ const launchScraperBrowser = async () => {
 
 const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
   const { noWebsiteOnly = true, originLat, originLng, radiusKm } = options;
-  await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 18000 });
-  await workerPage.waitForSelector('h1', { timeout: 3000 }).catch(() => { });
-  await new Promise(r => setTimeout(r, 120));
 
-  const details = await workerPage.evaluate((skipWebsites) => {
-    const pageText = document.body?.innerText || '';
-    if (/permanently\s+closed/i.test(pageText)) return null;
-
-    // Name extraction with multiple fallbacks
-    let name = document.querySelector('h1.DUwDvf, h1[class*="fontHeadlineLarge"], h1')?.innerText?.trim();
-    if (!name) {
-      const title = document.title || '';
-      name = title.split('·')[0].split('-')[0].trim() || 'Unknown';
+  try {
+    await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  } catch (navErr) {
+    // Timeout is OK — Maps often loads enough content before full load
+    if (!navErr.message.includes('detached')) {
+      console.log(`[extractGMaps] Nav warning (continuing): ${navErr.message.slice(0, 60)}`);
+    } else {
+      return null; // Frame detached = dead page, skip
     }
-    if (!name || name === 'Unknown' || name === '' || name === 'Google Maps') return null;
+  }
 
-    // Website detection with multiple fallbacks
-    const websiteBtn = document.querySelector(
-      '[data-item-id="authority"], [aria-label*="website" i], [data-tooltip*="website" i], a[data-item-id*="authority"]'
-    );
-    if (skipWebsites && websiteBtn) return null;
+  await workerPage.waitForSelector('h1', { timeout: 2000 }).catch(() => { });
+  await new Promise(r => setTimeout(r, 200));
 
-    // Phone extraction - ROBUST 4-method fallback
-    let phone = '';
+  let details;
+  try {
+    details = await workerPage.evaluate((skipWebsites) => {
+      const pageText = document.body?.innerText || '';
+      if (/permanently\s+closed/i.test(pageText)) return null;
 
-    // Method 1: Standard data-item-id selector (gets number from the ID itself)
-    const phoneBtn1 = document.querySelector('[data-item-id^="phone:tel:"]');
-    if (phoneBtn1) {
-      phone = phoneBtn1.getAttribute('data-item-id')?.replace('phone:tel:', '') 
-            || phoneBtn1.innerText 
-            || phoneBtn1.getAttribute('aria-label') 
-            || '';
-    }
-
-    // Method 2: aria-label containing phone/call/tel
-    if (!phone) {
-      const allBtns = document.querySelectorAll('[aria-label]');
-      for (const btn of allBtns) {
-        const label = btn.getAttribute('aria-label') || '';
-        if (/phone|call|tel/i.test(label)) {
-          const numMatch = label.match(/[\d\s\+\-\(\)]{7,}/);
-          if (numMatch) { phone = numMatch[0].trim(); break; }
-        }
+      let name = document.querySelector('h1')?.innerText?.trim();
+      if (!name) {
+        const title = document.title || '';
+        name = title.split('- Google')[0].trim() || 'Unknown';
       }
-    }
+      if (!name || name === 'Unknown' || name === '' || name === 'Google Maps') return null;
 
-    // Method 3: Regex scan of full page text for Indian mobile numbers
-    if (!phone) {
-      const phoneMatch = pageText.match(/(?:\+91[\s\-]?)?[6-9]\d{9}/);
-      if (phoneMatch) phone = phoneMatch[0];
-    }
+      const websiteBtn = document.querySelector('[data-item-id="authority"]');
+      if (skipWebsites && websiteBtn) return null;
 
-    // Method 4: Scan button/link text for phone patterns
-    if (!phone) {
-      const btns = document.querySelectorAll('button, a');
-      for (const btn of btns) {
-        const txt = (btn.innerText || btn.textContent || '').trim();
-        const numMatch = txt.match(/(?:\+91[\s\-]?)?[6-9]\d{9}/);
-        if (numMatch) { phone = numMatch[0]; break; }
-      }
-    }
+      const phoneBtn = document.querySelector('[data-item-id^="phone:tel:"]');
+      let phone = phoneBtn ? phoneBtn.innerText || phoneBtn.getAttribute('aria-label') : 'N/A';
+      if (phone !== 'N/A') phone = phone.replace(/[^\d+\s-]/g, '').trim();
 
-    if (!phone) return null;
+      const addressBtn = document.querySelector('[data-item-id="address"]');
+      let address = addressBtn ? addressBtn.innerText || addressBtn.getAttribute('aria-label') : 'N/A';
+      if (address !== 'N/A') address = address.replace('Address: ', '').trim();
 
-    const addressBtn = document.querySelector('[data-item-id="address"], [aria-label*="address" i]');
-    let address = addressBtn ? (addressBtn.innerText || addressBtn.getAttribute('aria-label') || 'N/A') : 'N/A';
-    if (address !== 'N/A') address = address.replace(/^address:\s*/i, '').trim();
-
-    return { name, phone, address, pageUrl: window.location.href };
-  }, noWebsiteOnly);
-
+      return { name, phone, address, pageUrl: window.location.href };
+    }, noWebsiteOnly);
+  } catch (evalErr) {
+    console.log(`[extractGMaps] Evaluate error (detached?): ${evalErr.message.slice(0, 60)}`);
+    return null;
+  }
 
   if (!details) return null;
-  const normalizedPhone = extractMobileDigits(details.phone);
-  if (!normalizedPhone) return null;
 
   const coords = parseGoogleMapsCoords(details.pageUrl || link);
   const distance = distanceKm(Number(originLat), Number(originLng), coords.latitude, coords.longitude);
@@ -1998,7 +1979,7 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
 
   return {
     name: details.name,
-    phone: normalizedPhone,
+    phone: details.phone,
     address: details.address,
     latitude: coords.latitude,
     longitude: coords.longitude,
@@ -2006,22 +1987,21 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
   };
 };
 
+
+
 app.get('/api/map-businesses', async (req, res) => {
   const { keyword, lat, lng, radiusKm = 5, limit = 60, noWebsiteOnly = 'true', allBusinesses = 'false' } = req.query;
   const originLat = Number(lat);
   const originLng = Number(lng);
-  let radius = Math.max(0.5, Math.min(Number(radiusKm) || 5, 50));
+  const radius = Math.max(0.5, Math.min(Number(radiusKm) || 5, 50));
   const maxLeads = Math.max(5, Math.min(Number(limit) || 60, 200));
   const shouldFindAllBusinesses = allBusinesses === 'true';
   const searchKeyword = shouldFindAllBusinesses ? 'businesses' : String(keyword || '').trim();
   const savedKeyword = shouldFindAllBusinesses ? 'All Businesses' : searchKeyword;
 
   if ((!shouldFindAllBusinesses && !searchKeyword) || !Number.isFinite(originLat) || !Number.isFinite(originLng)) {
-    console.error(`[MapFinder] ❌ Missing params: kw=${searchKeyword}, lat=${originLat}, lng=${originLng}`);
     return res.status(400).json({ error: 'Keyword, lat and lng are required' });
   }
-
-  console.log(`[MapFinder] 🔍 Starting scan: "${savedKeyword}" | Radius: ${radius}km | Limit: ${maxLeads} | NoWebsite: ${noWebsiteOnly}`);
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -2041,277 +2021,139 @@ app.get('/api/map-businesses', async (req, res) => {
 
   const processedLinks = new Set();
   let saved = 0;
-  let scanCycle = 0;
 
   try {
-    while (!isCancelled && saved < maxLeads) {
-      const effectiveRadius = Math.max(0.5, Math.min(radius, 50));
+    console.log(`[MapFinder] 🚀 Launching browser...`);
+    browser = await launchScraperBrowser();
+    console.log(`[MapFinder] ✅ Browser launched.`);
+    const page = await browser.newPage();
+    await configureFastMapsPage(page);
+    const workerCount = shouldFindAllBusinesses ? 10 : 8;
+    const workerPages = await Promise.all(
+      Array.from({ length: workerCount }, async () => {
+        const workerPage = await browser.newPage();
+        await configureFastMapsPage(workerPage);
+        return workerPage;
+      })
+    );
+    const zoom = getMapsZoomForRadius(radius);
+    const searchTerms = getMapSearchTerms(searchKeyword, shouldFindAllBusinesses);
+    console.log(`[MapFinder] 🔧 ${workerCount} worker pages ready. Terms: ${searchTerms.join(', ')}`);
+    const city = `MAP ${originLat.toFixed(4)}, ${originLng.toFixed(4)} • ${radius}km`;
+
+
+    sendData({ type: 'status', message: `Opening map search for ${savedKeyword} within ${radius}km...` });
+
+    for (const term of searchTerms) {
+      if (isCancelled || saved >= maxLeads) break;
+
+      const query = `${term} near ${originLat},${originLng}`;
+      const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${originLat},${originLng},${zoom}z`;
+
+      console.log(`[MapFinder] 🌍 Navigating to: ${mapsUrl}`);
       sendData({
         type: 'status',
-        message: scanCycle === 0
-          ? `Fast scan: loading nearby businesses from live map data...`
-          : `Target not reached yet. Continuing scan cycle ${scanCycle + 1}...`
+        message: shouldFindAllBusinesses
+          ? `Scanning ${term} nearby... saved ${saved}/${maxLeads}.`
+          : `Scanning ${term} nearby...`
       });
 
-      let overpassLeads = await fetchOverpassBusinesses({
-        keyword: searchKeyword,
-        lat: originLat,
-        lng: originLng,
-        radiusKm: effectiveRadius,
-        limit: maxLeads,
-        allBusinesses: shouldFindAllBusinesses,
-      });
-      console.log(`[MapFinder] Overpass found ${overpassLeads.length} leads nearby.`);
+      await page.goto(mapsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      const feedFound = await page.waitForSelector('div[role="feed"]', { timeout: 15000 }).catch(() => null);
+      console.log(`[MapFinder] Feed selector: ${feedFound ? '✅ Found' : '❌ Not found — page may not have loaded'}`);
 
-      const applyWebsiteFilter = (items) => (
-        noWebsiteOnly === 'false'
-          ? items
-          : items.filter((item) => !item.website)
-      );
 
-      let filtered = shouldFindAllBusinesses
-        ? applyWebsiteFilter(overpassLeads)
-        : overpassLeads
-          .filter((item) => matchesBusinessKeyword(item, searchKeyword))
-          .filter((item) => (noWebsiteOnly === 'false' ? true : !item.website));
-      
-      console.log(`[MapFinder] Filtered leads after matching: ${filtered.length}`);
-
-      if (filtered.length === 0 && overpassLeads.length > 0 && noWebsiteOnly !== 'false') {
-        sendData({
-          type: 'status',
-          message: shouldFindAllBusinesses
-            ? 'No-website filter was too strict. Showing nearby businesses with websites too.'
-            : 'No-website filter was too strict. Showing nearby matches instead.'
+      let consecutiveNoResults = 0;
+      const maxDryScrolls = shouldFindAllBusinesses ? 8 : 100;
+      for (let loop = 0; !isCancelled && saved < maxLeads; loop++) {
+        await page.evaluate(async () => {
+          const feed = document.querySelector('div[role="feed"]');
+          if (feed?.lastElementChild) feed.lastElementChild.scrollIntoView();
+          await new Promise(r => setTimeout(r, 500));
         });
-        filtered = shouldFindAllBusinesses
-          ? overpassLeads
-          : overpassLeads.filter((item) => matchesBusinessKeyword(item, searchKeyword));
-      }
 
-      if (filtered.length === 0 && !shouldFindAllBusinesses) {
-        sendData({ type: 'status', message: 'Expanding fast scan to all nearby businesses...' });
-        const broadLeads = await fetchOverpassBusinesses({
-          keyword: searchKeyword,
-          lat: originLat,
-          lng: originLng,
-          radiusKm: effectiveRadius,
-          limit: maxLeads,
-          allBusinesses: true,
+        const links = await page.evaluate(() => {
+          const selectors = [
+            'a[href*="https://www.google.com/maps/place/"]',
+            'a[href*="/maps/place/"]'
+          ];
+          return selectors.flatMap(selector => Array.from(document.querySelectorAll(selector)).map(a => a.href));
         });
-        overpassLeads = broadLeads;
-        filtered = broadLeads
-          .filter((item) => matchesBusinessKeyword(item, searchKeyword))
-          .filter((item) => (noWebsiteOnly === 'false' ? true : !item.website));
-        if (filtered.length === 0 && broadLeads.length > 0 && noWebsiteOnly !== 'false') {
-          sendData({ type: 'status', message: 'Relaxing website filter to avoid empty results.' });
-          filtered = broadLeads.filter((item) => matchesBusinessKeyword(item, searchKeyword));
+
+        const newLinks = [...new Set(links)].filter(link => !processedLinks.has(link));
+        console.log(`[MapFinder] Loop ${loop}: ${links.length} total, ${newLinks.length} new`);
+
+        if (newLinks.length === 0) {
+          consecutiveNoResults++;
+          sendData({ type: 'status', message: `Still searching ${term}... saved ${saved}/${maxLeads}.` });
+          if (consecutiveNoResults >= maxDryScrolls) {
+            sendData({ type: 'status', message: `No more fresh ${term} results. Moving ahead...` });
+            break;
+          }
+          if (consecutiveNoResults % 40 === 0) {
+            await page.goto(mapsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => { });
+            await page.waitForSelector('div[role="feed"]', { timeout: 10000 }).catch(() => { });
+          }
+          await new Promise(r => setTimeout(r, 500));
+          continue;
         }
-      }
 
-      if (filtered.length > 0) {
-        filtered = filtered.slice(0, Math.max(0, maxLeads - saved));
+        consecutiveNoResults = 0;
+        const batch = newLinks.slice(0, Math.max(0, maxLeads - saved));
 
-        for (const [index, item] of filtered.entries()) {
-          const mapsLink = item.latitude && item.longitude
-            ? `https://www.google.com/maps/search/?api=1&query=${item.latitude},${item.longitude}`
-            : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name)}`;
-
-          const leadData = {
-            name: item.name,
-            phone: item.phone || 'N/A',
-            address: item.address || 'N/A',
-            latitude: item.latitude,
-            longitude: item.longitude,
-            mapsLink,
-            keyword: savedKeyword,
-            category: item.category || searchKeyword,
-            city: `MAP ${originLat.toFixed(4)}, ${originLng.toFixed(4)} • ${effectiveRadius}km`,
-            source: 'overpass',
-            radiusKm: effectiveRadius,
-            website: item.website || '',
-          };
-
-          // Save ALL leads from Overpass - phone will be enriched by Google Maps scraper in Phase 2
-          // Don't skip based on phone here - India's OSM data rarely has phones
+        const processMapLink = async (link, workerPage) => {
           try {
+            console.log(`[MapFinder] 🔗 Visiting: ${decodeURIComponent(link.split('/place/')[1]?.split('/')[0] || link)}`);
+            const details = await extractGoogleMapsLead(workerPage, link, {
+              noWebsiteOnly: noWebsiteOnly !== 'false',
+              originLat,
+              originLng,
+              radiusKm: radius
+            });
+
+            if (!details) { console.log(`[MapFinder] ⛔ extractGoogleMapsLead returned null (website/closed/no name)`); return; }
+            if (isCancelled || saved >= maxLeads) return;
+
+            // Validate phone before saving
+            console.log(`[MapFinder] 📞 Raw phone for "${details.name}": "${details.phone}"`);
+            const cleanPhone = extractMobileDigits(details.phone);
+            if (!cleanPhone) {
+              console.log(`[MapFinder] ⏭️ Invalid phone skipped: "${details.phone}"`);
+              return;
+            }
+
+            const leadData = {
+              ...details,
+              phone: cleanPhone,
+              mapsLink: link,
+              keyword: savedKeyword,
+              category: term,
+              city,
+              source: 'map-range',
+              radiusKm: radius
+            };
+
             await ScrapedLead.findOneAndUpdate(
-              { mapsLink },
+              { mapsLink: link },
               { $set: leadData, $setOnInsert: { createdAt: new Date() } },
               { upsert: true, new: true }
             );
+
             saved++;
-            console.log(`[MapFinder] ✅ Saved: ${item.name} | Phone: ${leadData.phone}`);
+            console.log(`[MapFinder] ✅ ${details.name} → ${cleanPhone}`);
             sendData({ type: 'lead', data: leadData, saved });
-          } catch (dbErr) {
-            console.log('[Overpass] DB save error:', dbErr.message);
+          } catch (e) {
+            console.log('[MapFinder] worker error:', e.message);
           }
-        } // end for loop
-      } // end if filtered.length > 0
+        };
 
-      if (saved >= maxLeads) {
-        sendData({
-          type: 'done',
-          message: `Target complete. Saved ${saved} nearby businesses to Lead Automation CRM.`,
-        });
-        res.end();
-        return;
-      }
-
-      sendData({
-        type: 'status',
-        message: `Saved ${saved}/${maxLeads}. Continuing scan until target is reached...`
-      });
-
-      if (!browser) {
-        browser = await launchScraperBrowser();
-      }
-      const page = browser._leadPulseMapPage || await browser.newPage();
-      browser._leadPulseMapPage = page;
-      await configureFastMapsPage(page);
-      const workerCount = shouldFindAllBusinesses ? 8 : 6;
-      const workerPages = browser._leadPulseWorkerPages || await Promise.all(
-        Array.from({ length: workerCount }, async () => {
-          const workerPage = await browser.newPage();
-          await configureFastMapsPage(workerPage);
-          return workerPage;
-        })
-      );
-      browser._leadPulseWorkerPages = workerPages;
-      const zoom = getMapsZoomForRadius(effectiveRadius);
-      let mapCategories = DEFAULT_MAP_BUSINESS_CATEGORIES;
-      if (shouldFindAllBusinesses) {
-        try {
-          const settings = await Settings.findOne();
-          const configured = Array.isArray(settings?.mapBusinessCategories) && settings.mapBusinessCategories.length > 0
-            ? settings.mapBusinessCategories
-            : DEFAULT_MAP_BUSINESS_CATEGORIES;
-          mapCategories = dedupeCategories(configured);
-        } catch (e) {
-          mapCategories = DEFAULT_MAP_BUSINESS_CATEGORIES;
+        for (let i = 0; i < batch.length && !isCancelled && saved < maxLeads; i += workerPages.length) {
+          const chunk = batch.slice(i, i + workerPages.length);
+          chunk.forEach(link => processedLinks.add(link));
+          await Promise.all(chunk.map((link, index) => processMapLink(link, workerPages[index])));
         }
-      }
 
-      const searchTerms = getMapSearchTerms(searchKeyword, shouldFindAllBusinesses, mapCategories);
-      const city = `MAP ${originLat.toFixed(4)}, ${originLng.toFixed(4)} • ${effectiveRadius}km`;
-
-      sendData({ type: 'status', message: `Opening map search for ${savedKeyword} within ${effectiveRadius}km...` });
-
-      for (const term of searchTerms) {
-        if (isCancelled || saved >= maxLeads) break;
-
-        const query = `${term} near ${originLat},${originLng}`;
-        const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${originLat},${originLng},${zoom}z`;
-
-        console.log(`[MapFinder] 🌏 Navigating to: ${mapsUrl}`);
-        sendData({
-          type: 'status',
-          message: shouldFindAllBusinesses
-            ? `Scanning ${term} nearby... saved ${saved}/${maxLeads}.`
-            : `Scanning ${term} nearby...`
-        });
-
-        await page.goto(mapsUrl, { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => { });
-        await page.waitForSelector('div[role="feed"]', { timeout: 10000 }).catch(() => { });
-        await new Promise(r => setTimeout(r, 2000)); // Extra wait for results to settle
-
-        let consecutiveNoResults = 0;
-        const maxDryScrolls = shouldFindAllBusinesses ? 5 : 24;
-        for (let loop = 0; !isCancelled && saved < maxLeads; loop++) {
-          await page.evaluate(async () => {
-            const feed = document.querySelector('div[role="feed"]');
-            if (feed?.lastElementChild) feed.lastElementChild.scrollIntoView();
-            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-          });
-
-          const links = await page.evaluate(() => {
-            const selectors = [
-              'a[href*="https://www.google.com/maps/place/"]',
-              'a[href*="/maps/place/"]'
-            ];
-            return selectors.flatMap(selector => Array.from(document.querySelectorAll(selector)).map(a => a.href));
-          });
-
-          const newLinks = [...new Set(links)].filter(link => !processedLinks.has(link));
-          console.log(`[MapFinder] Loop ${loop}: Found ${links.length} total links, ${newLinks.length} new.`);
-          if (newLinks.length === 0) {
-            consecutiveNoResults++;
-            if (consecutiveNoResults >= maxDryScrolls) {
-              sendData({ type: 'status', message: `No more fresh results for ${term}.` });
-              break;
-            }
-            sendData({ type: 'status', message: `Scrolling map for ${term}... (${consecutiveNoResults}/${maxDryScrolls})` });
-            await new Promise(r => setTimeout(r, 500));
-            continue;
-          }
-          
-          sendData({ type: 'status', message: `Found ${newLinks.length} new businesses. Extracting details...` });
-
-          consecutiveNoResults = 0;
-          const batch = newLinks.slice(0, Math.max(0, maxLeads - saved));
-          const processMapLink = async (link, workerPage) => {
-            try {
-              const details = await extractGoogleMapsLead(workerPage, link, {
-                noWebsiteOnly: noWebsiteOnly !== 'false',
-                originLat,
-                originLng,
-                radiusKm: effectiveRadius
-              });
-
-              if (!details) {
-                console.log(`[MapFinder] ⏩ Skipping link (details failed): ${link}`);
-                return;
-              }
-              if (isCancelled || saved >= maxLeads) return;
-              if (!hasAnyPhone(details.phone)) {
-                console.log(`[MapFinder] ⏩ Skipping "${details.name}" (No phone found)`);
-                return;
-              }
-
-              const leadData = {
-                ...details,
-                mapsLink: link,
-                keyword: savedKeyword,
-                category: term,
-                city,
-                source: 'map-range',
-                radiusKm: effectiveRadius
-              };
-              
-              console.log(`[MapFinder] 💾 Saving lead: ${details.name} (+${details.phone})`);
-
-              await ScrapedLead.findOneAndUpdate(
-                { mapsLink: link },
-                { $set: leadData, $setOnInsert: { createdAt: new Date() } },
-                { upsert: true, new: true }
-              );
-
-              saved++;
-              sendData({ type: 'lead', data: leadData, saved });
-            } catch (e) {
-              console.log("[Map Range] worker error:", e.message);
-            }
-          };
-
-          for (let i = 0; i < batch.length && !isCancelled && saved < maxLeads; i += workerPages.length) {
-            const chunk = batch.slice(i, i + workerPages.length);
-            chunk.forEach(link => processedLinks.add(link));
-            await Promise.all(chunk.map((link, index) => processMapLink(link, workerPages[index])));
-          }
-
-          sendData({ type: 'status', message: `Saved ${saved} leads. Found ${newLinks.length} new ${term} links.` });
-          if (saved < maxLeads) await new Promise(r => setTimeout(r, 100));
-        }
-      }
-
-      if (saved < maxLeads) {
-        radius = Math.min(50, radius + 2);
-        scanCycle++;
-        sendData({
-          type: 'status',
-          message: `Target not reached yet. Continuing with wider scan radius ${radius}km...`
-        });
-        continue;
+        sendData({ type: 'status', message: `Saved ${saved} leads. Found ${newLinks.length} new ${term} links.` });
       }
     }
 
