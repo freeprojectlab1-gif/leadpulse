@@ -2293,6 +2293,7 @@ app.get('/api/map-businesses', async (req, res) => {
 // --- LEAD SCRAPER API (STREAMING VERSION) ---
 app.get('/api/scrape-leads', async (req, res) => {
   const { keyword, city, mode, sources, igSession, liAt, fbCUser, fbXs } = req.query;
+  console.log(`[Scraper] 🚀 Scrape request received! Keyword: "${keyword}", City: "${city}", Sources: ${sources}`);
   if (!keyword || !city) return res.status(400).json({ error: 'Keyword and City are required' });
 
   const sourceList = sources ? sources.split(',') : ['map'];
@@ -2326,25 +2327,33 @@ app.get('/api/scrape-leads', async (req, res) => {
       timeout: 60000
     };
 
+    console.log("[Scraper] 🛠️ Launching browser...");
     try {
       browser = await puppeteer.launch(launchArgs);
+      console.log("[Scraper] ✅ Browser launched successfully!");
     } catch (launchErr) {
-      if (launchErr.message.includes('already running')) {
+      console.error("[Scraper] ❌ Initial browser launch failed:", launchErr.message);
+      if (launchErr.message.includes('already running') || launchErr.message.includes('locked')) {
         console.log("⚠️ Browser lock detected. Force-clearing session...");
         const { execSync } = require('child_process');
-        try { execSync(`pkill -f "${BROWSER_SESSION_DIR}"`); } catch (e) { }
-        await new Promise(r => setTimeout(r, 1000));
+        try { 
+          execSync(`pkill -9 -f "${BROWSER_SESSION_DIR}"`); 
+          await new Promise(r => setTimeout(r, 2000));
+        } catch (e) { }
         browser = await puppeteer.launch(launchArgs);
+        console.log("[Scraper] ✅ Browser launched after force-clear!");
       } else {
         throw launchErr;
       }
     }
 
     if (sourceList.includes('map') && !isCancelled) {
+      console.log("[Scraper] 🗺️ Launching Google Maps scraper...");
       const page = await browser.newPage();
-      const workerCount = 6;
+      const workerCount = 3; // Reduced for stability
       const workerPages = await Promise.all(
-        Array.from({ length: workerCount }, async () => {
+        Array.from({ length: workerCount }, async (_, idx) => {
+          console.log(`[Scraper] Initializing worker page ${idx + 1}...`);
           const workerPage = await browser.newPage();
           await configureFastMapsPage(workerPage);
           return workerPage;
@@ -2352,9 +2361,13 @@ app.get('/api/scrape-leads', async (req, res) => {
       );
       const query = `${keyword} in ${city}`;
       await configureFastMapsPage(page);
-      await page.goto(`https://www.google.com/maps/search/${encodeURIComponent(query)}`, { waitUntil: 'domcontentloaded', timeout: 25000 });
+      console.log(`[Scraper] 🔎 Navigating to: https://www.google.com/maps/search/${encodeURIComponent(query)}`);
+      await page.goto(`https://www.google.com/maps/search/${encodeURIComponent(query)}`, { waitUntil: 'domcontentloaded', timeout: 45000 });
 
-      await page.waitForSelector('div[role="feed"]', { timeout: 9000 }).catch(() => { });
+      // Robust selector check
+      await page.waitForSelector('div[role="feed"], [aria-label^="Results for"]', { timeout: 10000 }).catch(() => { 
+        console.log("[Scraper] ⚠️ Feed selector not found, attempting to continue anyway...");
+      });
 
       let consecutiveNoResults = 0;
       for (let loop = 0; loop < 1000; loop++) {
