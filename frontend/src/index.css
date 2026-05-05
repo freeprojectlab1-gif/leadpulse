@@ -51,14 +51,14 @@
 
     --radius: 0.75rem;
 
-    /* Sidebar - Premium Dark Sidebar for Light Mode */
-    --sidebar-background:        222 47% 11%;
-    --sidebar-foreground:        210 40% 98%;
+    /* Sidebar - Modern Light Sidebar for Light Mode */
+    --sidebar-background:        210 40% 98%;
+    --sidebar-foreground:        222 47% 11%;
     --sidebar-primary:           221 83% 53%;
     --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent:            222 47% 15%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border:            222 47% 15%;
+    --sidebar-accent:            210 40% 95%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border:            214.3 31.8% 91.4%;
     --sidebar-ring:              221 83% 53%;
 
     /* Custom Tokens */
@@ -337,8 +337,8 @@ body.theme-light {
 
 .sidebar {
   width: var(--sidebar-width, 260px);
-  background: linear-gradient(180deg, rgba(66,120,244,0.06) 0%, transparent 30%), var(--sidebar-bg, #0f172a);
-  color: var(--sidebar-text, #f8fafc);
+  background: hsl(var(--sidebar-background));
+  color: hsl(var(--sidebar-foreground));
   padding: 1.75rem 0.5rem;
   position: fixed;
   height: 100vh;
@@ -352,7 +352,7 @@ body.theme-light {
 
 .brand {
   font-size: 1.2rem; font-weight: 800;
-  margin-bottom: 2.5rem; color: var(--sidebar-text, #f8fafc);
+  margin-bottom: 2.5rem; color: hsl(var(--sidebar-foreground));
   display: flex; align-items: center; gap: 10px;
   padding-left: 18px; letter-spacing: -0.01em;
 }
@@ -364,7 +364,7 @@ body.theme-light {
   padding: 0.8rem 1rem; border-radius: 0.75rem;
   border: 1px solid transparent;
   cursor: pointer; margin-bottom: 0.35rem;
-  color: rgba(203,213,225,0.65);
+  color: hsl(var(--sidebar-foreground) / 0.65);
   font-weight: 600; font-size: 0.875rem;
   transition: all 0.18s ease;
 }

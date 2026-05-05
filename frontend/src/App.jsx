@@ -59,7 +59,14 @@ import {
   Copy,
   Sun,
   Moon,
-  Upload
+  Upload,
+  MessageCircle,
+  Smartphone,
+  Activity,
+  Hash,
+  Brackets,
+  Zap,
+  MousePointer2
 } from 'lucide-react';
 
 // --- ICONS (SVG) ---
@@ -89,6 +96,18 @@ const UsersIcon = () => <Users size={18} />;
 const BusinessIcon = ({ size = 20, ...props }) => <Building2 size={size} {...props} />;
 const ContactIcon = ({ size = 20, ...props }) => <User size={size} {...props} />;
 const LocationIcon = ({ size = 20, ...props }) => <MapPin size={size} {...props} />;
+const WhatsAppIcon = ({ size = 18, ...props }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="currentColor" 
+    {...props}
+  >
+    <path d="M19.05 4.91A9.816 9.816 0 0 0 12.04 2c-5.46 0-9.91 4.45-9.91 9.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21c5.46 0 9.91-4.45 9.91-9.91c0-2.65-1.03-5.14-2.9-7.01m-7.01 15.24c-1.48 0-2.93-.4-4.2-1.15l-.3-.18l-3.12.82l.83-3.04l-.2-.31a8.264 8.264 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24c2.2 0 4.27.86 5.82 2.42a8.183 8.183 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.22 8.23m4.52-6.16c-.25-.12-1.47-.72-1.69-.81c-.23-.08-.39-.12-.56.12c-.17.25-.64.81-.78.97c-.14.17-.29.19-.54.06c-.25-.12-1.05-.39-1.99-1.23c-.74-.66-1.23-1.47-1.38-1.72c-.14-.25-.02-.38.11-.51c.11-.11.25-.29.37-.43s.17-.25.25-.41c.08-.17.04-.31-.02-.43s-.56-1.34-.76-1.84c-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31c-.22.25-.85.83-.85 2.02c0 1.19.87 2.33.99 2.49c.12.17 1.71 2.62 4.14 3.67c.58.25 1.02.4 1.38.51c.58.18 1.11.16 1.53.1c.46-.07 1.47-.6 1.67-1.17c.21-.58.21-1.07.14-1.17s-.22-.15-.47-.27"/>
+  </svg>
+);
 
 const StatusBadge = ({ status }) => {
   const s = status.toLowerCase();
@@ -116,6 +135,7 @@ const PAGE_TITLES = {
   scraper: 'Lead Scraper',
   map_finder: 'Maps Finder',
   email_finder: 'Enrichment',
+  mobile_finder: 'Mobile Enricher',
   saved_leads: 'Automation CRM',
   archive: 'Archive',
   profile: 'Profile',
@@ -138,7 +158,7 @@ const postApiWithFallback = async (url, data, config = {}) => {
 };
 
 // ==================== WhatsApp Inbox Tab ====================
-const WhatsAppInboxTab = ({ waStatus }) => {
+const WhatsAppInboxTab = ({ waStatus, savedLeads = [], onRefreshSavedLeads }) => {
   const [conversations, setConversations] = useState([]);
   const [selected, setSelected] = useState(null);
   const [msgInput, setMsgInput] = useState('');
@@ -155,6 +175,14 @@ const WhatsAppInboxTab = ({ waStatus }) => {
   const [broadcasting, setBroadcasting] = useState(false);
   const [broadcastResult, setBroadcastResult] = useState(null);
   const [sendError, setSendError] = useState('');
+  const normalizePhone = (value) => {
+    const digits = String(value || '').replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.length === 10) return `91${digits}`;
+    if (digits.length === 11 && digits.startsWith('0')) return `91${digits.slice(1)}`;
+    if (digits.length === 12 && digits.startsWith('91')) return digits;
+    return digits.slice(-12);
+  };
 
   const fetchConversations = async () => {
     try {
@@ -243,6 +271,24 @@ const WhatsAppInboxTab = ({ waStatus }) => {
     return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
   };
   const filtered = conversations.filter(r => getName(r).toLowerCase().includes(search.toLowerCase()) || getPhone(r).includes(search));
+  const allMobileLeads = (() => {
+    const seen = new Set();
+    return (Array.isArray(savedLeads) ? savedLeads : [])
+      .map(lead => {
+        const phone = normalizePhone(lead.phone || lead.data?.Phone || lead.data?.phone || '');
+        return { ...lead, _phone: phone };
+      })
+      .filter(lead => lead._phone && lead._phone.length >= 10)
+      .filter(lead => {
+        if (seen.has(lead._phone)) return false;
+        seen.add(lead._phone);
+        return true;
+      })
+      .filter(lead => {
+        const haystack = `${lead.name || ''} ${lead._phone} ${lead.keyword || ''} ${lead.city || ''}`.toLowerCase();
+        return haystack.includes(search.toLowerCase());
+      });
+  })();
 
   // Premium Palette based on WhatsApp Emerald but adjusted for the current brand
   const primaryBrand = '#10b981'; // Emerald 500
@@ -337,6 +383,96 @@ const WhatsAppInboxTab = ({ waStatus }) => {
                 boxSizing: 'border-box', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
               }}
             />
+          </div>
+
+          <div style={{
+            marginTop: '14px',
+            marginBottom: '14px',
+            padding: '14px',
+            borderRadius: '16px',
+            border: '1px solid var(--border)',
+            background: 'var(--surface)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
+              <div>
+                <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  All Mobile Leads
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '3px' }}>
+                  CRM se valid mobile numbers
+                </div>
+              </div>
+              <button
+                onClick={() => onRefreshSavedLeads?.()}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg)',
+                  color: 'var(--text-main)',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Refresh
+              </button>
+            </div>
+
+            <div style={{ maxHeight: '220px', overflowY: 'auto', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--bg)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+                <thead style={{ position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 2 }}>
+                  <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>Name</th>
+                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>Mobile</th>
+                    <th style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>State</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allMobileLeads.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} style={{ padding: '18px 12px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        No mobile leads found
+                      </td>
+                    </tr>
+                  ) : allMobileLeads.slice(0, 40).map(lead => {
+                    const status = String(lead.whatsappStatus || 'pending').toLowerCase();
+                    const badgeColor = status === 'sent' ? '#10b981' : status === 'failed' ? '#ef4444' : '#f59e0b';
+                    const label = status === 'sent' ? 'Sent' : status === 'failed' ? 'Failed' : 'Pending';
+                    return (
+                      <tr
+                        key={lead._id}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => window.open(`https://wa.me/${lead._phone}`, '_blank')}
+                        title="Open WhatsApp chat"
+                      >
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', color: 'var(--text-main)', fontWeight: 700, maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {lead.name || lead.keyword || 'Unknown'}
+                        </td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', color: 'var(--text-main)', fontWeight: 700 }}>
+                          +{lead._phone}
+                        </td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '3px 8px',
+                            borderRadius: '999px',
+                            background: `${badgeColor}15`,
+                            color: badgeColor,
+                            fontWeight: 800,
+                            fontSize: '0.72rem'
+                          }}>
+                            {label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -946,6 +1082,14 @@ const MapBusinessFinder = ({
   setLimit,
   noWebsiteOnly,
   setNoWebsiteOnly,
+  mapCategories,
+  categoryAddText,
+  setCategoryAddText,
+  categoryRemoveText,
+  setCategoryRemoveText,
+  onAddCategories,
+  onRemoveCategories,
+  isUpdatingCategories,
   isSearching,
   mapLeads,
   mapStatus,
@@ -1135,6 +1279,75 @@ const MapBusinessFinder = ({
             <span className="text-sm font-medium text-foreground">No-website businesses only</span>
           </label>
 
+          <div className="space-y-3 p-4 rounded-xl bg-background/50 border border-border/50">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-foreground">Business Category Manager</div>
+                <p className="text-xs text-muted-foreground">Add/remove multiple categories from backend without code changes.</p>
+              </div>
+              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
+                {mapCategories.length} active
+              </Badge>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add Categories</label>
+              <Textarea
+                value={categoryAddText}
+                onChange={e => setCategoryAddText(e.target.value)}
+                placeholder={"restaurant\ncafe\nsalon"}
+                className="min-h-[74px] bg-card/50 resize-none text-sm"
+              />
+              <div className="flex justify-end">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="text-xs font-bold"
+                  disabled={isUpdatingCategories || !categoryAddText.trim()}
+                  onClick={onAddCategories}
+                >
+                  <Plus size={14} className="mr-1.5" /> Add Multiple
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Remove Categories</label>
+              <Textarea
+                value={categoryRemoveText}
+                onChange={e => setCategoryRemoveText(e.target.value)}
+                placeholder={"restaurant\ncafe"}
+                className="min-h-[74px] bg-card/50 resize-none text-sm"
+              />
+              <div className="flex justify-end">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="text-xs font-bold"
+                  disabled={isUpdatingCategories || !categoryRemoveText.trim()}
+                  onClick={onRemoveCategories}
+                >
+                  <X size={14} className="mr-1.5" /> Remove Multiple
+                </Button>
+              </div>
+            </div>
+
+            <div className="max-h-[120px] overflow-y-auto flex flex-wrap gap-2 pr-1">
+              {mapCategories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => onRemoveCategories([cat])}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs text-primary hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
+                  title="Click to remove"
+                >
+                  {cat}
+                  <X size={12} />
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="pt-2">
             {!isSearching ? (
               <Button className="w-full h-12 text-sm font-bold shadow-glow-primary group bg-primary hover:bg-primary/90 text-white transition-all" onClick={onSearch}>
@@ -1241,8 +1454,12 @@ function App() {
   const [mapAllBusinesses, setMapAllBusinesses] = useState(false);
   const [mapLocation, setMapLocation] = useState({ lat: 23.0225, lng: 72.5714, label: 'Ahmedabad, Gujarat' });
   const [mapRadiusKm, setMapRadiusKm] = useState(5);
-  const [mapLeadLimit, setMapLeadLimit] = useState(60);
+  const [mapLeadLimit, setMapLeadLimit] = useState(600);
   const [mapNoWebsiteOnly, setMapNoWebsiteOnly] = useState(true);
+  const [mapCategories, setMapCategories] = useState([]);
+  const [categoryAddText, setCategoryAddText] = useState('restaurant\ncafe');
+  const [categoryRemoveText, setCategoryRemoveText] = useState('');
+  const [isUpdatingCategories, setIsUpdatingCategories] = useState(false);
   const [mapLeads, setMapLeads] = useState([]);
   const [mapStatus, setMapStatus] = useState('');
   const [isMapSearching, setIsMapSearching] = useState(false);
@@ -1323,13 +1540,17 @@ function App() {
     if (isLoggedIn) {
       fetchStats();
       fetchRecipients();
+      fetchSavedLeads();
       fetchCustomTemplates();
       fetchCustomFields();
       fetchWhatsappTemplates(); // Load WA templates
       fetchSettings();
+      fetchMapCategories();
       const interval = setInterval(() => {
         fetchStats();
         fetchRecipients();
+        // Note: fetchSavedLeads is intentionally NOT polled — it's fetched on tab switch
+        // and manual Refresh to avoid unwanted table re-renders and selection resets.
       }, 30000);
       return () => clearInterval(interval);
     }
@@ -1352,7 +1573,7 @@ function App() {
 
   // Auto-fetch saved leads when entering Enricher / CRM tab (handles page reload too)
   useEffect(() => {
-    if (isLoggedIn && (activeTab === 'email_finder' || activeTab === 'saved_leads')) {
+    if (isLoggedIn && (activeTab === 'email_finder' || activeTab === 'mobile_finder' || activeTab === 'saved_leads')) {
       fetchSavedLeads();
     }
   }, [isLoggedIn, activeTab]);
@@ -1477,6 +1698,9 @@ function App() {
         if (res.data.liAt) setLiAt(res.data.liAt);
         if (res.data.fbCUser) setFbCUser(res.data.fbCUser);
         if (res.data.fbXs) setFbXs(res.data.fbXs);
+        if (Array.isArray(res.data.mapBusinessCategories) && res.data.mapBusinessCategories.length > 0) {
+          setMapCategories(res.data.mapBusinessCategories);
+        }
         lastSavedPublicEmailRef.current = res.data.publicEmail || '';
         setProfile({
           userName: res.data.userName || 'Muntazir',
@@ -1488,13 +1712,24 @@ function App() {
     } catch (e) { console.error("Error fetching settings:", e); }
   };
 
+  const fetchMapCategories = async () => {
+    try {
+      const res = await axios.get('/api/map-categories');
+      if (Array.isArray(res.data?.categories)) {
+        setMapCategories(res.data.categories);
+      }
+    } catch (e) {
+      console.error('Error fetching map categories:', e);
+    }
+  };
+
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     const formData = new FormData();
     formData.append('avatar', file);
-    
+
     try {
       showToast('Uploading avatar...', 'info');
       const res = await postApiWithFallback('/api/upload-avatar', formData);
@@ -1516,6 +1751,50 @@ function App() {
     } catch (err) {
       showToast('Save failed', 'error');
     }
+  };
+
+  const parseCategoryText = (text) => [...new Set(String(text || '')
+    .split(/[\n,]+/)
+    .map(item => item.toLowerCase().trim().replace(/\s+/g, ' '))
+    .filter(Boolean))];
+
+  const applyMapCategoryUpdate = async ({ add = [], remove = [] } = {}) => {
+    const addList = Array.isArray(add) ? add : parseCategoryText(add);
+    const removeList = Array.isArray(remove) ? remove : parseCategoryText(remove);
+
+    if (addList.length === 0 && removeList.length === 0) {
+      showToast('Category list is empty', 'error');
+      return;
+    }
+
+    setIsUpdatingCategories(true);
+    try {
+      const res = await axios.post('/api/map-categories', {
+        add: addList,
+        remove: removeList
+      });
+      const next = Array.isArray(res.data?.categories) ? res.data.categories : [];
+      setMapCategories(next);
+      setCategoryAddText('');
+      setCategoryRemoveText('');
+      showToast(`Categories updated (${next.length} active).`, 'success');
+    } catch (e) {
+      showToast(e.response?.data?.error || 'Category update failed', 'error');
+    } finally {
+      setIsUpdatingCategories(false);
+    }
+  };
+
+  const handleAddMapCategories = async () => {
+    await applyMapCategoryUpdate({ add: parseCategoryText(categoryAddText) });
+  };
+
+  const handleRemoveMapCategories = async (input) => {
+    if (Array.isArray(input)) {
+      await applyMapCategoryUpdate({ remove: input });
+      return;
+    }
+    await applyMapCategoryUpdate({ remove: parseCategoryText(categoryRemoveText) });
   };
 
   const handleSaveCookie = async (field, value) => {
@@ -2032,10 +2311,10 @@ function App() {
                   <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60 ml-1">Secure Access</Label>
                   <div className="relative">
                     <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground opacity-50" />
-                    <Input 
-                      type="password" 
-                      placeholder="Enter Master Passcode" 
-                      value={passcode} 
+                    <Input
+                      type="password"
+                      placeholder="Enter Master Passcode"
+                      value={passcode}
                       onChange={e => setPasscode(e.target.value)}
                       className="bg-background/40 border-border/40 pl-10 h-12 text-center font-mono tracking-[0.2em] focus:ring-primary/20 focus:border-primary/40 rounded-xl"
                     />
@@ -2061,6 +2340,20 @@ function App() {
 
   const getStatCount = (id) => (Array.isArray(stats) ? stats : []).find(s => s._id === id)?.count || 0;
 
+  const getWhatsappLeadStats = () => {
+    const counts = { sent: 0, failed: 0, pending: 0, total: 0 };
+    (Array.isArray(savedLeads) ? savedLeads : []).forEach(lead => {
+      if (!lead?.phone || lead.phone === 'N/A') return;
+      const status = String(lead.whatsappStatus || 'pending').toLowerCase();
+      if (status === 'sent') counts.sent += 1;
+      else if (status === 'failed') counts.failed += 1;
+      else counts.pending += 1;
+      counts.total += 1;
+    });
+    return counts;
+  };
+  const whatsappLeadStats = getWhatsappLeadStats();
+
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
       {/* MODERN SIDEBAR */}
@@ -2072,8 +2365,8 @@ function App() {
             </div>
             <span>{BRAND_NAME}</span>
           </div>
-          
-          <button 
+
+          <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             className={`hidden md:flex h-8 w-8 items-center justify-center rounded-lg border border-sidebar-border/50 bg-sidebar-accent/50 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-all ${isSidebarCollapsed ? 'mx-auto' : 'ml-auto'}`}
           >
@@ -2092,9 +2385,9 @@ function App() {
             {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.1em] mb-3 truncate">Overview</div>}
             <div className="space-y-1">
               {[
-                { id: 'dashboard', icon: DashIcon, label: 'Dashboard' },
-                { id: 'campaign', icon: SendIcon, label: 'New Campaign' },
-                { id: 'logs', icon: HistoryIcon, label: 'Delivery Logs' },
+                { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+                { id: 'campaign', icon: Rocket, label: 'New Campaign' },
+                { id: 'logs', icon: Activity, label: 'Delivery Logs' },
               ].map(item => (
                 <TooltipProvider key={item.id} delayDuration={0}>
                   <Tooltip>
@@ -2102,11 +2395,11 @@ function App() {
                       <button
                         onClick={() => { switchTab(item.id); setIsMobileMenuOpen(false); }}
                         className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id
-                            ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm'
-                            : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                          ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm'
+                          : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
                           }`}
                       >
-                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} /> 
+                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} />
                         {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
                       </button>
                     </TooltipTrigger>
@@ -2123,20 +2416,21 @@ function App() {
             {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.1em] mb-3 truncate">Lead Generation</div>}
             <div className="space-y-1">
               {[
-                { id: 'scraper', icon: SearchIcon, label: 'Lead Scraper' },
-                { id: 'map_finder', icon: () => <MapPin size={18} />, label: 'Map Finder' },
-                { id: 'email_finder', icon: TargetIcon, label: 'Email Enricher' },
-                { id: 'saved_leads', icon: UsersIcon, label: 'Automation CRM' },
+                { id: 'scraper', icon: Globe, label: 'Lead Scraper' },
+                { id: 'map_finder', icon: MapPin, label: 'Map Finder' },
+                { id: 'email_finder', icon: Mail, label: 'Email Enricher' },
+                { id: 'mobile_finder', icon: Smartphone, label: 'Mobile Enricher' },
+                { id: 'saved_leads', icon: Database, label: 'Automation CRM' },
               ].map(item => (
                 <TooltipProvider key={item.id} delayDuration={0}>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
-                        onClick={() => { switchTab(item.id); setIsMobileMenuOpen(false); if (item.id === 'email_finder' || item.id === 'saved_leads') fetchSavedLeads(); }}
+                        onClick={() => { switchTab(item.id); setIsMobileMenuOpen(false); if (item.id === 'email_finder' || item.id === 'mobile_finder' || item.id === 'saved_leads') fetchSavedLeads(); }}
                         className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
                           }`}
                       >
-                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} /> 
+                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} />
                         {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
                       </button>
                     </TooltipTrigger>
@@ -2153,11 +2447,11 @@ function App() {
             {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.1em] mb-3 truncate">Inbox & Templates</div>}
             <div className="space-y-1">
               {[
-                { id: 'replied_leads', icon: () => <MessageSquare size={18} />, label: 'Email Replies' },
-                { id: 'whatsapp_inbox', icon: () => <MessageSquare size={18} />, label: 'WhatsApp Inbox' },
-                { id: 'template', icon: TemplateIcon, label: 'Email Templates' },
-                { id: 'custom_templates', icon: FolderIcon, label: 'Custom Folders' },
-                { id: 'variables', icon: SettingsIcon, label: 'Variable Manager' },
+                { id: 'replied_leads', icon: Reply, label: 'Email Replies' },
+                { id: 'whatsapp_inbox', icon: WhatsAppIcon, label: 'WhatsApp Inbox' },
+                { id: 'template', icon: FileText, label: 'Email Templates' },
+                { id: 'custom_templates', icon: Folder, label: 'Custom Folders' },
+                { id: 'variables', icon: Hash, label: 'Variable Manager' },
               ].map(item => (
                 <TooltipProvider key={item.id} delayDuration={0}>
                   <Tooltip>
@@ -2167,7 +2461,7 @@ function App() {
                         className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
                           }`}
                       >
-                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} /> 
+                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} />
                         {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
                       </button>
                     </TooltipTrigger>
@@ -2191,7 +2485,7 @@ function App() {
                       className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'whatsapp_settings' ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
                         }`}
                     >
-                      <Phone size={18} className={activeTab === 'whatsapp_settings' ? 'text-primary' : ''} /> 
+                      <WhatsAppIcon size={18} className={activeTab === 'whatsapp_settings' ? 'text-primary' : ''} />
                       {!isSidebarCollapsed && <span className="truncate">WhatsApp Settings</span>}
                     </button>
                   </TooltipTrigger>
@@ -2208,7 +2502,7 @@ function App() {
                         }`}
                     >
                       <div className={`flex items-center ${isSidebarCollapsed ? '' : 'gap-3'}`}>
-                        <Phone size={18} className={activeTab === 'whatsapp_linker' ? 'text-primary' : ''} /> 
+                        <WhatsAppIcon size={18} className={activeTab === 'whatsapp_linker' ? 'text-primary' : ''} />
                         {!isSidebarCollapsed && <span className="truncate">WhatsApp Linker</span>}
                       </div>
                       {!isSidebarCollapsed && <div className={`w-1.5 h-1.5 rounded-full ${waStatus === 'connected' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : waStatus === 'qr-ready' ? 'bg-amber-500' : 'bg-red-500'}`}></div>}
@@ -2236,7 +2530,7 @@ function App() {
                         className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
                           }`}
                       >
-                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} /> 
+                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} />
                         {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
                       </button>
                     </TooltipTrigger>
@@ -2372,8 +2666,8 @@ function App() {
                   },
                   {
                     label: 'WhatsApp Leads',
-                    value: recipients.filter(r => r.replies && r.replies.some(rep => rep.type === 'whatsapp' && rep.fromMe)).length,
-                    sub: 'Active WA conversations',
+                    value: whatsappLeadStats.total,
+                    sub: 'WhatsApp-tracked CRM leads',
                     icon: MessageSquare,
                     color: 'text-emerald-500',
                     bg: 'bg-emerald-500/5',
@@ -2404,6 +2698,24 @@ function App() {
                       </p>
                     </CardContent>
                   </Card>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {[
+                  { label: 'WA Sent', value: whatsappLeadStats.sent, icon: CheckCheck, color: 'text-emerald-500' },
+                  { label: 'WA Failed', value: whatsappLeadStats.failed, icon: AlertTriangle, color: 'text-destructive' },
+                  { label: 'WA Pending', value: whatsappLeadStats.pending, icon: Clock, color: 'text-amber-500' }
+                ].map((stat, i) => (
+                  <div key={i} className="bg-muted/30 border border-border/50 rounded-2xl p-5 flex items-center justify-between group hover:bg-muted/50 transition-colors">
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{stat.label}</p>
+                      <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
+                    </div>
+                    <div className="p-2 bg-background rounded-lg border border-border shadow-sm">
+                      <stat.icon size={18} className={stat.color} />
+                    </div>
+                  </div>
                 ))}
               </div>
 
@@ -2480,8 +2792,8 @@ function App() {
                               </p>
                             </div>
                             <Badge variant="outline" className={`text-[9px] font-black uppercase tracking-[0.05em] px-2 py-0.5 rounded-md border-border/50 ${r.status === 'replied' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
-                                r.status === 'failed' ? 'bg-destructive/10 text-destructive border-destructive/20' :
-                                  r.status === 'finished' ? 'bg-blue-500/10 text-blue-600 border-blue-500/20' : 'bg-muted text-muted-foreground'
+                              r.status === 'failed' ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                                r.status === 'finished' ? 'bg-blue-500/10 text-blue-600 border-blue-500/20' : 'bg-muted text-muted-foreground'
                               }`}>
                               {r.status}
                             </Badge>
@@ -2515,6 +2827,14 @@ function App() {
               setLimit={setMapLeadLimit}
               noWebsiteOnly={mapNoWebsiteOnly}
               setNoWebsiteOnly={setMapNoWebsiteOnly}
+              mapCategories={mapCategories}
+              categoryAddText={categoryAddText}
+              setCategoryAddText={setCategoryAddText}
+              categoryRemoveText={categoryRemoveText}
+              setCategoryRemoveText={setCategoryRemoveText}
+              onAddCategories={handleAddMapCategories}
+              onRemoveCategories={handleRemoveMapCategories}
+              isUpdatingCategories={isUpdatingCategories}
               isSearching={isMapSearching}
               mapLeads={mapLeads}
               mapStatus={mapStatus}
@@ -2581,8 +2901,8 @@ function App() {
                           <label
                             key={src.id}
                             className={`flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer text-sm font-medium transition-all duration-200 border ${scrapeSources.includes(src.id)
-                                ? 'bg-primary text-primary-foreground border-primary shadow-glow-sm'
-                                : 'bg-muted/30 text-muted-foreground border-border hover:bg-muted'
+                              ? 'bg-primary text-primary-foreground border-primary shadow-glow-sm'
+                              : 'bg-muted/30 text-muted-foreground border-border hover:bg-muted'
                               }`}
                           >
                             <input
@@ -3652,12 +3972,12 @@ function App() {
                     <h3 className="text-lg font-bold text-foreground">{profile.userName}</h3>
                     <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold mt-1">{profile.userRole}</p>
                     <div className="mt-6 pt-6 border-t border-border/30">
-                       <Button variant="outline" size="sm" className="w-full rounded-xl border-border/60 relative overflow-hidden group">
-                         <span className="relative z-10 flex items-center gap-2">
-                           <Upload size={14} /> Change Avatar
-                         </span>
-                         <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={handleAvatarUpload} />
-                       </Button>
+                      <Button variant="outline" size="sm" className="w-full rounded-xl border-border/60 relative overflow-hidden group">
+                        <span className="relative z-10 flex items-center gap-2">
+                          <Upload size={14} /> Change Avatar
+                        </span>
+                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={handleAvatarUpload} />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -3670,28 +3990,28 @@ function App() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Display Name</Label>
-                        <Input 
-                          value={profile.userName} 
+                        <Input
+                          value={profile.userName}
                           onChange={(e) => setProfile(prev => ({ ...prev, userName: e.target.value }))}
-                          className="bg-background/50 border-border/40 focus:border-primary/50" 
+                          className="bg-background/50 border-border/40 focus:border-primary/50"
                         />
                       </div>
                       <div className="space-y-2">
                         <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Your Role</Label>
-                        <Input 
+                        <Input
                           value={profile.userRole}
                           onChange={(e) => setProfile(prev => ({ ...prev, userRole: e.target.value }))}
-                          className="bg-background/50 border-border/40 focus:border-primary/50" 
+                          className="bg-background/50 border-border/40 focus:border-primary/50"
                         />
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Public Email (Optional)</Label>
-                      <Input 
+                      <Input
                         value={profile.publicEmail}
                         onChange={(e) => setProfile(prev => ({ ...prev, publicEmail: e.target.value }))}
                         placeholder="admin@leadpulse.io"
-                        className="bg-background/50 border-border/40 focus:border-primary/50" 
+                        className="bg-background/50 border-border/40 focus:border-primary/50"
                       />
                     </div>
                     <div className="pt-4">
@@ -4431,6 +4751,361 @@ function App() {
             );
           })()}
 
+          {activeTab === 'mobile_finder' && (() => {
+            // Group by phone and pick the "best" entry (one with status or most recent)
+            const leadsByPhone = {};
+            savedLeads.forEach(l => {
+              if (!l.phone || l.phone === 'N/A') return;
+              const cleanP = l.phone.replace(/\D/g, '');
+              if (!cleanP) return;
+              
+              const existing = leadsByPhone[cleanP];
+              if (!existing) {
+                leadsByPhone[cleanP] = l;
+              } else {
+                // Priority: Status > Recent Update > Existing
+                const hasStatus = (lead) => lead.whatsappStatus && lead.whatsappStatus !== 'pending';
+                if (!hasStatus(existing) && hasStatus(l)) {
+                  leadsByPhone[cleanP] = l;
+                } else if (hasStatus(existing) === hasStatus(l)) {
+                   if (new Date(l.whatsappUpdatedAt || l.createdAt) > new Date(existing.whatsappUpdatedAt || existing.createdAt)) {
+                     leadsByPhone[cleanP] = l;
+                   }
+                }
+              }
+            });
+            const uniqueMobileLeads = Object.values(leadsByPhone).sort((a, b) => 
+              new Date(b.whatsappUpdatedAt || b.createdAt) - new Date(a.whatsappUpdatedAt || a.createdAt)
+            );
+
+            return (
+              <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
+                <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
+                  <CardHeader className="pb-4 border-b border-border/50">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Phone size={20} className="text-emerald-500" /> Mobile Enricher
+                        </CardTitle>
+                        <CardDescription>All globally enriched phone numbers — deduplicated across every scraped folder.</CardDescription>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Badge variant="outline" className="bg-emerald-500/5 text-emerald-600 border-emerald-500/20 py-1.5 px-3">
+                          Total: {uniqueMobileLeads.length}
+                        </Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => { setAddEmailForm({ email: '', name: '', phone: '', city: '', keyword: '' }); setAddEmailModal(true); }}
+                        >
+                          <Plus size={16} className="mr-1.5" /> Add Number
+                        </Button>
+
+                        {uniqueMobileLeads.length > 0 && (
+                          <Button
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-sm"
+                            disabled={isScraperBroadcasting}
+                            onClick={() => {
+                              const phones = uniqueMobileLeads.map(l => l.phone.replace(/\D/g, ''));
+                              const activeWaTpl = whatsappTemplates.find(t => t.isActive);
+                              if (!activeWaTpl) return showToast("Please activate a WhatsApp template in WhatsApp Settings first!", 'error');
+                              if (waStatus !== 'connected') return showToast("WhatsApp is not connected!", 'error');
+
+                              setConfirmModal({
+                                open: true,
+                                title: `Send Active WA Msg to ALL ${phones.length} enriched mobile numbers?`,
+                                onConfirm: async () => {
+                                  setIsScraperBroadcasting(true);
+                                  try {
+                                    const activeWaTpl = whatsappTemplates.find(t => t.isActive);
+                                    for (let i = 0; i < uniqueMobileLeads.length; i++) {
+                                      const lead = uniqueMobileLeads[i];
+                                      const cleanP = lead.phone.replace(/\D/g, '');
+                                      
+                                      // Local state update for "Sending"
+                                      setWaStatuses(prev => ({ ...prev, [cleanP]: 'sending' }));
+
+                                      try {
+                                        await axios.post('/api/whatsapp/send', {
+                                          phone: cleanP,
+                                          message: renderTemplateMessage(activeWaTpl.message, lead)
+                                        });
+                                        setWaStatuses(prev => ({ ...prev, [cleanP]: 'sent' }));
+                                      } catch (err) {
+                                        setWaStatuses(prev => ({ ...prev, [cleanP]: 'failed' }));
+                                      }
+
+                                      // Progress Delay
+                                      if (i < uniqueMobileLeads.length - 1) {
+                                        await new Promise(r => setTimeout(r, (scraperWaDelay * 1000 || 3000) + Math.random() * 500));
+                                      }
+                                    }
+                                    showToast(`WhatsApp Broadcast finished!`, 'success');
+                                    fetchSavedLeads();
+                                    fetchStats();
+                                  } catch (err) {
+                                    showToast('WA Broadcast failed: ' + err.message, 'error');
+                                  } finally { 
+                                    setIsScraperBroadcasting(false); 
+                                    setWaStatuses({});
+                                  }
+                                }
+                              });
+                            }}
+                          >
+                            {isScraperBroadcasting ? <><Loader2 size={16} className="animate-spin mr-2" /> Sending...</> : <><Send size={16} className="mr-2" /> Send All WA ({uniqueMobileLeads.length})</>}
+                          </Button>
+                        )}
+
+                        <Button
+                          variant={enricherEditMode ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => { setEnricherEditMode(m => !m); if (enricherEditMode) setSelectedIds([]); }}
+                        >
+                          {enricherEditMode ? 'Done' : 'Edit'}
+                        </Button>
+
+                        <Button variant="ghost" size="sm" onClick={fetchSavedLeads}>
+                          Refresh
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  {enricherEditMode && selectedIds.length > 0 && uniqueMobileLeads.some(l => selectedIds.includes(l._id)) && (
+                    <div className="mx-6 mt-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-inner">
+                      <div className="flex items-center gap-2 text-emerald-600 font-medium">
+                        <Info size={18} /> {selectedIds.filter(id => uniqueMobileLeads.some(l => l._id === id)).length} numbers selected
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <Button
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold shadow-sm"
+                          disabled={isScraperBroadcasting}
+                          onClick={() => {
+                            const ids = selectedIds.filter(id => uniqueMobileLeads.some(l => l._id === id));
+                            const selectedLeads = uniqueMobileLeads.filter(l => ids.includes(l._id));
+                            const phones = selectedLeads.map(l => l.phone.replace(/\D/g, ''));
+                            
+                            const activeWaTpl = whatsappTemplates.find(t => t.isActive);
+                            if (!activeWaTpl) return showToast("Please activate a WhatsApp template in WhatsApp Settings first!", 'error');
+                            if (waStatus !== 'connected') return showToast("WhatsApp is not connected!", 'error');
+
+                            setConfirmModal({
+                              open: true,
+                              title: `Send Active WA Msg to ${phones.length} selected leads?`,
+                              onConfirm: async () => {
+                                setIsScraperBroadcasting(true);
+                                try {
+                                  const activeWaTpl = whatsappTemplates.find(t => t.isActive);
+                                  const selectedLeads = uniqueMobileLeads.filter(l => ids.includes(l._id));
+                                  
+                                  for (let i = 0; i < selectedLeads.length; i++) {
+                                    const lead = selectedLeads[i];
+                                    const cleanP = lead.phone.replace(/\D/g, '');
+                                    
+                                    setWaStatuses(prev => ({ ...prev, [cleanP]: 'sending' }));
+
+                                    try {
+                                      await axios.post('/api/whatsapp/send', {
+                                        phone: cleanP,
+                                        message: renderTemplateMessage(activeWaTpl.message, lead)
+                                      });
+                                      setWaStatuses(prev => ({ ...prev, [cleanP]: 'sent' }));
+                                    } catch (err) {
+                                      setWaStatuses(prev => ({ ...prev, [cleanP]: 'failed' }));
+                                    }
+
+                                    if (i < selectedLeads.length - 1) {
+                                      await new Promise(r => setTimeout(r, (scraperWaDelay * 1000 || 3000) + Math.random() * 500));
+                                    }
+                                  }
+                                  showToast(`Bulk Send finished!`, 'success');
+                                  setSelectedIds([]);
+                                  setEnricherEditMode(false);
+                                  fetchSavedLeads();
+                                  fetchStats();
+                                } catch (err) {
+                                  showToast('Bulk Send failed: ' + err.message, 'error');
+                                } finally { 
+                                  setIsScraperBroadcasting(false); 
+                                  setWaStatuses({});
+                                }
+                              }
+                            });
+                          }}
+                        >
+                          {isScraperBroadcasting ? <><Loader2 size={16} className="animate-spin mr-1.5" /> Sending...</> : <><Send size={16} className="mr-1.5" /> Send Bulk WA</>}
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={() => {
+                            const ids = selectedIds.filter(id => uniqueMobileLeads.some(l => l._id === id));
+                            setConfirmModal({
+                              open: true,
+                              title: `Delete ${ids.length} selected leads?`,
+                              onConfirm: async () => {
+                                try {
+                                  await axios.post('/api/saved-leads/bulk-delete', { leadIds: ids });
+                                  showToast("Leads Deleted!", "success");
+                                  setSelectedIds([]);
+                                  fetchSavedLeads();
+                                } catch (e) { showToast("Delete failed", "error"); }
+                              }
+                            });
+                          }}
+                        >
+                          Delete Selected
+                        </Button>
+                        <Button variant="outline" onClick={() => setSelectedIds([])} className="shadow-sm">Cancel</Button>
+                      </div>
+                    </div>
+                  )}
+
+                  <CardContent className="p-0 mt-4">
+                    {isLoadingSavedLeads ? (
+                      <div className="py-12 flex justify-center items-center">
+                        <Loader2 className="animate-spin text-primary mr-2" size={24} />
+                        <span className="text-muted-foreground">Loading leads...</span>
+                      </div>
+                    ) : uniqueMobileLeads.length === 0 ? (
+                      <div className="py-16 flex flex-col items-center justify-center text-center px-4">
+                        <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 mb-4">
+                          <Phone size={32} />
+                        </div>
+                        <h3 className="text-xl font-semibold text-foreground mb-2">No mobile numbers enriched yet</h3>
+                        <p className="text-muted-foreground max-w-md">Scrape some leads with phone numbers to see them here.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-b-xl border-t border-border/50">
+                        <table className="w-full text-sm text-left border-collapse">
+                          <thead className="bg-muted/50 text-muted-foreground text-xs uppercase font-semibold border-b border-border">
+                            <tr>
+                              {enricherEditMode && (
+                                <th className="px-4 py-3 w-[40px] text-center border-r border-border/50">
+                                  <input
+                                    type="checkbox"
+                                    className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                                    checked={uniqueMobileLeads.length > 0 && uniqueMobileLeads.every(l => selectedIds.includes(l._id))}
+                                    onChange={() => {
+                                      const allSelected = uniqueMobileLeads.every(l => selectedIds.includes(l._id));
+                                      if (allSelected) setSelectedIds(prev => prev.filter(id => !uniqueMobileLeads.some(l => l._id === id)));
+                                      else setSelectedIds(prev => [...new Set([...prev, ...uniqueMobileLeads.map(l => l._id)])]);
+                                    }}
+                                  />
+                                </th>
+                              )}
+                              <th className="px-4 py-3 w-[50px] text-center border-r border-border/50">#</th>
+                              <th className="px-4 py-3 min-w-[160px]">Phone Number</th>
+                              <th className="px-4 py-3 min-w-[180px]">Business Name</th>
+                              <th className="px-4 py-3 min-w-[120px]">Email</th>
+                              <th className="px-4 py-3 min-w-[120px]">Location</th>
+                              <th className="px-4 py-3 min-w-[140px]">Last WA Activity</th>
+                              <th className="px-4 py-3 min-w-[150px] text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/50">
+                            {uniqueMobileLeads.map((lead, idx) => {
+                              const cleanP = lead.phone.replace(/\D/g, '');
+                              const stat = (lead.whatsappStatus || waStatuses[cleanP] || 'pending').toLowerCase();
+                              const waStatusClass = stat === 'failed' ? 'bg-destructive/10 text-destructive' : stat === 'sent' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground';
+
+                              return (
+                                <tr
+                                  key={lead._id}
+                                  className={`transition-colors hover:bg-muted/30 
+                                    ${enricherEditMode && selectedIds.includes(lead._id) ? 'bg-primary/5' : ''}`
+                                  }
+                                >
+                                  {enricherEditMode && (
+                                    <td className="px-4 py-3 text-center border-r border-border/50">
+                                      <input
+                                        type="checkbox"
+                                        className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                                        checked={selectedIds.includes(lead._id)}
+                                        onChange={() => toggleSelectOne(lead._id)}
+                                      />
+                                    </td>
+                                  )}
+                                  <td className="px-4 py-3 text-center text-xs text-muted-foreground font-medium border-r border-border/50">{idx + 1}</td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-foreground text-sm tracking-tight">{lead.phone}</span>
+                                      {stat !== 'pending' && (
+                                        <Badge
+                                          variant="outline"
+                                          className={`text-[9px] uppercase font-black px-1.5 py-0.5 h-4.5 border transition-all duration-300 ${
+                                            stat === 'sent' ? 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.1)]' :
+                                            stat === 'failed' ? 'bg-rose-500/15 text-rose-600 border-rose-500/30 shadow-[0_0_8px_rgba(244,63,94,0.1)]' :
+                                            stat === 'sending' ? 'bg-blue-500/15 text-blue-600 border-blue-500/30 animate-pulse' :
+                                            'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                                          }`}
+                                        >
+                                          {stat}
+                                        </Badge>
+                                      )}
+                                      {stat === 'pending' && (
+                                        <span className="text-[10px] text-muted-foreground/50 font-medium uppercase tracking-widest italic">Pending</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="font-semibold text-foreground text-sm truncate max-w-[160px]">{lead.name}</div>
+                                    {lead.keyword && <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{lead.keyword}</div>}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-muted-foreground">
+                                    {lead.email || <span className="opacity-30">—</span>}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-muted-foreground">
+                                    {lead.city || '—'}
+                                  </td>
+                                  <td className="px-4 py-3 text-[10px] text-muted-foreground font-medium uppercase tracking-tight">
+                                    {lead.whatsappUpdatedAt ? new Date(lead.whatsappUpdatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : <span className="opacity-30">—</span>}
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 px-3 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 text-xs font-bold"
+                                        onClick={() => {
+                                          const activeTpl = whatsappTemplates.find(t => t.isActive);
+                                          const cleanPhone = lead.phone.replace(/\D/g, '');
+                                          let msg = activeTpl ? renderTemplateMessage(activeTpl.message, lead) : '';
+                                          setWaModal({ open: true, phone: cleanPhone, message: msg });
+                                        }}
+                                      >
+                                        <MessageSquare size={14} className="mr-1.5" /> WhatsApp
+                                      </Button>
+                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10" onClick={() => {
+                                        setConfirmModal({
+                                          open: true,
+                                          title: `Delete this lead (${lead.phone})?`,
+                                          onConfirm: async () => {
+                                            try {
+                                              await axios.delete(`/api/saved-leads/${lead._id}`);
+                                              showToast("Lead Deleted!", "success");
+                                              fetchSavedLeads();
+                                            } catch (e) { showToast("Delete failed", "error"); }
+                                          }
+                                        });
+                                      }}>
+                                        <X size={14} />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })()}
+
 
           {activeTab === 'saved_leads' && (
             <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
@@ -4561,6 +5236,8 @@ function App() {
                                                 return newStats;
                                               });
                                             }
+                                            fetchSavedLeads();
+                                            fetchStats();
 
                                           } catch (err) {
                                             showToast('WA Broadcast failed: ' + (err.response?.data?.error || err.message), 'error');
@@ -4675,8 +5352,8 @@ function App() {
                                               <div className="flex items-center gap-2">
                                                 {(() => {
                                                   const cleanP = lead.phone.replace(/\D/g, '');
-                                                  const stat = waStatuses[cleanP];
-                                                  const waStatusClass = stat === 'failed' ? 'text-destructive' : stat === 'sent' ? 'text-amber-500' : 'text-emerald-600';
+                                                  const stat = (lead.whatsappStatus || waStatuses[cleanP] || 'pending').toLowerCase();
+                                                  const waStatusClass = stat === 'failed' ? 'text-destructive' : stat === 'sent' ? 'text-emerald-600' : 'text-amber-500';
                                                   return (
                                                     <span className={`font-semibold text-sm ${waStatusClass}`}>{lead.phone}</span>
                                                   );
@@ -4713,13 +5390,28 @@ function App() {
                                         </div>
                                       </td>
                                       <td className="px-4 py-3">
-                                        <Badge
-                                          variant={lead.isContacted ? "default" : "secondary"}
-                                          className={`cursor-pointer ${lead.isContacted ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20'}`}
-                                          onClick={async () => { await axios.put(`/api/saved-leads/${lead._id}/contacted`); fetchSavedLeads(); }}
-                                        >
-                                          {lead.isContacted ? <><Check size={12} className="mr-1" /> Contacted</> : <><Clock size={12} className="mr-1" /> Pending</>}
-                                        </Badge>
+                                        <div className="flex flex-col gap-2">
+                                          {(() => {
+                                            const stat = String(lead.whatsappStatus || waStatuses[lead.phone?.replace(/\D/g, '')] || 'pending').toLowerCase();
+                                            const label = stat === 'sent' ? 'Sent' : stat === 'failed' ? 'Failed' : 'Pending';
+                                            const badgeClass = stat === 'sent'
+                                              ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                                              : stat === 'failed'
+                                                ? 'bg-destructive/10 text-destructive border-destructive/20'
+                                                : 'bg-amber-500/10 text-amber-600 border-amber-500/20';
+                                            const Icon = stat === 'sent' ? CheckCheck : stat === 'failed' ? AlertTriangle : Clock;
+                                            return (
+                                              <Badge variant="outline" className={`w-fit ${badgeClass}`}>
+                                                <Icon size={12} className="mr-1" /> WhatsApp {label}
+                                              </Badge>
+                                            );
+                                          })()}
+                                          {lead.isContacted && (
+                                            <Badge variant="outline" className="w-fit bg-blue-500/10 text-blue-600 border-blue-500/20">
+                                              <Check size={12} className="mr-1" /> Contacted
+                                            </Badge>
+                                          )}
+                                        </div>
                                       </td>
                                       <td className="px-4 py-3 text-right">
                                         <div className="flex items-center justify-end gap-1.5">
@@ -4914,14 +5606,14 @@ function App() {
         <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <Card className="w-full max-w-md shadow-xl border-border/50 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center p-5 border-b border-border/50">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2"><Plus size={18} className="text-primary" /> Add Email Manually</h3>
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2"><Plus size={18} className="text-primary" /> Add Contact Manually</h3>
               <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 text-muted-foreground hover:bg-muted" onClick={() => !isAddingEmail && setAddEmailModal(false)}>
                 <X size={16} />
               </Button>
             </div>
             <CardContent className="p-5 space-y-4">
               <p className="text-sm text-muted-foreground">
-                Add a contact directly to the Email Enricher list. Email is required, others optional.
+                Add a contact directly to the system. Email or Phone is required for enrichment tracking.
               </p>
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-foreground">Email <span className="text-destructive">*</span></label>
@@ -4985,12 +5677,12 @@ function App() {
               </Button>
               <Button
                 className="flex-1 bg-primary hover:bg-primary/90 text-white font-bold shadow-glow-primary"
-                disabled={isAddingEmail || !addEmailForm.email.trim()}
+                disabled={isAddingEmail || (!addEmailForm.email.trim() && !addEmailForm.phone.trim())}
                 onClick={async () => {
                   setIsAddingEmail(true);
                   try {
                     await axios.post('/api/saved-leads/manual', addEmailForm);
-                    showToast('Email added!', 'success');
+                    showToast('Contact added!', 'success');
                     setAddEmailModal(false);
                     fetchSavedLeads();
                   } catch (e) {
@@ -4998,7 +5690,7 @@ function App() {
                   } finally { setIsAddingEmail(false); }
                 }}
               >
-                {isAddingEmail ? <><Loader2 size={16} className="animate-spin mr-2" /> Adding...</> : <><Plus size={16} className="mr-2" /> Add Email</>}
+                {isAddingEmail ? <><Loader2 size={16} className="animate-spin mr-2" /> Adding...</> : <><Plus size={16} className="mr-2" /> Add Contact</>}
               </Button>
             </div>
           </Card>

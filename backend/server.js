@@ -58,6 +58,12 @@ const scrapedLeadSchema = new mongoose.Schema({
   keyword: String,
   city: String,
   isContacted: { type: Boolean, default: false },
+  whatsappStatus: { type: String, default: 'pending' },
+  whatsappSentAt: { type: Date, default: null },
+  whatsappFailedAt: { type: Date, default: null },
+  whatsappError: { type: String, default: null },
+  whatsappLastMessage: { type: String, default: null },
+  whatsappUpdatedAt: { type: Date, default: null },
   website: { type: String, default: null }, // If populated, lead has a website — skip email enrichment
   // Email Enrichment Fields
   email: { type: String, default: null },
@@ -85,7 +91,8 @@ const settingsSchema = new mongoose.Schema({
   profilePic: { type: String, default: '' },
   publicEmail: { type: String, default: '' },
   userName: { type: String, default: 'Muntazir' },
-  userRole: { type: String, default: 'Admin' }
+  userRole: { type: String, default: 'Admin' },
+  mapBusinessCategories: { type: [String], default: [] }
 });
 const Settings = mongoose.models.Settings || mongoose.model('Settings', settingsSchema);
 
@@ -198,7 +205,7 @@ const initWhatsapp = async () => {
       try {
         const waLeads = await Recipient.find({ email: /@whatsapp\.com$/ });
         console.log(`[WhatsApp] 🔧 Refreshing contact info for ${waLeads.length} leads via chats...`);
-        
+
         // Build a map of phone -> chat from actual WhatsApp chats
         const allChats = await waClient.getChats();
         const chatMap = {};
@@ -220,7 +227,7 @@ const initWhatsapp = async () => {
             const contact = await chat.getContact();
             freshName = contact.pushname || contact.name;
             freshPic = await contact.getProfilePicUrl().catch(() => null);
-          } catch(e) {}
+          } catch (e) { }
 
           let changed = false;
           if (freshName) {
@@ -234,7 +241,7 @@ const initWhatsapp = async () => {
           if (changed) { await lead.save(); fixed++; }
         }
         console.log(`[WhatsApp] ✅ Contact refresh done. Fixed ${fixed}/${waLeads.length} leads.`);
-      } catch(e) { console.error('[WhatsApp] Contact refresh error:', e.message); }
+      } catch (e) { console.error('[WhatsApp] Contact refresh error:', e.message); }
     }, 5000);
   });
   waClient.on('auth_failure', () => { waStatus = 'disconnected'; waQr = ''; });
@@ -254,8 +261,8 @@ const initWhatsapp = async () => {
       try {
         const chat = await msg.getChat();
         contact = await chat.getContact();
-      } catch(e) {}
-      
+      } catch (e) { }
+
       if (!lead) {
         let name = contact ? (contact.pushname || contact.name) : null;
         let pic = null;
@@ -265,12 +272,12 @@ const initWhatsapp = async () => {
         if (!name) name = '+' + phone;
 
         lead = new Recipient({
-          email: phone + '@whatsapp.com', 
+          email: phone + '@whatsapp.com',
           status: 'replied',
           profilePic: pic,
           whatsappName: name,
-          data: { 
-            'First Name': name, 
+          data: {
+            'First Name': name,
             Phone: phone,
             Source: 'WhatsApp Inbound',
             waId: phone
@@ -300,7 +307,7 @@ const initWhatsapp = async () => {
         await lead.save();
         console.log(`[WhatsApp] ✅ Reply saved from +${phone}: "${msg.body.substring(0, 40)}"`);
       }
-    } catch(err) { console.error('[WhatsApp] processMessage error:', err.message); }
+    } catch (err) { console.error('[WhatsApp] processMessage error:', err.message); }
   };
 
   // Also keep event listeners as backup
@@ -335,7 +342,7 @@ const initWhatsapp = async () => {
       }
       console.log(`[WhatsApp] Scan done: ${found} new msgs saved.`);
       lastChecked = Date.now() - 2000;
-    } catch(e) { console.error('[WhatsApp] scanChats error:', e.message); }
+    } catch (e) { console.error('[WhatsApp] scanChats error:', e.message); }
   };
 
 
@@ -357,9 +364,9 @@ const initWhatsapp = async () => {
         clearInterval(poll);
         // Don't start chatPoll here - wait for 'ready' event which guarantees full init
       } else if (state === 'OPENING') {
-        if (++openings > 15 && !waQr) { console.log('[WhatsApp] OPENING timeout'); clearInterval(poll); try { await waClient.destroy(); } catch(e) {} setTimeout(() => initWhatsapp(), 2000); }
+        if (++openings > 15 && !waQr) { console.log('[WhatsApp] OPENING timeout'); clearInterval(poll); try { await waClient.destroy(); } catch (e) { } setTimeout(() => initWhatsapp(), 2000); }
       } else { openings = 0; }
-    } catch(e) {}
+    } catch (e) { }
   }, 2000);
 
   // Start chat polling ONLY from ready event (guarantees full init)
@@ -1363,8 +1370,12 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
               else req.continue();
             });
             const isFacebook = link.includes('facebook.com');
-            await workerPage.goto(link, { waitUntil: isFacebook ? 'networkidle2' : 'domcontentloaded', timeout: 15000 });
-            await new Promise(r => setTimeout(r, isFacebook ? 3000 : 1200));
+            const targetUrl = isFacebook 
+              ? (link.includes('profile.php') ? `${link}&sk=about` : `${link.replace(/\/$/, '')}/about`)
+              : link;
+
+            await workerPage.goto(targetUrl, { waitUntil: isFacebook ? 'networkidle2' : 'domcontentloaded', timeout: 20000 });
+            await new Promise(r => setTimeout(r, isFacebook ? 4000 : 1500));
 
             const data = await workerPage.evaluate(() => {
               const ogTitle = document.querySelector('meta[property="og:title"]')?.content || '';
@@ -1384,7 +1395,9 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
                 text: document.documentElement.outerHTML,
                 rawName,
                 bioLinks: Array.from(document.querySelectorAll('a[href]')).map(a => a.href).join(' '),
-                mailtos: Array.from(document.querySelectorAll('a[href^="mailto:"]')).map(a => a.href.replace('mailto:', '').split('?')[0])
+                mailtos: Array.from(document.querySelectorAll('a[href^="mailto:"]')).map(a => a.href.replace('mailto:', '').split('?')[0]),
+                // Aggressive phone extraction for FB/Social
+                allPhones: Array.from(document.body.innerText.matchAll(/(?:\+?\d{1,3}[\s-]*)?\(?\d{2,4}\)?[\s-]*\d{3,4}[\s-]*\d{3,4}/g)).map(m => m[0])
               };
             });
 
@@ -1396,24 +1409,38 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
 
             const candidates = [...data.mailtos, ...extractEmailsFromText(data.text)];
             if (preFoundEmail) candidates.push(preFoundEmail);
-
             const validEmails = candidates.filter(isGenericEmail);
 
-            if (validEmails.length > 0) {
-              const finalEmail = validEmails[0];
-              if (foundEmailsSet.has(finalEmail.toLowerCase())) return;
-              foundEmailsSet.add(finalEmail.toLowerCase());
+            // Phone extraction logic
+            let finalPhone = 'N/A';
+            const phoneCandidates = (data.allPhones || []).map(p => extractMobileDigits(p)).filter(Boolean);
+            if (phoneCandidates.length > 0) finalPhone = phoneCandidates[0];
+
+            if (validEmails.length > 0 || finalPhone !== 'N/A') {
+              const finalEmail = validEmails.length > 0 ? validEmails[0] : null;
+              
+              if (finalEmail && foundEmailsSet.has(finalEmail.toLowerCase())) return;
+              if (finalEmail) foundEmailsSet.add(finalEmail.toLowerCase());
 
               const leadData = {
                 name: cleanSocialName(data.rawName, link),
-                phone: 'N/A', address: 'N/A',
-                email: finalEmail,
-                emailFound: true,
+                phone: finalPhone, 
+                address: 'N/A',
+                email: finalEmail || 'N/A',
+                emailFound: !!finalEmail,
                 emailSource: source,
                 mapsLink: link,
                 keyword, city
               };
-              try { await ScrapedLead.findOneAndUpdate({ mapsLink: link }, { $set: leadData }, { upsert: true }); } catch (dbErr) { }
+              
+              try { 
+                await ScrapedLead.findOneAndUpdate(
+                  { mapsLink: link }, 
+                  { $set: leadData, $setOnInsert: { createdAt: new Date() } }, 
+                  { upsert: true }
+                ); 
+              } catch (dbErr) { }
+              
               sendData({ type: 'lead', data: leadData });
             }
           } catch (e) { /* swallow */ }
@@ -1469,40 +1496,397 @@ const distanceKm = (aLat, aLng, bLat, bLng) => {
   return earthKm * 2 * Math.atan2(Math.sqrt(s1 + s2), Math.sqrt(1 - s1 - s2));
 };
 
-const ALL_BUSINESS_MAP_CATEGORIES = [
+const extractMobileDigits = (value) => {
+  const raw = String(value || '');
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return null;
+
+  const mobileMatch = raw.match(/(?:\+?91[\s-]*)?([6-9]\d{9})\b/);
+  if (mobileMatch) return `91${mobileMatch[1]}`;
+
+  if (digits.length === 12 && digits.startsWith('91') && /^[6-9]\d{9}$/.test(digits.slice(2))) {
+    return digits;
+  }
+
+  if (digits.length === 11 && digits.startsWith('0') && /^[6-9]\d{9}$/.test(digits.slice(1))) {
+    return `91${digits.slice(1)}`;
+  }
+
+  if (digits.length === 10 && /^[6-9]\d{9}$/.test(digits)) {
+    return `91${digits}`;
+  }
+
+  return null;
+};
+
+const hasValidMobileNumber = (value) => !!extractMobileDigits(value);
+const hasAnyPhone = (value) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits.length >= 6;
+};
+
+const findScrapedLeadByPhone = async (value) => {
+  const target = extractMobileDigits(value);
+  if (!target) return null;
+
+  const digits10 = target.slice(-10);
+  const candidates = await ScrapedLead.find({
+    $or: [
+      { phone: { $regex: digits10 } },
+      { phone: { $regex: target } },
+      { 'data.Phone': { $regex: digits10 } },
+      { 'data.Phone': { $regex: target } },
+      { 'data.phone': { $regex: digits10 } },
+      { 'data.phone': { $regex: target } }
+    ]
+  }).limit(25);
+
+  return candidates.find(lead => {
+    const leadPhone = extractMobileDigits(lead.phone || lead.data?.Phone || lead.data?.phone || '');
+    return leadPhone && (leadPhone === target || leadPhone.endsWith(digits10) || target.endsWith(leadPhone.slice(-10)));
+  }) || null;
+};
+
+const updateScrapedLeadWhatsappStatus = async ({ phone, status, message = null, error = null }) => {
+  const lead = await findScrapedLeadByPhone(phone);
+  if (!lead) return null;
+
+  lead.whatsappStatus = status;
+  lead.whatsappUpdatedAt = new Date();
+  if (typeof message === 'string') lead.whatsappLastMessage = message;
+
+  if (status === 'sent') {
+    lead.whatsappSentAt = new Date();
+    lead.whatsappFailedAt = null;
+    lead.whatsappError = null;
+    lead.isContacted = true;
+  } else if (status === 'failed') {
+    lead.whatsappFailedAt = new Date();
+    lead.whatsappError = error || 'WhatsApp send failed';
+  } else if (status === 'pending') {
+    lead.whatsappError = null;
+  }
+
+  await lead.save();
+  return lead;
+};
+
+const DEFAULT_MAP_BUSINESS_CATEGORIES = [
   'restaurant',
   'cafe',
+  'coffee shop',
+  'tea stall',
+  'snack shop',
+  'food stall',
+  'street food',
+  'tiffin service',
+  'mess',
   'salon',
+  'barber',
+  'spa',
+  'beauty salon',
+  'unisex salon',
+  'nail salon',
   'grocery store',
+  'supermarket',
+  'convenience store',
+  'department store',
+  'market',
+  'kirana store',
   'clothing store',
+  'fashion store',
+  'apparel store',
+  'boutique',
+  'tailor',
   'hardware store',
+  'building materials store',
+  'cement store',
   'mobile shop',
+  'mobile phone shop',
+  'mobile repair',
   'electronics store',
+  'computer store',
+  'computer repair',
+  'printer repair',
+  'internet cafe',
   'gym',
+  'fitness center',
+  'yoga studio',
   'dentist',
   'clinic',
+  'medical clinic',
+  'diagnostic centre',
+  'hospital',
   'pharmacy',
+  'medical store',
   'bakery',
+  'ice cream shop',
+  'sweets shop',
+  'bakeries',
   'furniture store',
+  'home goods store',
+  'interior designer',
+  'modular kitchen',
   'car repair',
+  'car wash',
+  'tire shop',
+  'battery shop',
+  'gas station',
+  'auto parts store',
+  'car dealership',
   'real estate agency',
+  'property dealer',
   'travel agency',
+  'tour operator',
   'jewellery store',
+  'jewelry store',
   'printing shop',
-  'pet shop'
+  'photocopy shop',
+  'lamination shop',
+  'pet shop',
+  'book store',
+  'gift shop',
+  'toy store',
+  'sports store',
+  'hotel',
+  'guest house',
+  'lodging',
+  'school',
+  'college',
+  'university',
+  'coaching center',
+  'laundry',
+  'dry cleaner',
+  'restaurant',
+  'fast food',
+  'food court',
+  'juice shop',
+  'sweet shop',
+  'dessert shop',
+  'meat shop',
+  'fish market',
+  'vegetable market',
+  'flower shop',
+  'hardware merchant',
+  'stationery store',
+  'gift article shop',
+  'bank',
+  'atm',
+  'finance',
+  'insurance',
+  'saloon',
+  'warehouse',
+  'office',
+  'it company',
+  'software company',
+  'marketing agency',
+  'advertising agency',
+  'architect',
+  'builder',
+  'contractor',
+  'plumber',
+  'electrician',
+  'mechanic',
+  'doctor',
+  'physiotherapy',
+  'lab',
 ];
 
-const getMapSearchTerms = (keyword, shouldFindAllBusinesses) => {
-  if (shouldFindAllBusinesses) return ALL_BUSINESS_MAP_CATEGORIES;
+const normalizeMapCategory = (value) => String(value || '').toLowerCase().trim().replace(/\s+/g, ' ');
+
+const parseCategoryInput = (value) => (
+  Array.isArray(value)
+    ? value.flatMap(item => String(item).split(/[\n,]+/))
+    : String(value || '').split(/[\n,]+/)
+).map(normalizeMapCategory).filter(Boolean);
+
+const dedupeCategories = (items) => [...new Set(items.map(normalizeMapCategory).filter(Boolean))];
+
+const getMapSearchTerms = (keyword, shouldFindAllBusinesses, categories = DEFAULT_MAP_BUSINESS_CATEGORIES) => {
+  if (shouldFindAllBusinesses) return dedupeCategories(categories);
   const term = String(keyword || '').trim();
   return term ? [term] : [];
 };
 
+const OVERPASS_ENDPOINTS = [
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
+];
+
+const OVERPASS_KEYWORD_ALIASES = {
+  restaurant: [
+    ['amenity', 'restaurant'],
+    ['amenity', 'cafe'],
+    ['amenity', 'fast_food'],
+    ['amenity', 'bar'],
+    ['amenity', 'pub'],
+  ],
+  cafes: [['amenity', 'cafe']],
+  cafe: [['amenity', 'cafe']],
+  gym: [['leisure', 'fitness_centre']],
+  dentist: [['amenity', 'dentist']],
+  clinic: [['amenity', 'clinic']],
+  pharmacy: [['amenity', 'pharmacy']],
+  salon: [['shop', 'hairdresser']],
+  bakery: [['shop', 'bakery']],
+  'grocery store': [['shop', 'supermarket'], ['shop', 'convenience']],
+  'clothing store': [['shop', 'clothes']],
+  'hardware store': [['shop', 'hardware']],
+  'mobile shop': [['shop', 'electronics']],
+  'electronics store': [['shop', 'electronics']],
+  'furniture store': [['shop', 'furniture']],
+  'car repair': [['shop', 'car_repair']],
+  'real estate agency': [['office', 'estate_agent']],
+  'travel agency': [['office', 'travel_agent']],
+  'jewellery store': [['shop', 'jewelry']],
+  'printing shop': [['shop', 'copyshop']],
+  'pet shop': [['shop', 'pet']],
+  hotel: [['tourism', 'hotel']],
+  school: [['amenity', 'school']],
+  office: [['office', null]],
+};
+
+const normalizeBusinessText = (value) => String(value || '').toLowerCase().trim().replace(/\s+/g, ' ');
+
+const getBusinessMatchTokens = (keyword) => {
+  const key = normalizeBusinessText(keyword);
+  const tokens = new Set([key, key.replace(/s$/, '')].filter(Boolean));
+  const aliases = OVERPASS_KEYWORD_ALIASES[key] || [];
+  for (const [, value] of aliases) {
+    if (value) tokens.add(String(value).toLowerCase());
+  }
+  return [...tokens];
+};
+
+const matchesBusinessKeyword = (item, keyword) => {
+  const key = normalizeBusinessText(keyword);
+  if (!key) return true;
+  const haystack = normalizeBusinessText([
+    item.name,
+    item.category,
+    item.address,
+    item.website,
+  ].filter(Boolean).join(' '));
+  return getBusinessMatchTokens(key).some(token => haystack.includes(token));
+};
+
+const buildOverpassQuery = ({ keyword, lat, lng, radiusMeters, allBusinesses, limit }) => {
+  const baseRadius = Math.max(500, Math.min(Number(radiusMeters) || 5000, 50000));
+  const maxOut = Math.max(20, Math.min(Number(limit) || 60, 200));
+
+  if (allBusinesses) {
+    return `
+      [out:json][timeout:25];
+      (
+        nwr(around:${baseRadius},${lat},${lng})["name"]["amenity"];
+        nwr(around:${baseRadius},${lat},${lng})["name"]["shop"];
+        nwr(around:${baseRadius},${lat},${lng})["name"]["office"];
+        nwr(around:${baseRadius},${lat},${lng})["name"]["craft"];
+        nwr(around:${baseRadius},${lat},${lng})["name"]["healthcare"];
+        nwr(around:${baseRadius},${lat},${lng})["name"]["tourism"];
+        nwr(around:${baseRadius},${lat},${lng})["name"]["leisure"];
+      );
+      out center tags qt ${maxOut};
+    `;
+  }
+
+  const key = normalizeBusinessText(keyword);
+  const aliases = OVERPASS_KEYWORD_ALIASES[key] || [];
+  const clauses = aliases.length
+    ? aliases
+      .map(([tag, value]) => value
+        ? `nwr(around:${baseRadius},${lat},${lng})["name"]["${tag}"="${value}"];`
+        : `nwr(around:${baseRadius},${lat},${lng})["name"]["${tag}"];`)
+      .join('\n')
+    : `
+        nwr(around:${baseRadius},${lat},${lng})["name"]["amenity"];
+        nwr(around:${baseRadius},${lat},${lng})["name"]["shop"];
+        nwr(around:${baseRadius},${lat},${lng})["name"]["office"];
+        nwr(around:${baseRadius},${lat},${lng})["name"]["craft"];
+        nwr(around:${baseRadius},${lat},${lng})["name"]["healthcare"];
+        nwr(around:${baseRadius},${lat},${lng})["name"]["tourism"];
+        nwr(around:${baseRadius},${lat},${lng})["name"]["leisure"];
+      `;
+
+  return `
+    [out:json][timeout:25];
+    (
+      ${clauses}
+    );
+    out center tags qt ${maxOut};
+  `;
+};
+
+const fetchOverpassBusinesses = async ({ keyword, lat, lng, radiusKm, limit, allBusinesses }) => {
+  const query = buildOverpassQuery({
+    keyword,
+    lat,
+    lng,
+    radiusMeters: Number(radiusKm) * 1000,
+    allBusinesses,
+    limit
+  });
+
+  const payload = new URLSearchParams({ data: query });
+  const headers = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Accept': 'application/json',
+    'User-Agent': 'LeadPulse/1.0 (+local development)',
+  };
+
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint, { method: 'POST', headers, body: payload.toString() });
+      if (!res.ok) continue;
+      const json = await res.json();
+      const elements = Array.isArray(json.elements) ? json.elements : [];
+      if (elements.length === 0) continue;
+
+      return elements.map((el) => {
+        const tags = el.tags || {};
+        const coords = el.lat && el.lon
+          ? { latitude: Number(el.lat), longitude: Number(el.lon) }
+          : el.center
+            ? { latitude: Number(el.center.lat), longitude: Number(el.center.lon) }
+            : { latitude: null, longitude: null };
+
+        const name = tags.name || tags.brand || tags.operator || tags['addr:housename'] || 'Unknown';
+        const phone = extractMobileDigits(tags.phone || tags['contact:phone'] || tags['contact:mobile'] || tags['phone'] || '');
+        const website = tags.website || tags['contact:website'] || tags['contact:web'] || '';
+        const address = [
+          tags['addr:housenumber'],
+          tags['addr:street'],
+          tags['addr:suburb'],
+          tags['addr:city'],
+        ].filter(Boolean).join(', ') || tags['addr:full'] || tags['addr:place'] || 'N/A';
+        const category = tags.amenity || tags.shop || tags.office || tags.craft || tags.healthcare || tags.tourism || tags.leisure || 'business';
+
+        return {
+          name,
+          phone,
+          address,
+          website,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          category,
+        };
+      }).filter(item => item.name && item.name !== 'Unknown');
+    } catch (err) {
+      console.log('[Overpass] endpoint failed:', endpoint, err.message);
+    }
+  }
+
+  return [];
+};
+
 const configureFastMapsPage = async (page) => {
+  page.setCacheEnabled(false);
+  page.setDefaultNavigationTimeout(20000);
+  page.setDefaultTimeout(6000);
   await page.setRequestInterception(true).catch(() => { });
   page.on('request', (req) => {
     const resourceType = req.resourceType();
-    if (['image', 'media', 'font'].includes(resourceType)) return req.abort().catch(() => { });
+    if (['image', 'media', 'font', 'stylesheet', 'manifest', 'ping'].includes(resourceType)) return req.abort().catch(() => { });
     return req.continue().catch(() => { });
   });
 };
@@ -1512,15 +1896,8 @@ const launchScraperBrowser = async () => {
     executablePath: executablePath(),
     userDataDir: BROWSER_SESSION_DIR,
     headless: "new",
-    args: [
-      '--no-sandbox', 
-      '--disable-setuid-sandbox', 
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--disable-features=IsolateOrigins,site-per-process',
-      '--blink-settings=imagesEnabled=false'
-    ],
-    timeout: 60000
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    timeout: 90000
   };
 
   try {
@@ -1539,9 +1916,9 @@ const launchScraperBrowser = async () => {
 
 const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
   const { noWebsiteOnly = true, originLat, originLng, radiusKm } = options;
-  await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await workerPage.waitForSelector('h1', { timeout: 5000 }).catch(() => { });
-  await new Promise(r => setTimeout(r, 500));
+  await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 18000 });
+  await workerPage.waitForSelector('h1', { timeout: 3000 }).catch(() => { });
+  await new Promise(r => setTimeout(r, 120));
 
   const details = await workerPage.evaluate((skipWebsites) => {
     const pageText = document.body?.innerText || '';
@@ -1558,17 +1935,21 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
     if (skipWebsites && websiteBtn) return null;
 
     const phoneBtn = document.querySelector('[data-item-id^="phone:tel:"]');
-    let phone = phoneBtn ? phoneBtn.innerText || phoneBtn.getAttribute('aria-label') : 'N/A';
-    if (phone !== 'N/A') phone = phone.replace(/[^\d+\s-]/g, '').trim();
+    const phone = (phoneBtn ? phoneBtn.innerText || phoneBtn.getAttribute('aria-label') : '');
+    const mobile = String(phone || '').replace(/[^\d+]/g, '').trim();
+    const normalizedPhone = mobile ? mobile.replace(/\D/g, '') : '';
+    if (!normalizedPhone) return null;
 
     const addressBtn = document.querySelector('[data-item-id="address"]');
     let address = addressBtn ? addressBtn.innerText || addressBtn.getAttribute('aria-label') : 'N/A';
     if (address !== 'N/A') address = address.replace('Address: ', '').trim();
 
-    return { name, phone, address, pageUrl: window.location.href };
+    return { name, phone: phone, address, pageUrl: window.location.href };
   }, noWebsiteOnly);
 
   if (!details) return null;
+  const normalizedPhone = extractMobileDigits(details.phone);
+  if (!normalizedPhone) return null;
 
   const coords = parseGoogleMapsCoords(details.pageUrl || link);
   const distance = distanceKm(Number(originLat), Number(originLng), coords.latitude, coords.longitude);
@@ -1576,7 +1957,7 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
 
   return {
     name: details.name,
-    phone: details.phone,
+    phone: normalizedPhone,
     address: details.address,
     latitude: coords.latitude,
     longitude: coords.longitude,
@@ -1588,15 +1969,18 @@ app.get('/api/map-businesses', async (req, res) => {
   const { keyword, lat, lng, radiusKm = 5, limit = 60, noWebsiteOnly = 'true', allBusinesses = 'false' } = req.query;
   const originLat = Number(lat);
   const originLng = Number(lng);
-  const radius = Math.max(0.5, Math.min(Number(radiusKm) || 5, 50));
+  let radius = Math.max(0.5, Math.min(Number(radiusKm) || 5, 50));
   const maxLeads = Math.max(5, Math.min(Number(limit) || 60, 200));
   const shouldFindAllBusinesses = allBusinesses === 'true';
   const searchKeyword = shouldFindAllBusinesses ? 'businesses' : String(keyword || '').trim();
   const savedKeyword = shouldFindAllBusinesses ? 'All Businesses' : searchKeyword;
 
   if ((!shouldFindAllBusinesses && !searchKeyword) || !Number.isFinite(originLat) || !Number.isFinite(originLng)) {
+    console.error(`[MapFinder] ❌ Missing params: kw=${searchKeyword}, lat=${originLat}, lng=${originLng}`);
     return res.status(400).json({ error: 'Keyword, lat and lng are required' });
   }
+
+  console.log(`[MapFinder] 🔍 Starting scan: "${savedKeyword}" | Radius: ${radius}km | Limit: ${maxLeads} | NoWebsite: ${noWebsiteOnly}`);
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -1616,118 +2000,279 @@ app.get('/api/map-businesses', async (req, res) => {
 
   const processedLinks = new Set();
   let saved = 0;
+  let scanCycle = 0;
 
   try {
-    browser = await launchScraperBrowser();
-    const page = await browser.newPage();
-    await configureFastMapsPage(page);
-    const workerCount = shouldFindAllBusinesses ? 6 : 4;
-    const workerPages = await Promise.all(
-      Array.from({ length: workerCount }, async () => {
-        const workerPage = await browser.newPage();
-        await configureFastMapsPage(workerPage);
-        return workerPage;
-      })
-    );
-    const zoom = getMapsZoomForRadius(radius);
-    const searchTerms = getMapSearchTerms(searchKeyword, shouldFindAllBusinesses);
-    const city = `MAP ${originLat.toFixed(4)}, ${originLng.toFixed(4)} • ${radius}km`;
-
-    sendData({ type: 'status', message: `Opening map search for ${savedKeyword} within ${radius}km...` });
-
-    for (const term of searchTerms) {
-      if (isCancelled || saved >= maxLeads) break;
-
-      const query = `${term} near ${originLat},${originLng}`;
-      const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${originLat},${originLng},${zoom}z`;
-
+    while (!isCancelled && saved < maxLeads) {
+      const effectiveRadius = Math.max(0.5, Math.min(radius, 50));
       sendData({
         type: 'status',
-        message: shouldFindAllBusinesses
-          ? `Scanning ${term} nearby... saved ${saved}/${maxLeads}.`
-          : `Scanning ${term} nearby...`
+        message: scanCycle === 0
+          ? `Fast scan: loading nearby businesses from live map data...`
+          : `Target not reached yet. Continuing scan cycle ${scanCycle + 1}...`
       });
 
-      await page.goto(mapsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.waitForSelector('div[role="feed"]', { timeout: 15000 }).catch(() => { });
+      let overpassLeads = await fetchOverpassBusinesses({
+        keyword: searchKeyword,
+        lat: originLat,
+        lng: originLng,
+        radiusKm: effectiveRadius,
+        limit: maxLeads,
+        allBusinesses: shouldFindAllBusinesses,
+      });
+      console.log(`[MapFinder] Overpass found ${overpassLeads.length} leads nearby.`);
 
-      let consecutiveNoResults = 0;
-      const maxDryScrolls = shouldFindAllBusinesses ? 8 : 100;
-      for (let loop = 0; !isCancelled && saved < maxLeads; loop++) {
-        await page.evaluate(async () => {
-          const feed = document.querySelector('div[role="feed"]');
-          if (feed?.lastElementChild) feed.lastElementChild.scrollIntoView();
-          await new Promise(r => setTimeout(r, 1800));
+      const applyWebsiteFilter = (items) => (
+        noWebsiteOnly === 'false'
+          ? items
+          : items.filter((item) => !item.website)
+      );
+
+      let filtered = shouldFindAllBusinesses
+        ? applyWebsiteFilter(overpassLeads)
+        : overpassLeads
+          .filter((item) => matchesBusinessKeyword(item, searchKeyword))
+          .filter((item) => (noWebsiteOnly === 'false' ? true : !item.website));
+      
+      console.log(`[MapFinder] Filtered leads after matching: ${filtered.length}`);
+
+      if (filtered.length === 0 && overpassLeads.length > 0 && noWebsiteOnly !== 'false') {
+        sendData({
+          type: 'status',
+          message: shouldFindAllBusinesses
+            ? 'No-website filter was too strict. Showing nearby businesses with websites too.'
+            : 'No-website filter was too strict. Showing nearby matches instead.'
         });
+        filtered = shouldFindAllBusinesses
+          ? overpassLeads
+          : overpassLeads.filter((item) => matchesBusinessKeyword(item, searchKeyword));
+      }
 
-        const links = await page.evaluate(() => {
-          const selectors = [
-            'a[href*="https://www.google.com/maps/place/"]',
-            'a[href*="/maps/place/"]'
-          ];
-          return selectors.flatMap(selector => Array.from(document.querySelectorAll(selector)).map(a => a.href));
+      if (filtered.length === 0 && !shouldFindAllBusinesses) {
+        sendData({ type: 'status', message: 'Expanding fast scan to all nearby businesses...' });
+        const broadLeads = await fetchOverpassBusinesses({
+          keyword: searchKeyword,
+          lat: originLat,
+          lng: originLng,
+          radiusKm: effectiveRadius,
+          limit: maxLeads,
+          allBusinesses: true,
         });
-
-        const newLinks = [...new Set(links)].filter(link => !processedLinks.has(link));
-        if (newLinks.length === 0) {
-          consecutiveNoResults++;
-          sendData({ type: 'status', message: `Still searching ${term}... saved ${saved}/${maxLeads}.` });
-          if (consecutiveNoResults >= maxDryScrolls) {
-            sendData({ type: 'status', message: `No more fresh ${term} results. Moving ahead...` });
-            break;
-          }
-          if (consecutiveNoResults % 40 === 0) {
-            await page.goto(mapsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => { });
-            await page.waitForSelector('div[role="feed"]', { timeout: 10000 }).catch(() => { });
-            sendData({ type: 'status', message: `Refreshing map search and continuing... saved ${saved}/${maxLeads}.` });
-          }
-          await new Promise(r => setTimeout(r, 2200));
-          continue;
+        overpassLeads = broadLeads;
+        filtered = broadLeads
+          .filter((item) => matchesBusinessKeyword(item, searchKeyword))
+          .filter((item) => (noWebsiteOnly === 'false' ? true : !item.website));
+        if (filtered.length === 0 && broadLeads.length > 0 && noWebsiteOnly !== 'false') {
+          sendData({ type: 'status', message: 'Relaxing website filter to avoid empty results.' });
+          filtered = broadLeads.filter((item) => matchesBusinessKeyword(item, searchKeyword));
         }
+      }
 
-        consecutiveNoResults = 0;
-        const batch = newLinks.slice(0, Math.max(0, maxLeads - saved));
-        const processMapLink = async (link, workerPage) => {
+      if (filtered.length > 0) {
+        filtered = filtered.slice(0, Math.max(0, maxLeads - saved));
+
+        for (const [index, item] of filtered.entries()) {
+          const mapsLink = item.latitude && item.longitude
+            ? `https://www.google.com/maps/search/?api=1&query=${item.latitude},${item.longitude}`
+            : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name)}`;
+
+          const leadData = {
+            name: item.name,
+            phone: item.phone || 'N/A',
+            address: item.address || 'N/A',
+            latitude: item.latitude,
+            longitude: item.longitude,
+            mapsLink,
+            keyword: savedKeyword,
+            category: item.category || searchKeyword,
+            city: `MAP ${originLat.toFixed(4)}, ${originLng.toFixed(4)} • ${effectiveRadius}km`,
+            source: 'overpass',
+            radiusKm: effectiveRadius,
+            website: item.website || '',
+          };
+
+          if (!hasAnyPhone(leadData.phone)) {
+            console.log(`[Overpass] Skipping +${leadData.phone} (no phone)`);
+            continue;
+          }
+
           try {
-            const details = await extractGoogleMapsLead(workerPage, link, {
-              noWebsiteOnly: noWebsiteOnly !== 'false',
-              originLat,
-              originLng,
-              radiusKm: radius
-            });
-
-            if (!details || isCancelled || saved >= maxLeads) return;
-
-            const leadData = {
-              ...details,
-              mapsLink: link,
-              keyword: savedKeyword,
-              category: term,
-              city,
-              source: 'map-range',
-              radiusKm: radius
-            };
-
             await ScrapedLead.findOneAndUpdate(
-              { mapsLink: link },
+              { mapsLink },
               { $set: leadData, $setOnInsert: { createdAt: new Date() } },
               { upsert: true, new: true }
             );
-
             saved++;
             sendData({ type: 'lead', data: leadData, saved });
-          } catch (e) {
-            console.log("[Map Range] worker error:", e.message);
+          } catch (dbErr) {
+            console.log('[Overpass] DB save error:', dbErr.message);
           }
-        };
-
-        for (let i = 0; i < batch.length && !isCancelled && saved < maxLeads; i += workerPages.length) {
-          const chunk = batch.slice(i, i + workerPages.length);
-          chunk.forEach(link => processedLinks.add(link));
-          await Promise.all(chunk.map((link, index) => processMapLink(link, workerPages[index])));
         }
+      }
 
-        sendData({ type: 'status', message: `Saved ${saved} leads. Found ${newLinks.length} new ${term} links.` });
+      if (saved >= maxLeads) {
+        sendData({
+          type: 'done',
+          message: `Target complete. Saved ${saved} nearby businesses to Lead Automation CRM.`,
+        });
+        res.end();
+        return;
+      }
+
+      sendData({
+        type: 'status',
+        message: `Saved ${saved}/${maxLeads}. Continuing scan until target is reached...`
+      });
+
+      if (!browser) {
+        browser = await launchScraperBrowser();
+      }
+      const page = browser._leadPulseMapPage || await browser.newPage();
+      browser._leadPulseMapPage = page;
+      await configureFastMapsPage(page);
+      const workerCount = shouldFindAllBusinesses ? 8 : 6;
+      const workerPages = browser._leadPulseWorkerPages || await Promise.all(
+        Array.from({ length: workerCount }, async () => {
+          const workerPage = await browser.newPage();
+          await configureFastMapsPage(workerPage);
+          return workerPage;
+        })
+      );
+      browser._leadPulseWorkerPages = workerPages;
+      const zoom = getMapsZoomForRadius(effectiveRadius);
+      let mapCategories = DEFAULT_MAP_BUSINESS_CATEGORIES;
+      if (shouldFindAllBusinesses) {
+        try {
+          const settings = await Settings.findOne();
+          const configured = Array.isArray(settings?.mapBusinessCategories) && settings.mapBusinessCategories.length > 0
+            ? settings.mapBusinessCategories
+            : DEFAULT_MAP_BUSINESS_CATEGORIES;
+          mapCategories = dedupeCategories(configured);
+        } catch (e) {
+          mapCategories = DEFAULT_MAP_BUSINESS_CATEGORIES;
+        }
+      }
+
+      const searchTerms = getMapSearchTerms(searchKeyword, shouldFindAllBusinesses, mapCategories);
+      const city = `MAP ${originLat.toFixed(4)}, ${originLng.toFixed(4)} • ${effectiveRadius}km`;
+
+      sendData({ type: 'status', message: `Opening map search for ${savedKeyword} within ${effectiveRadius}km...` });
+
+      for (const term of searchTerms) {
+        if (isCancelled || saved >= maxLeads) break;
+
+        const query = `${term} near ${originLat},${originLng}`;
+        const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${originLat},${originLng},${zoom}z`;
+
+        console.log(`[MapFinder] 🌏 Navigating to: ${mapsUrl}`);
+        sendData({
+          type: 'status',
+          message: shouldFindAllBusinesses
+            ? `Scanning ${term} nearby... saved ${saved}/${maxLeads}.`
+            : `Scanning ${term} nearby...`
+        });
+
+        await page.goto(mapsUrl, { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => { });
+        await page.waitForSelector('div[role="feed"]', { timeout: 10000 }).catch(() => { });
+        await new Promise(r => setTimeout(r, 2000)); // Extra wait for results to settle
+
+        let consecutiveNoResults = 0;
+        const maxDryScrolls = shouldFindAllBusinesses ? 5 : 24;
+        for (let loop = 0; !isCancelled && saved < maxLeads; loop++) {
+          await page.evaluate(async () => {
+            const feed = document.querySelector('div[role="feed"]');
+            if (feed?.lastElementChild) feed.lastElementChild.scrollIntoView();
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+          });
+
+          const links = await page.evaluate(() => {
+            const selectors = [
+              'a[href*="https://www.google.com/maps/place/"]',
+              'a[href*="/maps/place/"]'
+            ];
+            return selectors.flatMap(selector => Array.from(document.querySelectorAll(selector)).map(a => a.href));
+          });
+
+          const newLinks = [...new Set(links)].filter(link => !processedLinks.has(link));
+          console.log(`[MapFinder] Loop ${loop}: Found ${links.length} total links, ${newLinks.length} new.`);
+          if (newLinks.length === 0) {
+            consecutiveNoResults++;
+            if (consecutiveNoResults >= maxDryScrolls) {
+              sendData({ type: 'status', message: `No more fresh results for ${term}.` });
+              break;
+            }
+            sendData({ type: 'status', message: `Scrolling map for ${term}... (${consecutiveNoResults}/${maxDryScrolls})` });
+            await new Promise(r => setTimeout(r, 500));
+            continue;
+          }
+          
+          sendData({ type: 'status', message: `Found ${newLinks.length} new businesses. Extracting details...` });
+
+          consecutiveNoResults = 0;
+          const batch = newLinks.slice(0, Math.max(0, maxLeads - saved));
+          const processMapLink = async (link, workerPage) => {
+            try {
+              const details = await extractGoogleMapsLead(workerPage, link, {
+                noWebsiteOnly: noWebsiteOnly !== 'false',
+                originLat,
+                originLng,
+                radiusKm: effectiveRadius
+              });
+
+              if (!details) {
+                console.log(`[MapFinder] ⏩ Skipping link (details failed): ${link}`);
+                return;
+              }
+              if (isCancelled || saved >= maxLeads) return;
+              if (!hasAnyPhone(details.phone)) {
+                console.log(`[MapFinder] ⏩ Skipping "${details.name}" (No phone found)`);
+                return;
+              }
+
+              const leadData = {
+                ...details,
+                mapsLink: link,
+                keyword: savedKeyword,
+                category: term,
+                city,
+                source: 'map-range',
+                radiusKm: effectiveRadius
+              };
+              
+              console.log(`[MapFinder] 💾 Saving lead: ${details.name} (+${details.phone})`);
+
+              await ScrapedLead.findOneAndUpdate(
+                { mapsLink: link },
+                { $set: leadData, $setOnInsert: { createdAt: new Date() } },
+                { upsert: true, new: true }
+              );
+
+              saved++;
+              sendData({ type: 'lead', data: leadData, saved });
+            } catch (e) {
+              console.log("[Map Range] worker error:", e.message);
+            }
+          };
+
+          for (let i = 0; i < batch.length && !isCancelled && saved < maxLeads; i += workerPages.length) {
+            const chunk = batch.slice(i, i + workerPages.length);
+            chunk.forEach(link => processedLinks.add(link));
+            await Promise.all(chunk.map((link, index) => processMapLink(link, workerPages[index])));
+          }
+
+          sendData({ type: 'status', message: `Saved ${saved} leads. Found ${newLinks.length} new ${term} links.` });
+          if (saved < maxLeads) await new Promise(r => setTimeout(r, 100));
+        }
+      }
+
+      if (saved < maxLeads) {
+        radius = Math.min(50, radius + 2);
+        scanCycle++;
+        sendData({
+          type: 'status',
+          message: `Target not reached yet. Continuing with wider scan radius ${radius}km...`
+        });
+        continue;
       }
     }
 
@@ -1797,24 +2342,29 @@ app.get('/api/scrape-leads', async (req, res) => {
 
     if (sourceList.includes('map') && !isCancelled) {
       const page = await browser.newPage();
-      const workerPage = await browser.newPage(); // Dedicated tab for deep details
+      const workerCount = 6;
+      const workerPages = await Promise.all(
+        Array.from({ length: workerCount }, async () => {
+          const workerPage = await browser.newPage();
+          await configureFastMapsPage(workerPage);
+          return workerPage;
+        })
+      );
       const query = `${keyword} in ${city}`;
-      await page.goto(`https://www.google.com/maps/search/${encodeURIComponent(query)}`);
+      await configureFastMapsPage(page);
+      await page.goto(`https://www.google.com/maps/search/${encodeURIComponent(query)}`, { waitUntil: 'domcontentloaded', timeout: 25000 });
 
-      await page.waitForSelector('div[role="feed"]', { timeout: 15000 }).catch(() => { });
+      await page.waitForSelector('div[role="feed"]', { timeout: 9000 }).catch(() => { });
 
       let consecutiveNoResults = 0;
       for (let loop = 0; loop < 1000; loop++) {
         if (isCancelled) break;
-        // BETTER SCROLL: Scroll to the last element in the feed
         const isEnd = await page.evaluate(async () => {
           const feed = document.querySelector('div[role="feed"]');
           if (feed) {
             const lastChild = feed.lastElementChild;
             if (lastChild) lastChild.scrollIntoView();
-            await new Promise(r => setTimeout(r, 2500));
-
-            // Check for "You've reached the end of the list" or similar markers
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
             const text = feed.innerText || "";
             return text.includes("You've reached the end of the list") || text.includes("No more results");
           }
@@ -1835,74 +2385,57 @@ app.get('/api/scrape-leads', async (req, res) => {
         if (newLinks.length === 0) {
           consecutiveNoResults++;
           sendData({ type: 'status', message: `Iteration ${loop + 1}: Scrolling for more... (${consecutiveNoResults}/100)` });
-          if (consecutiveNoResults >= 100) break; // Increased retry to 100 for deep scraping
+          if (consecutiveNoResults >= 22) break;
+          await new Promise(r => setTimeout(r, 320));
           continue;
         }
 
-        consecutiveNoResults = 0; // Reset counter if we found data
-        for (let link of newLinks) {
-          if (isCancelled) break;
+        consecutiveNoResults = 0;
+        const batch = newLinks.slice(0, Math.max(0, 200 - processedLinks.size));
+        const processLink = async (link, workerPage) => {
+          if (isCancelled) return;
           processedLinks.add(link);
           try {
-            // SCRAPE USING WORKER PAGE (DOES NOT DISTURB MAIN FEED)
-            await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            await workerPage.waitForSelector('h1', { timeout: 5000 }).catch(() => { });
-            await new Promise(r => setTimeout(r, 500));
-
-            const details = await workerPage.evaluate(() => {
-              const pageText = document.body?.innerText || '';
-              if (/permanently\s+closed/i.test(pageText)) return null;
-
-              let name = document.querySelector('h1')?.innerText;
-              if (!name) {
-                const title = document.title || '';
-                name = title.split('- Google')[0].trim() || 'Unknown';
-              }
-              if (name === 'Unknown' || name === '' || name === 'Google Maps') return null; // Skip junk leads
-
-
-              const websiteBtn = document.querySelector('[data-item-id="authority"]');
-
-              // WE ONLY TARGET BUSINESSES WITHOUT WEBSITES
-              if (websiteBtn) return null;
-
-              const phoneBtn = document.querySelector('[data-item-id^="phone:tel:"]');
-              let phone = phoneBtn ? phoneBtn.innerText || phoneBtn.getAttribute('aria-label') : 'N/A';
-              if (phone !== 'N/A') phone = phone.replace(/[^\d+\s-]/g, '').trim();
-
-              const addressBtn = document.querySelector('[data-item-id="address"]');
-              let address = addressBtn ? addressBtn.innerText || addressBtn.getAttribute('aria-label') : 'N/A';
-              if (address !== 'N/A') address = address.replace('Address: ', '').trim();
-
-              return { name, phone, address };
+            const details = await extractGoogleMapsLead(workerPage, link, {
+              noWebsiteOnly: true,
+              originLat,
+              originLng,
+              radiusKm: 0
             });
 
-            if (details) {
-              let leadData = { ...details, mapsLink: link, keyword, city };
+            if (!details || isCancelled) return;
+            if (!hasValidMobileNumber(details.phone)) return;
 
-              if (mode === 'emails_only') {
-                sendData({ type: 'status', message: `Fetching email for ${leadData.name}...` });
-                const emailResult = await findEmailForLead(leadData, null);
-                if (emailResult.email && foundEmailsInThisRun.has(emailResult.email.toLowerCase())) {
-                  sendData({ type: 'status', message: `Duplicate email skipped: ${emailResult.email}` });
-                  continue;
-                }
-                if (emailResult.email) foundEmailsInThisRun.add(emailResult.email.toLowerCase());
+            let leadData = { ...details, mapsLink: link, keyword, city };
 
-                leadData.email = emailResult.email;
-                leadData.emailFound = !!emailResult.email;
-                leadData.emailSource = emailResult.emailSource;
-                leadData.socialLinks = emailResult.socialLinks;
+            if (mode === 'emails_only') {
+              sendData({ type: 'status', message: `Fetching email for ${leadData.name}...` });
+              const emailResult = await findEmailForLead(leadData, null);
+              if (emailResult.email && foundEmailsInThisRun.has(emailResult.email.toLowerCase())) {
+                sendData({ type: 'status', message: `Duplicate email skipped: ${emailResult.email}` });
+                return;
               }
+              if (emailResult.email) foundEmailsInThisRun.add(emailResult.email.toLowerCase());
 
-              try { await ScrapedLead.findOneAndUpdate({ mapsLink: link }, { $set: leadData }, { upsert: true }); } catch (dbErr) { }
-              sendData({ type: 'lead', data: leadData });
+              leadData.email = emailResult.email;
+              leadData.emailFound = !!emailResult.email;
+              leadData.emailSource = emailResult.emailSource;
+              leadData.socialLinks = emailResult.socialLinks;
             }
+
+            try { await ScrapedLead.findOneAndUpdate({ mapsLink: link }, { $set: leadData }, { upsert: true }); } catch (dbErr) { }
+            sendData({ type: 'lead', data: leadData });
           } catch (e) {
             console.log("Error in worker page:", e.message);
           }
+        };
+
+        for (let i = 0; i < batch.length && !isCancelled; i += workerPages.length) {
+          const chunk = batch.slice(i, i + workerPages.length);
+          await Promise.all(chunk.map((link, index) => processLink(link, workerPages[index])));
         }
         sendData({ type: 'status', message: `Iteration ${loop + 1} done. Found ${newLinks.length} new leads.` });
+        if (newLinks.length < workerPages.length) await new Promise(r => setTimeout(r, 100));
       }
     } // End of Map Block
 
@@ -1945,6 +2478,15 @@ app.delete('/api/saved-leads/group', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/saved-leads/bulk-delete', async (req, res) => {
+  try {
+    const { leadIds } = req.body;
+    if (!Array.isArray(leadIds) || leadIds.length === 0) return res.status(400).json({ error: 'leadIds required' });
+    await ScrapedLead.deleteMany({ _id: { $in: leadIds } });
+    res.json({ message: `${leadIds.length} leads deleted successfully!` });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.delete('/api/saved-leads/:id', async (req, res) => {
   try {
     await ScrapedLead.findByIdAndDelete(req.params.id);
@@ -1954,7 +2496,21 @@ app.delete('/api/saved-leads/:id', async (req, res) => {
 
 app.put('/api/saved-leads/:id', async (req, res) => {
   try {
-    const updated = await ScrapedLead.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const nextBody = { ...req.body };
+    if (nextBody.phone !== undefined) {
+      const rawPhone = String(nextBody.phone || '').trim();
+      const placeholderPhone = ['n/a', 'na', '-', 'none', 'null'].includes(rawPhone.toLowerCase());
+      if (!rawPhone || placeholderPhone) {
+        delete nextBody.phone;
+      } else {
+        const mobile = extractMobileDigits(rawPhone);
+        if (!mobile) {
+          return res.status(400).json({ error: 'Please enter a valid mobile number' });
+        }
+        nextBody.phone = mobile;
+      }
+    }
+    const updated = await ScrapedLead.findByIdAndUpdate(req.params.id, nextBody, { new: true });
     res.json(updated);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1963,7 +2519,11 @@ app.put('/api/saved-leads/:id', async (req, res) => {
 app.get('/api/settings', async (req, res) => {
   try {
     let settings = await Settings.findOne();
-    if (!settings) settings = await Settings.create({});
+    if (!settings) settings = await Settings.create({ mapBusinessCategories: DEFAULT_MAP_BUSINESS_CATEGORIES });
+    if (!Array.isArray(settings.mapBusinessCategories) || settings.mapBusinessCategories.length === 0) {
+      settings.mapBusinessCategories = DEFAULT_MAP_BUSINESS_CATEGORIES;
+      await settings.save();
+    }
     res.json(settings);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1980,22 +2540,63 @@ app.post('/api/settings', async (req, res) => {
     if (req.body.userRole !== undefined) settings.userRole = req.body.userRole;
     if (req.body.profilePic !== undefined) settings.profilePic = req.body.profilePic;
     if (req.body.publicEmail !== undefined) settings.publicEmail = req.body.publicEmail;
+    if (req.body.mapBusinessCategories !== undefined) {
+      settings.mapBusinessCategories = dedupeCategories(parseCategoryInput(req.body.mapBusinessCategories));
+    }
     await settings.save();
     res.json(settings);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/map-categories', async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) settings = await Settings.create({ mapBusinessCategories: DEFAULT_MAP_BUSINESS_CATEGORIES });
+    const categories = Array.isArray(settings.mapBusinessCategories) && settings.mapBusinessCategories.length > 0
+      ? dedupeCategories(settings.mapBusinessCategories)
+      : DEFAULT_MAP_BUSINESS_CATEGORIES;
+    res.json({ categories });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/map-categories', async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    if (!settings) settings = await Settings.create({ mapBusinessCategories: DEFAULT_MAP_BUSINESS_CATEGORIES });
+
+    const current = Array.isArray(settings.mapBusinessCategories) && settings.mapBusinessCategories.length > 0
+      ? dedupeCategories(settings.mapBusinessCategories)
+      : [...DEFAULT_MAP_BUSINESS_CATEGORIES];
+
+    const addList = parseCategoryInput(req.body.add ?? req.body.addCategories ?? req.body.categories);
+    const removeList = parseCategoryInput(req.body.remove ?? req.body.removeCategories);
+
+    const next = current
+      .filter(item => !removeList.includes(normalizeMapCategory(item)))
+      .concat(addList);
+
+    settings.mapBusinessCategories = dedupeCategories(next);
+    await settings.save();
+
+    res.json({ categories: settings.mapBusinessCategories });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.post('/api/upload-avatar', cloudUpload.single('avatar'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
     // Use the secure Cloudinary URL instead of local path
-    const avatarUrl = req.file.path; 
-    
+    const avatarUrl = req.file.path;
+
     let settings = await Settings.findOne();
     if (!settings) settings = new Settings();
     settings.profilePic = avatarUrl;
     await settings.save();
-    
+
     res.json({ url: avatarUrl });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -2078,9 +2679,14 @@ app.post('/api/saved-leads/manual', async (req, res) => {
     const existing = await ScrapedLead.findOne({ email: cleanEmail });
     if (existing) return res.status(409).json({ error: 'Email already exists' });
 
+    const mobile = String(phone || '').trim() ? extractMobileDigits(phone) : '';
+    if (String(phone || '').trim() && !mobile) {
+      return res.status(400).json({ error: 'Please enter a valid mobile number' });
+    }
+
     const lead = await ScrapedLead.create({
       name: (name || '').trim() || cleanEmail.split('@')[0],
-      phone: (phone || '').trim() || 'N/A',
+      phone: mobile || 'N/A',
       address: (address || '').trim() || 'N/A',
       mapsLink: `manual:${cleanEmail}:${Date.now()}`,
       keyword: (keyword || '').trim() || 'manual',
@@ -2340,11 +2946,11 @@ app.get('/api/whatsapp/debug-chats', async (req, res) => {
       result.push({
         name: chat.name,
         id: chat.id._serialized,
-        msgs: msgs.filter(m => !m.fromMe).map(m => ({ from: m.from, body: m.body.substring(0,50), ts: new Date(m.timestamp*1000).toISOString(), fromMe: m.fromMe }))
+        msgs: msgs.filter(m => !m.fromMe).map(m => ({ from: m.from, body: m.body.substring(0, 50), ts: new Date(m.timestamp * 1000).toISOString(), fromMe: m.fromMe }))
       });
     }
     res.json({ total: chats.length, chats: result });
-  } catch(e) { res.json({ error: e.message }); }
+  } catch (e) { res.json({ error: e.message }); }
 });
 
 app.get('/api/whatsapp/qr', (req, res) => {
@@ -2384,8 +2990,8 @@ app.post('/api/whatsapp/send', async (req, res) => {
 
     console.log(`[WhatsApp] ✉️ Sent to +${cleanPhone}: "${message.substring(0, 40)}"`);
 
-    // Save sent message to lead replies
-    let lead = await Recipient.findOne({
+    // Save sent message to lead replies and scraped lead status
+    const lead = await Recipient.findOne({
       $or: [
         { 'data.Phone': { $regex: cleanPhone + '$' } },
         { email: cleanPhone + '@whatsapp.com' }
@@ -2395,9 +3001,11 @@ app.post('/api/whatsapp/send', async (req, res) => {
       lead.replies.push({ receivedAt: new Date(), subject: 'WhatsApp Sent', body: message, type: 'whatsapp', fromMe: true });
       await lead.save();
     }
+    await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'sent', message });
     res.json({ success: true });
-  } catch(e) {
+  } catch (e) {
     console.error('[WhatsApp] Send error:', e.message);
+    await updateScrapedLeadWhatsappStatus({ phone, status: 'failed', error: e.message });
     res.status(500).json({ error: e.message });
   }
 });
@@ -2424,7 +3032,45 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
     const cleanPhone = String(phone).replace(/\D/g, '');
     const outgoingMessage = Array.isArray(messages) && messages[index] ? String(messages[index]) : message;
     try {
-      // Find matching chat
+      // ── Step 1: Normalize phone to full international format ───────────
+      let normalizedPhone = cleanPhone;
+      // Strip leading 0 (local format: 07xxx or 09xxx → 7xxx/9xxx)
+      if (normalizedPhone.startsWith('0') && normalizedPhone.length >= 10) {
+        normalizedPhone = normalizedPhone.slice(1);
+      }
+      // If 10 digits starting with 6-9 (Indian mobile, no country code) → add 91
+      if (normalizedPhone.length === 10 && /^[6-9]/.test(normalizedPhone)) {
+        normalizedPhone = '91' + normalizedPhone;
+      }
+      
+      console.log(`[WA Broadcast] Processing: ${phone} -> Normalized: ${normalizedPhone}`);
+
+      // ── Step 2: Resolve WA ID using getNumberId ────────────────────────
+      let resolvedId = null;
+      try {
+        resolvedId = await waClient.getNumberId(normalizedPhone);
+        if (resolvedId) {
+          console.log(`[WA Broadcast] ✅ ID Resolved: ${resolvedId._serialized}`);
+        } else {
+          console.log(`[WA Broadcast] ❌ ID NOT Resolved for: ${normalizedPhone}`);
+        }
+      } catch (checkErr) {
+        console.warn(`[WA Broadcast] getNumberId failed for +${normalizedPhone}: ${checkErr.message}`);
+        // If lookup itself throws, attempt send anyway (don't falsely fail)
+        resolvedId = { _serialized: normalizedPhone + '@c.us' };
+      }
+
+      if (!resolvedId) {
+        const errMsg = 'Not on WhatsApp';
+        await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'failed', message: outgoingMessage, error: errMsg });
+        results.failed++;
+        results.details.push({ phone: cleanPhone, status: 'failed', error: errMsg });
+        console.warn(`[WA Broadcast] ⚠️ Not on WhatsApp: +${normalizedPhone}`);
+        if (index < phones.length - 1) await new Promise(r => setTimeout(r, Math.min(delay, 1500)));
+        continue;
+      }
+
+      // ── Step 2: Find existing chat or send fresh ──────────────────────
       let targetChat = null;
       for (const [chatPhone, chat] of Object.entries(chatMap)) {
         if (chatPhone === cleanPhone || chatPhone.endsWith(cleanPhone) || cleanPhone.endsWith(chatPhone)) {
@@ -2436,10 +3082,10 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
       if (targetChat) {
         await targetChat.sendMessage(outgoingMessage);
       } else {
-        await waClient.sendMessage(cleanPhone + '@c.us', outgoingMessage);
+        await waClient.sendMessage(resolvedId._serialized, outgoingMessage);
       }
 
-      // Save to DB
+      // ── Step 3: Persist to DB ─────────────────────────────────────────
       let lead = await Recipient.findOne({
         $or: [
           { 'data.Phone': { $regex: cleanPhone + '$' } },
@@ -2450,24 +3096,26 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
         lead.replies.push({ receivedAt: new Date(), subject: 'WhatsApp Broadcast', body: outgoingMessage, type: 'whatsapp', fromMe: true });
         await lead.save();
       }
+      await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'sent', message: outgoingMessage });
 
       results.sent++;
       results.details.push({ phone: cleanPhone, status: 'sent' });
-      console.log(`[WhatsApp Broadcast] ✅ Sent to +${cleanPhone}`);
+      console.log(`[WA Broadcast] ✅ Sent to +${cleanPhone}`);
 
       // Delay between messages to avoid rate limiting
       if (index < phones.length - 1) {
-        const jitter = Math.floor(Math.random() * 1000); // add up to 1s random jitter
+        const jitter = Math.floor(Math.random() * 1000);
         await new Promise(r => setTimeout(r, delay + jitter));
       }
-    } catch(e) {
+    } catch (e) {
+      await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'failed', message: outgoingMessage, error: e.message });
       results.failed++;
       results.details.push({ phone: cleanPhone, status: 'failed', error: e.message });
-      console.error(`[WhatsApp Broadcast] ❌ Failed +${cleanPhone}: ${e.message}`);
+      console.error(`[WA Broadcast] ❌ Failed +${cleanPhone}: ${e.message}`);
     }
   }
 
-  console.log(`[WhatsApp Broadcast] Done: ${results.sent} sent, ${results.failed} failed`);
+  console.log(`[WA Broadcast] Done: ${results.sent} sent, ${results.failed} failed`);
   res.json({ success: true, ...results });
 });
 

@@ -99,20 +99,20 @@ Darwin
 Auckland
 Wellington
 Christchurch
-Hamilton
-Tauranga
+Hamilton 
+Tauranga //
 
 === UAE & MIDDLE EAST ===
-Dubai, UAE
-Abu Dhabi, UAE
-Sharjah, UAE
-Doha, Qatar
-Riyadh, Saudi Arabia
-Jeddah, Saudi Arabia
+Dubai, UAE //
+Abu Dhabi, UAE //
+Sharjah, UAE //
+Doha, Qatar //
+Riyadh, Saudi Arabia //
+Jeddah, Saudi Arabia //
 
 === EUROPE (English Friendly) ===
-Dublin, Ireland
-Berlin, Germany
+Dublin, Ireland //
+Berlin, Germany //
 Amsterdam, Netherlands  //
 Stockholm, Sweden  //
 Copenhagen, Denmark  //
