@@ -1924,28 +1924,69 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
     const pageText = document.body?.innerText || '';
     if (/permanently\s+closed/i.test(pageText)) return null;
 
-    let name = document.querySelector('h1')?.innerText;
+    // Name extraction with multiple fallbacks
+    let name = document.querySelector('h1.DUwDvf, h1[class*="fontHeadlineLarge"], h1')?.innerText?.trim();
     if (!name) {
       const title = document.title || '';
-      name = title.split('- Google')[0].trim() || 'Unknown';
+      name = title.split('·')[0].split('-')[0].trim() || 'Unknown';
     }
-    if (name === 'Unknown' || name === '' || name === 'Google Maps') return null;
+    if (!name || name === 'Unknown' || name === '' || name === 'Google Maps') return null;
 
-    const websiteBtn = document.querySelector('[data-item-id="authority"]');
+    // Website detection with multiple fallbacks
+    const websiteBtn = document.querySelector(
+      '[data-item-id="authority"], [aria-label*="website" i], [data-tooltip*="website" i], a[data-item-id*="authority"]'
+    );
     if (skipWebsites && websiteBtn) return null;
 
-    const phoneBtn = document.querySelector('[data-item-id^="phone:tel:"]');
-    const phone = (phoneBtn ? phoneBtn.innerText || phoneBtn.getAttribute('aria-label') : '');
-    const mobile = String(phone || '').replace(/[^\d+]/g, '').trim();
-    const normalizedPhone = mobile ? mobile.replace(/\D/g, '') : '';
-    if (!normalizedPhone) return null;
+    // Phone extraction - ROBUST 4-method fallback
+    let phone = '';
 
-    const addressBtn = document.querySelector('[data-item-id="address"]');
-    let address = addressBtn ? addressBtn.innerText || addressBtn.getAttribute('aria-label') : 'N/A';
-    if (address !== 'N/A') address = address.replace('Address: ', '').trim();
+    // Method 1: Standard data-item-id selector (gets number from the ID itself)
+    const phoneBtn1 = document.querySelector('[data-item-id^="phone:tel:"]');
+    if (phoneBtn1) {
+      phone = phoneBtn1.getAttribute('data-item-id')?.replace('phone:tel:', '') 
+            || phoneBtn1.innerText 
+            || phoneBtn1.getAttribute('aria-label') 
+            || '';
+    }
 
-    return { name, phone: phone, address, pageUrl: window.location.href };
+    // Method 2: aria-label containing phone/call/tel
+    if (!phone) {
+      const allBtns = document.querySelectorAll('[aria-label]');
+      for (const btn of allBtns) {
+        const label = btn.getAttribute('aria-label') || '';
+        if (/phone|call|tel/i.test(label)) {
+          const numMatch = label.match(/[\d\s\+\-\(\)]{7,}/);
+          if (numMatch) { phone = numMatch[0].trim(); break; }
+        }
+      }
+    }
+
+    // Method 3: Regex scan of full page text for Indian mobile numbers
+    if (!phone) {
+      const phoneMatch = pageText.match(/(?:\+91[\s\-]?)?[6-9]\d{9}/);
+      if (phoneMatch) phone = phoneMatch[0];
+    }
+
+    // Method 4: Scan button/link text for phone patterns
+    if (!phone) {
+      const btns = document.querySelectorAll('button, a');
+      for (const btn of btns) {
+        const txt = (btn.innerText || btn.textContent || '').trim();
+        const numMatch = txt.match(/(?:\+91[\s\-]?)?[6-9]\d{9}/);
+        if (numMatch) { phone = numMatch[0]; break; }
+      }
+    }
+
+    if (!phone) return null;
+
+    const addressBtn = document.querySelector('[data-item-id="address"], [aria-label*="address" i]');
+    let address = addressBtn ? (addressBtn.innerText || addressBtn.getAttribute('aria-label') || 'N/A') : 'N/A';
+    if (address !== 'N/A') address = address.replace(/^address:\s*/i, '').trim();
+
+    return { name, phone, address, pageUrl: window.location.href };
   }, noWebsiteOnly);
+
 
   if (!details) return null;
   const normalizedPhone = extractMobileDigits(details.phone);
