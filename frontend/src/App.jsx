@@ -1916,9 +1916,11 @@ function App() {
       localStorage.setItem('city_history', JSON.stringify(newHistory));
     }
 
+    console.log("[Frontend] 🚀 Connecting to Scraper URL:", url);
     const eventSource = new EventSource(url);
     window.currentScrapeES = eventSource;
 
+    eventSource.onopen = () => console.log("[Frontend] ✅ SSE Connection Established!");
     eventSource.onmessage = (event) => {
       try {
         const parsed = JSON.parse(event.data);
