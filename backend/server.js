@@ -2132,11 +2132,8 @@ app.get('/api/map-businesses', async (req, res) => {
             website: item.website || '',
           };
 
-          if (!hasAnyPhone(leadData.phone)) {
-            console.log(`[Overpass] Skipping +${leadData.phone} (no phone)`);
-            continue;
-          }
-
+          // Save ALL leads from Overpass - phone will be enriched by Google Maps scraper in Phase 2
+          // Don't skip based on phone here - India's OSM data rarely has phones
           try {
             await ScrapedLead.findOneAndUpdate(
               { mapsLink },
@@ -2144,12 +2141,13 @@ app.get('/api/map-businesses', async (req, res) => {
               { upsert: true, new: true }
             );
             saved++;
+            console.log(`[MapFinder] ✅ Saved: ${item.name} | Phone: ${leadData.phone}`);
             sendData({ type: 'lead', data: leadData, saved });
           } catch (dbErr) {
             console.log('[Overpass] DB save error:', dbErr.message);
           }
-        }
-      }
+        } // end for loop
+      } // end if filtered.length > 0
 
       if (saved >= maxLeads) {
         sendData({
