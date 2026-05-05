@@ -2685,7 +2685,7 @@ function App() {
                 ].map((stat, i) => (
                   <Card key={i} className="border-border/40 bg-card/40 backdrop-blur-sm shadow-sm hover:shadow-md hover:border-border/80 transition-all duration-300 group">
                     <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0">
-                      <CardTitle className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{stat.label}</CardTitle>
+                      <CardTitle className="text-sm font-bold text-muted-foreground">{stat.label}</CardTitle>
                       <div className={`p-2 ${stat.bg} ${stat.color} rounded-xl border ${stat.border} group-hover:scale-110 transition-transform`}>
                         <stat.icon size={16} />
                       </div>
@@ -2709,7 +2709,7 @@ function App() {
                 ].map((stat, i) => (
                   <div key={i} className="bg-muted/30 border border-border/50 rounded-2xl p-5 flex items-center justify-between group hover:bg-muted/50 transition-colors">
                     <div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{stat.label}</p>
+                      <p className="text-xs font-bold text-muted-foreground mb-1">{stat.label}</p>
                       <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
                     </div>
                     <div className="p-2 bg-background rounded-lg border border-border shadow-sm">
@@ -2729,7 +2729,7 @@ function App() {
                 ].map((stat, i) => (
                   <div key={i} className="bg-muted/30 border border-border/50 rounded-2xl p-5 flex items-center justify-between group hover:bg-muted/50 transition-colors">
                     <div>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{stat.label}</p>
+                      <p className="text-xs font-bold text-muted-foreground mb-1">{stat.label}</p>
                       <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
                     </div>
                     <div className="p-2 bg-background rounded-lg border border-border shadow-sm">
@@ -2802,7 +2802,7 @@ function App() {
                         {recipients.length === 0 && (
                           <div className="p-10 text-center flex flex-col items-center justify-center h-full opacity-50">
                             <Archive size={32} className="mb-3 text-muted-foreground" />
-                            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">No recent activity</p>
+                            <p className="text-xs font-bold text-muted-foreground">No recent activity</p>
                           </div>
                         )}
                       </div>
@@ -5494,7 +5494,7 @@ function App() {
 
                     {intelLead.data && Object.keys(intelLead.data).length > 0 && (
                       <div className="pt-4 mt-2 border-t border-border/50">
-                        <p className="text-[10px] font-bold uppercase text-muted-foreground mb-2">Custom Data</p>
+                        <p className="text-[10px] font-bold text-muted-foreground mb-2">Custom Data</p>
                         <div className="space-y-2">
                           {Object.keys(intelLead.data).map(k => (
                             <div key={k} className="flex justify-between text-xs"><strong className="text-foreground">{k}:</strong> <span className="text-muted-foreground truncate max-w-[120px]">{intelLead.data[k]}</span></div>
