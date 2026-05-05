@@ -570,8 +570,7 @@ body.theme-light {
 }
 
 .premium-card:hover {
-  transform: translateY(-5px) scale(1.01) !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(66, 120, 244, 0.1), var(--shadow-glow) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(66, 120, 244, 0.1), var(--shadow-glow) !important;
   border-color: hsl(var(--primary) / 0.3) !important;
   background: hsl(var(--card) / 0.95) !important;
 }
