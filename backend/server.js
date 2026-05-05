@@ -2423,6 +2423,19 @@ app.get('/api/scrape-leads', async (req, res) => {
               leadData.socialLinks = emailResult.socialLinks;
             }
 
+            // Global Phone De-duplication Logic
+            const mobileDigits = details.phone ? extractMobileDigits(details.phone) : null;
+            if (mobileDigits) {
+              const existing = await ScrapedLead.findOne({ phone: mobileDigits });
+              if (existing && existing.mapsLink !== link) {
+                // If it's the same number but a different link, skip it
+                sendData({ type: 'status', message: `Skipping duplicate number: ${details.phone}` });
+                return;
+              }
+              // Ensure we use the cleaned digits for saving
+              leadData.phone = mobileDigits;
+            }
+
             try { await ScrapedLead.findOneAndUpdate({ mapsLink: link }, { $set: leadData }, { upsert: true }); } catch (dbErr) { }
             sendData({ type: 'lead', data: leadData });
           } catch (e) {

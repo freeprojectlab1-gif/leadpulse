@@ -2382,7 +2382,7 @@ function App() {
 
           {/* Main Group */}
           <div>
-            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.1em] mb-3 truncate">Overview</div>}
+            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">Overview</div>}
             <div className="space-y-1">
               {[
                 { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -2413,7 +2413,7 @@ function App() {
 
           {/* Sourcing Group */}
           <div>
-            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.1em] mb-3 truncate">Lead Generation</div>}
+            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">Lead Generation</div>}
             <div className="space-y-1">
               {[
                 { id: 'scraper', icon: Globe, label: 'Lead Scraper' },
@@ -2444,7 +2444,7 @@ function App() {
 
           {/* Inbox Group */}
           <div>
-            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.1em] mb-3 truncate">Inbox & Templates</div>}
+            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">Inbox & Templates</div>}
             <div className="space-y-1">
               {[
                 { id: 'replied_leads', icon: Reply, label: 'Email Replies' },
@@ -2475,7 +2475,7 @@ function App() {
 
           {/* Integrations */}
           <div>
-            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.1em] mb-3 truncate">Integrations</div>}
+            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">Integrations</div>}
             <div className="space-y-1">
               <TooltipProvider delayDuration={0}>
                 <Tooltip>
@@ -2516,7 +2516,7 @@ function App() {
 
 
           <div>
-            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-[0.1em] mb-3 truncate">System</div>}
+            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">System</div>}
             <div className="space-y-1">
               {[
                 { id: 'logs', icon: HistoryIcon, label: 'System Logs' },
