@@ -909,8 +909,13 @@ const EmailChart = ({ recipients }) => {
         });
       }
     }
-    // Collect WhatsApp dates
+    // Collect WhatsApp dates — use whatsappSentAt (the actual send timestamp)
     if (mode === 'whatsapp' || mode === 'overall') {
+      if (r.whatsappSentAt) {
+        const date = new Date(r.whatsappSentAt);
+        if (!Number.isNaN(date.getTime())) sentDates.push(date);
+      }
+      // Also count from replies that were sent by us (fromMe = true)
       if (r.replies) {
         r.replies.forEach(rep => {
           if (rep.type === 'whatsapp' && rep.fromMe && rep.receivedAt) {
@@ -1100,8 +1105,50 @@ const MapBusinessFinder = ({
   const [zoom, setZoom] = useState(14);
   const [locationSearch, setLocationSearch] = useState('');
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [searchHistory, setSearchHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('mapSearchHistory') || '[]'); } catch { return []; }
+  });
+  const [showHistory, setShowHistory] = useState(false);
   const mapRef = React.useRef(null);
   const tileSize = 256;
+
+  const saveToHistory = () => {
+    const entry = {
+      id: Date.now(),
+      keyword: allBusinesses ? 'All Businesses' : keyword,
+      location: selectedLocation?.label || `${selectedLocation?.lat?.toFixed(4)}, ${selectedLocation?.lng?.toFixed(4)}`,
+      lat: selectedLocation?.lat,
+      lng: selectedLocation?.lng,
+      radiusKm,
+      noWebsiteOnly,
+      allBusinesses,
+      date: new Date().toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+    };
+    const updated = [entry, ...searchHistory.filter(h => h.keyword !== entry.keyword || h.location !== entry.location)].slice(0, 10);
+    setSearchHistory(updated);
+    localStorage.setItem('mapSearchHistory', JSON.stringify(updated));
+  };
+
+  const loadHistoryEntry = (entry) => {
+    if (!allBusinesses && entry.keyword !== 'All Businesses') setKeyword(entry.keyword);
+    if (entry.lat && entry.lng) setSelectedLocation({ lat: entry.lat, lng: entry.lng, label: entry.location });
+    setRadiusKm(entry.radiusKm);
+    setNoWebsiteOnly(entry.noWebsiteOnly);
+    setShowHistory(false);
+  };
+
+  const deleteHistoryEntry = (id, e) => {
+    e.stopPropagation();
+    const updated = searchHistory.filter(h => h.id !== id);
+    setSearchHistory(updated);
+    localStorage.setItem('mapSearchHistory', JSON.stringify(updated));
+  };
+
+  const clearHistory = () => {
+    setSearchHistory([]);
+    localStorage.removeItem('mapSearchHistory');
+    setShowHistory(false);
+  };
 
   const latLngToWorld = (lat, lng, z) => {
     const scale = tileSize * 2 ** z;
@@ -1111,6 +1158,12 @@ const MapBusinessFinder = ({
       y: (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale
     };
   };
+
+  // Expose saveToHistory so parent can call it before starting search
+  React.useEffect(() => {
+    window.__mapSaveHistory = saveToHistory;
+    return () => { window.__mapSaveHistory = null; };
+  });
 
   const worldToLatLng = (x, y, z) => {
     const scale = tileSize * 2 ** z;
@@ -1266,7 +1319,8 @@ const MapBusinessFinder = ({
               <label>Search Radius</label>
               <strong className="text-primary">{radiusKm} km</strong>
             </div>
-            <input type="range" min="1" max="50" value={radiusKm} onChange={e => setRadiusKm(Number(e.target.value))} className="w-full accent-primary" />
+            <input type="range" min="1" max="120" value={radiusKm} onChange={e => setRadiusKm(Number(e.target.value))} className="w-full accent-primary" />
+
           </div>
 
           <div className="space-y-1.5">
@@ -1365,11 +1419,54 @@ const MapBusinessFinder = ({
             <p className="text-sm text-foreground/80 leading-relaxed">{mapStatus || 'Select a map point, choose a range, then fetch businesses.'}</p>
           </div>
 
+          {/* ── SEARCH HISTORY ── */}
+          <div className="mt-3">
+            <button
+              onClick={() => setShowHistory(v => !v)}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-muted/40 border border-border/30 hover:bg-muted/60 transition-colors text-sm text-muted-foreground"
+            >
+              <span className="flex items-center gap-2 font-medium">
+                <span>🕐</span> Search History ({searchHistory.length})
+              </span>
+              <span className="text-xs">{showHistory ? '▲ Hide' : '▼ Show'}</span>
+            </button>
+
+            {showHistory && (
+              <div className="mt-2 space-y-1 max-h-[220px] overflow-y-auto">
+                {searchHistory.length === 0 ? (
+                  <p className="text-xs text-center text-muted-foreground py-4">No history yet</p>
+                ) : (
+                  <>
+                    <button onClick={clearHistory} className="w-full text-xs text-red-400 hover:text-red-300 text-right pr-1 pb-1">Clear All</button>
+                    {searchHistory.map(entry => (
+                      <div
+                        key={entry.id}
+                        onClick={() => loadHistoryEntry(entry)}
+                        className="flex items-center justify-between p-2 rounded-lg bg-card border border-border/40 hover:border-primary/50 hover:bg-primary/5 cursor-pointer transition-all group"
+                      >
+                        <div className="flex flex-col truncate pr-2">
+                          <span className="text-sm font-semibold text-foreground truncate">{entry.keyword}</span>
+                          <span className="text-xs text-muted-foreground truncate">📍 {entry.location} · {entry.radiusKm}km</span>
+                          <span className="text-[10px] text-muted-foreground/60">{entry.date}</span>
+                        </div>
+                        <button
+                          onClick={(e) => deleteHistoryEntry(entry.id, e)}
+                          className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors opacity-0 group-hover:opacity-100"
+                        >✕</button>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="flex-1 mt-2 flex flex-col">
             <div className="flex justify-between items-center mb-3">
               <strong className="text-sm text-foreground">{mapLeads.length} saved this run</strong>
               <Button variant="outline" size="sm" className="h-7 text-xs border-primary/30 text-primary hover:bg-primary/10" onClick={onOpenCrm}>Open CRM</Button>
             </div>
+
 
             <div className="flex-1 min-h-[150px] max-h-[200px] overflow-y-auto space-y-2 pr-1">
               {mapLeads.length === 0 ? (
@@ -1965,6 +2062,8 @@ function App() {
   const handleMapBusinessSearch = () => {
     if (!mapAllBusinesses && !mapKeyword.trim()) return showToast("Business type is required", "error");
     if (!mapLocation?.lat || !mapLocation?.lng) return showToast("Select a map location first", "error");
+    // Trigger history save via a custom event the component listens to
+    window.__mapSaveHistory?.();
 
     setIsMapSearching(true);
     setMapLeads([]);

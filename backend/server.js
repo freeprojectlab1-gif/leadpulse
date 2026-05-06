@@ -1898,7 +1898,14 @@ const configureFastMapsPage = async (page) => {
     if (['image', 'media', 'font', 'stylesheet', 'manifest', 'ping'].includes(resourceType)) return req.abort().catch(() => { });
     return req.continue().catch(() => { });
   });
+  // Log every page navigation
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) {
+      console.log(`[Browser] 🌐 Visited: ${frame.url()}`);
+    }
+  });
 };
+
 
 const launchScraperBrowser = async () => {
   const launchArgs = {
@@ -1923,11 +1930,40 @@ const launchScraperBrowser = async () => {
   }
 };
 
+// Generate a grid of lat/lng points to cover a radius area with overlapping sub-searches
+// This allows Maps to return more unique businesses than a single center search
+const generateSearchGrid = (centerLat, centerLng, radiusKm) => {
+  if (radiusKm <= 5) return [{ lat: centerLat, lng: centerLng }]; // Small radius: 1 point
+  
+  const points = [{ lat: centerLat, lng: centerLng }]; // Always include center
+  const KM_PER_DEGREE_LAT = 111;
+  const KM_PER_DEGREE_LNG = 111 * Math.cos(centerLat * Math.PI / 180);
+
+  // Step = half the radius to ensure overlap
+  const step = radiusKm <= 15 ? radiusKm * 0.5 : radiusKm * 0.4;
+  const offsets = [-step, 0, step];
+
+  for (const dLat of offsets) {
+    for (const dLng of offsets) {
+      if (dLat === 0 && dLng === 0) continue; // Already added center
+      const newLat = centerLat + (dLat / KM_PER_DEGREE_LAT);
+      const newLng = centerLng + (dLng / KM_PER_DEGREE_LNG);
+      // Only add if the point is within the radius
+      const dist = Math.sqrt(dLat ** 2 + dLng ** 2);
+      if (dist <= radiusKm) points.push({ lat: newLat, lng: newLng });
+    }
+  }
+  console.log(`[MapFinder] 🗺️ Grid: ${points.length} search points for ${radiusKm}km radius`);
+  return points;
+};
+
 const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
+
   const { noWebsiteOnly = true, originLat, originLng, radiusKm } = options;
 
   try {
-    await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 25000 });
+
   } catch (navErr) {
     // Timeout is OK — Maps often loads enough content before full load
     if (!navErr.message.includes('detached')) {
@@ -2040,23 +2076,22 @@ app.get('/api/map-businesses', async (req, res) => {
     const searchTerms = getMapSearchTerms(searchKeyword, shouldFindAllBusinesses);
     console.log(`[MapFinder] 🔧 ${workerCount} worker pages ready. Terms: ${searchTerms.join(', ')}`);
     const city = `MAP ${originLat.toFixed(4)}, ${originLng.toFixed(4)} • ${radius}km`;
+    const gridPoints = generateSearchGrid(originLat, originLng, radius);
 
-
-    sendData({ type: 'status', message: `Opening map search for ${savedKeyword} within ${radius}km...` });
+    sendData({ type: 'status', message: `Searching ${gridPoints.length} area(s) × ${searchTerms.length} term(s) within ${radius}km...` });
 
     for (const term of searchTerms) {
-      if (isCancelled || saved >= maxLeads) break;
+      for (const gridPoint of gridPoints) {
+        if (isCancelled || saved >= maxLeads) break;
 
-      const query = `${term} near ${originLat},${originLng}`;
-      const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${originLat},${originLng},${zoom}z`;
+        const query = `${term} near ${gridPoint.lat},${gridPoint.lng}`;
+        const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${gridPoint.lat},${gridPoint.lng},${zoom}z`;
 
-      console.log(`[MapFinder] 🌍 Navigating to: ${mapsUrl}`);
-      sendData({
-        type: 'status',
-        message: shouldFindAllBusinesses
-          ? `Scanning ${term} nearby... saved ${saved}/${maxLeads}.`
-          : `Scanning ${term} nearby...`
-      });
+        console.log(`[MapFinder] 🌍 Grid point (${gridPoint.lat.toFixed(4)}, ${gridPoint.lng.toFixed(4)}): ${term}`);
+        sendData({
+          type: 'status',
+          message: `Scanning "${term}" at grid point ${gridPoints.indexOf(gridPoint) + 1}/${gridPoints.length}... saved ${saved}/${maxLeads}.`
+        });
 
       await page.goto(mapsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
       const feedFound = await page.waitForSelector('div[role="feed"]', { timeout: 15000 }).catch(() => null);
@@ -2064,7 +2099,8 @@ app.get('/api/map-businesses', async (req, res) => {
 
 
       let consecutiveNoResults = 0;
-      const maxDryScrolls = shouldFindAllBusinesses ? 8 : 100;
+      const maxDryScrolls = shouldFindAllBusinesses ? 8 : 20; // Was 100 — reduced to fail fast
+
       for (let loop = 0; !isCancelled && saved < maxLeads; loop++) {
         await page.evaluate(async () => {
           const feed = document.querySelector('div[role="feed"]');
@@ -2111,7 +2147,23 @@ app.get('/api/map-businesses', async (req, res) => {
               radiusKm: radius
             });
 
-            if (!details) { console.log(`[MapFinder] ⛔ extractGoogleMapsLead returned null (website/closed/no name)`); return; }
+            // If filtered due to website — log only, do NOT save
+            if (!details && noWebsiteOnly !== 'false') {
+              const websiteCheck = await extractGoogleMapsLead(workerPage, link, {
+                noWebsiteOnly: false,
+                originLat,
+                originLng,
+                radiusKm: radius
+              });
+              if (websiteCheck) {
+                console.log(`[MapFinder] 🌐 SKIPPED (has website): ${websiteCheck.name} | ${websiteCheck.phone}`);
+              } else {
+                console.log(`[MapFinder] ⛔ Skipped: permanently closed / no name / out of range`);
+              }
+              return; // ← NOT saved
+            }
+
+            if (!details) { console.log(`[MapFinder] ⛔ Skipped: permanently closed / no name / out of range`); return; }
             if (isCancelled || saved >= maxLeads) return;
 
             // Validate phone before saving
@@ -2154,8 +2206,9 @@ app.get('/api/map-businesses', async (req, res) => {
         }
 
         sendData({ type: 'status', message: `Saved ${saved} leads. Found ${newLinks.length} new ${term} links.` });
-      }
-    }
+      } // end scroll loop
+      } // end gridPoints loop
+    } // end searchTerms loop
 
     if (!isCancelled) {
       const message = saved >= maxLeads
@@ -2207,17 +2260,14 @@ app.get('/api/scrape-leads', async (req, res) => {
   try {
     const launchArgs = {
       executablePath: executablePath(),
-      userDataDir: BROWSER_SESSION_DIR,
+      userDataDir: BROWSER_SESSION_DIR + '_scraper', // ← separate dir, no lock conflict with Map Finder
       headless: "new",
       args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox', 
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--disable-gpu',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process'
+        '--disable-gpu'
+        // ❌ Removed: --single-process, --no-zygote (crash with 6+ pages)
       ],
       timeout: 60000
     };
@@ -2244,66 +2294,95 @@ app.get('/api/scrape-leads', async (req, res) => {
 
     if (sourceList.includes('map') && !isCancelled) {
       console.log("[Scraper] 🗺️ Launching Google Maps scraper...");
+
+      // Step 1: Geocode city to get lat/lng (for proper Maps URL)
+      let cityLat = null, cityLng = null;
+      try {
+        const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`;
+        const geoRes = await fetch(geoUrl, { headers: { 'User-Agent': 'LeadPulse/1.0' } });
+        const geoData = await geoRes.json();
+        if (geoData.length > 0) {
+          cityLat = parseFloat(geoData[0].lat);
+          cityLng = parseFloat(geoData[0].lon);
+          console.log(`[Scraper] 📍 Geocoded "${city}" → ${cityLat}, ${cityLng}`);
+          sendData({ type: 'status', message: `📍 Scanning entire "${city}" — no radius limit.` });
+        }
+      } catch (geoErr) {
+        console.log(`[Scraper] ⚠️ Geocode failed, using text search only: ${geoErr.message}`);
+      }
+
       const page = await browser.newPage();
-      const workerCount = 3; // Reduced for stability
+      const workerCount = 6;
       const workerPages = await Promise.all(
         Array.from({ length: workerCount }, async (_, idx) => {
-          console.log(`[Scraper] Initializing worker page ${idx + 1}...`);
           const workerPage = await browser.newPage();
           await configureFastMapsPage(workerPage);
           return workerPage;
         })
       );
-      const query = `${keyword} in ${city}`;
-      await configureFastMapsPage(page);
-      console.log(`[Scraper] 🔎 Navigating to: https://www.google.com/maps/search/${encodeURIComponent(query)}`);
-      await page.goto(`https://www.google.com/maps/search/${encodeURIComponent(query)}`, { waitUntil: 'domcontentloaded', timeout: 45000 });
 
-      // Robust selector check
-      await page.waitForSelector('div[role="feed"], [aria-label^="Results for"]', { timeout: 10000 }).catch(() => { 
+      const query = `${keyword} in ${city}`;
+      const mapsUrl = cityLat
+        ? `https://www.google.com/maps/search/${encodeURIComponent(query)}/@${cityLat},${cityLng},12z`
+        : `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
+
+      await configureFastMapsPage(page);
+      console.log(`[Scraper] 🔎 Navigating to: ${mapsUrl}`);
+      sendData({ type: 'status', message: `Searching "${keyword}" in ${city}...` });
+      await page.goto(mapsUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+
+      await page.waitForSelector('div[role="feed"], [aria-label^="Results for"]', { timeout: 10000 }).catch(() => {
         console.log("[Scraper] ⚠️ Feed selector not found, attempting to continue anyway...");
       });
 
       let consecutiveNoResults = 0;
       for (let loop = 0; loop < 1000; loop++) {
         if (isCancelled) break;
-        const isEnd = await page.evaluate(async () => {
+
+        // Scroll the feed — use setTimeout (requestAnimationFrame hangs in headless!)
+        await page.evaluate(async () => {
           const feed = document.querySelector('div[role="feed"]');
-          if (feed) {
-            const lastChild = feed.lastElementChild;
-            if (lastChild) lastChild.scrollIntoView();
-            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-            const text = feed.innerText || "";
-            return text.includes("You've reached the end of the list") || text.includes("No more results");
-          }
-          return false;
+          if (feed?.lastElementChild) feed.lastElementChild.scrollIntoView();
+          await new Promise(r => setTimeout(r, 500));
         });
 
+        // Check if we've hit the end of results
+        const isEnd = await page.evaluate(() => {
+          const feed = document.querySelector('div[role="feed"]');
+          const text = feed?.innerText || '';
+          return text.includes("You've reached the end") || text.includes("No more results");
+        }).catch(() => false);
+
         if (isEnd) {
+          console.log(`[Scraper] 🏁 Reached end of Maps results after ${loop} loops.`);
           sendData({ type: 'status', message: "Reached the end of Google Maps results." });
           break;
         }
 
         const links = await page.evaluate(() => {
-          return Array.from(document.querySelectorAll('a[href*="https://www.google.com/maps/place/"]')).map(a => a.href);
+          const selectors = [
+            'a[href*="/maps/place/"]',
+            'a[href*="https://www.google.com/maps/place/"]'
+          ];
+          return [...new Set(selectors.flatMap(s => Array.from(document.querySelectorAll(s)).map(a => a.href)))];
         });
 
-        const newLinks = [...new Set(links)].filter(link => !processedLinks.has(link));
+        const newLinks = links.filter(link => !processedLinks.has(link));
+        console.log(`[Scraper] Loop ${loop}: ${links.length} total links, ${newLinks.length} new`);
 
         if (newLinks.length === 0) {
           consecutiveNoResults++;
-          const msg = `Iteration ${loop + 1}: Scrolling for more... (${consecutiveNoResults}/200)`;
+          const msg = `Iteration ${loop + 1}: Scrolling for more... (${consecutiveNoResults}/25)`;
           console.log(`[Scraper] ${msg}`);
           sendData({ type: 'status', message: msg });
-          
-          // More aggressive scroll
+
           await page.evaluate(() => {
             const feed = document.querySelector('div[role="feed"]');
             if (feed) feed.scrollBy(0, 1500);
           });
 
-          if (consecutiveNoResults >= 50) break; // Increased threshold for infinite effect
-          await new Promise(r => setTimeout(r, 200));
+          if (consecutiveNoResults >= 25) break;
+          await new Promise(r => setTimeout(r, 300));
           continue;
         }
 
@@ -2312,19 +2391,26 @@ app.get('/api/scrape-leads', async (req, res) => {
         const processLink = async (link, workerPage) => {
           if (isCancelled) return;
           processedLinks.add(link);
-          console.log(`[Scraper] Visiting: ${link}`);
-          sendData({ type: 'status', message: `Visiting business: ${link.split('!1s')[0].split('/').pop()}` });
+          console.log(`[Scraper] 🔗 Visiting: ${decodeURIComponent(link.split('/place/')[1]?.split('/')[0] || link)}`);
+          sendData({ type: 'status', message: `Visiting: ${decodeURIComponent(link.split('/place/')[1]?.split('/')[0] || link.slice(0, 60))}` });
 
           try {
             const details = await extractGoogleMapsLead(workerPage, link, {
-              noWebsiteOnly: true,
-              originLat,
-              originLng,
-              radiusKm: 0
+              noWebsiteOnly: mode === 'no_website', // ← only filter if user chose 'No Website' mode
+              originLat: cityLat,
+              originLng: cityLng,
+              radiusKm: 0  // 0 = entire city, no radius limit
             });
 
-            if (!details || isCancelled) return;
-            if (!hasValidMobileNumber(details.phone)) return;
+            if (!details || isCancelled) {
+              console.log(`[Scraper] ⛔ No details returned (website filtered / closed / no name)`);
+              return;
+            }
+            console.log(`[Scraper] ✅ Got details: ${details.name} | Phone: ${details.phone}`);
+            if (!hasValidMobileNumber(details.phone)) {
+              console.log(`[Scraper] ⏭️ No valid mobile: ${details.name} | ${details.phone}`);
+              return;
+            }
 
             let leadData = { ...details, mapsLink: link, keyword, city };
 

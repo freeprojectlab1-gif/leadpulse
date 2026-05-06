@@ -12,3 +12,4 @@ frontend/dist/
 !backend/yahoo_*.html
 backend/wa_session/
 backend/.cache/
+backend/browser_session_scraper/
