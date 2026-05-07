@@ -1623,6 +1623,14 @@ function App() {
   const [newWaTpl, setNewWaTpl] = useState(defaultWaTemplate);
 
   useEffect(() => {
+    // Sync with document element for Tailwind 'class' mode
+    if (currentTheme === 'theme-dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    
+    // Sync body classes
     document.body.className = currentTheme;
     localStorage.setItem('pro_theme', currentTheme);
   }, [currentTheme]);
