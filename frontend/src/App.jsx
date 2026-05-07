@@ -1696,6 +1696,41 @@ function App() {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const playNotificationSound = () => {
+    try {
+      // Premium notification sound
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+      audio.volume = 0.6;
+      audio.play().catch(e => console.warn("Sound play failed:", e));
+    } catch (e) {
+      console.warn("Audio setup failed:", e);
+    }
+  };
+
+  const sendBrowserNotification = (title, body) => {
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        new Notification(title, { 
+          body, 
+          icon: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png'
+        });
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png' });
+          }
+        });
+      }
+    }
+    playNotificationSound();
+  };
+
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
   const fetchWhatsappTemplates = async () => {
     try {
       const res = await axios.get('/api/whatsapp-templates');
@@ -1997,11 +2032,13 @@ function App() {
         if (d.type === 'done') {
           setIsBulkFinding(false);
           showToast(d.message, 'success');
+          sendBrowserNotification("Bulk Email Hunt Complete", d.message);
           es.close();
         }
         if (d.type === 'error') {
           setIsBulkFinding(false);
           showToast('Error: ' + d.message, 'error');
+          sendBrowserNotification("Email Hunt Stopped (Error)", d.message);
           es.close();
         }
       } catch (_) { }
@@ -2044,10 +2081,12 @@ function App() {
           console.log("Scraper Status:", parsed.message);
         } else if (parsed.type === 'done') {
           showToast("Bulk Scraping Finished!", "success");
+          sendBrowserNotification("Scraping Finished", "Successfully fetched all available leads.");
           eventSource.close();
           setIsScraping(false);
         } else if (parsed.type === 'error') {
           showToast("Error: " + parsed.message, "error");
+          sendBrowserNotification("Scraper Stopped (Error)", parsed.message);
           eventSource.close();
           setIsScraping(false);
         }
@@ -2070,6 +2109,7 @@ function App() {
     }
     setIsScraping(false);
     showToast("Scraper Stopped. Refreshing...", "info");
+    sendBrowserNotification("Scraper Stopped", "Process was stopped manually.");
     setTimeout(() => {
       window.location.reload();
     }, 1000);
@@ -2091,6 +2131,7 @@ function App() {
       allBusinesses: String(mapAllBusinesses),
       lat: String(mapLocation.lat),
       lng: String(mapLocation.lng),
+      locationLabel: mapLocation.label || '',
       radiusKm: String(mapRadiusKm),
       limit: String(mapLeadLimit),
       noWebsiteOnly: String(mapNoWebsiteOnly)
@@ -2110,12 +2151,14 @@ function App() {
         } else if (parsed.type === 'done') {
           setMapStatus(parsed.message);
           showToast(parsed.message, "success");
+          sendBrowserNotification("Map Search Finished", parsed.message);
           eventSource.close();
           setIsMapSearching(false);
           fetchSavedLeads();
         } else if (parsed.type === 'error') {
           setMapStatus(parsed.message);
           showToast("Map error: " + parsed.message, "error");
+          sendBrowserNotification("Map Scanner Stopped (Error)", parsed.message);
           eventSource.close();
           setIsMapSearching(false);
         }
@@ -2138,6 +2181,7 @@ function App() {
     }
     setIsMapSearching(false);
     setMapStatus('Map search stopped.');
+    sendBrowserNotification("Map Search Stopped", "The scanner was stopped manually.");
     fetchSavedLeads();
   };
 
@@ -5335,7 +5379,10 @@ function App() {
                         <Button variant="ghost" size="sm" onClick={() => { setSelectedGroup(null); setSelectedIds([]); }} className="text-muted-foreground hover:text-foreground">
                           <ChevronLeft size={16} className="mr-1" /> Back to Folders
                         </Button>
-                        <h3 className="font-bold text-foreground flex-1 truncate">{selectedGroup}</h3>
+                        <h3 className="font-bold text-foreground flex-1 truncate flex items-center gap-2">
+                          <span className="text-primary font-black uppercase text-[10px] bg-primary/10 px-2 py-0.5 rounded tracking-widest">Location</span>
+                          {selectedGroup}
+                        </h3>
                       </div>
 
                       {(() => {

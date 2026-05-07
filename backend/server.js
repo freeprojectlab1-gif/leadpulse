@@ -2058,7 +2058,7 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
 
 
 app.get('/api/map-businesses', async (req, res) => {
-  const { keyword, lat, lng, radiusKm = 5, limit = 60, noWebsiteOnly = 'true', allBusinesses = 'false' } = req.query;
+  const { keyword, lat, lng, locationLabel, radiusKm = 5, limit = 60, noWebsiteOnly = 'true', allBusinesses = 'false' } = req.query;
   const originLat = Number(lat);
   const originLng = Number(lng);
   const radius = Math.max(0.5, Math.min(Number(radiusKm) || 5, 50));
@@ -2107,7 +2107,8 @@ app.get('/api/map-businesses', async (req, res) => {
     const zoom = getMapsZoomForRadius(radius);
     const searchTerms = getMapSearchTerms(searchKeyword, shouldFindAllBusinesses);
     console.log(`[MapFinder] 🔧 ${workerCount} worker pages ready. Terms: ${searchTerms.join(', ')}`);
-    const city = `MAP ${originLat.toFixed(4)}, ${originLng.toFixed(4)} • ${radius}km`;
+    const locPrefix = locationLabel ? `${locationLabel} • ` : '';
+    const city = `${locPrefix}MAP ${originLat.toFixed(4)}, ${originLng.toFixed(4)} • ${radius}km`;
     const gridPoints = generateSearchGrid(originLat, originLng, radius);
 
     sendData({ type: 'status', message: `Searching ${gridPoints.length} area(s) × ${searchTerms.length} term(s) within ${radius}km...` });
@@ -3190,9 +3191,9 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
       results.details.push({ phone: cleanPhone, status: 'sent', dailySent: waDailySent });
       console.log(`[WA Broadcast] ✅ Sent to +${cleanPhone}`);
 
-      // ── 5s Fixed Delay (anti-ban) ────────────────────────────────────
+      // ── 15s Fixed Delay (anti-ban) ────────────────────────────────────
       if (index < phones.length - 1) {
-        const safeDelay = 5000 + Math.floor(Math.random() * 2000); // 5-7s
+        const safeDelay = 15000 + Math.floor(Math.random() * 5000); // 15-20s
         console.log(`[WA Broadcast] ⏳ Waiting ${Math.round(safeDelay/1000)}s before next message...`);
         await new Promise(r => setTimeout(r, safeDelay));
       }
