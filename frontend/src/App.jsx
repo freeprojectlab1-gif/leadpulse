@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import LandingPage from './LandingPage';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Textarea, Label, Badge, Separator, Progress, Switch, Tabs, TabsList, TabsTrigger, TabsContent, Dialog, DialogContent, DialogHeader, DialogTitle, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Avatar, AvatarFallback, AvatarImage, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, Checkbox } from '@/components/ui';
 import {
   MapPin,
@@ -1495,6 +1496,7 @@ const MapBusinessFinder = ({
 function App() {
 
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
+  const [showLoginForm, setShowLoginForm] = useState(false);
   const [passcode, setPasscode] = useState('');
   const [activeTab, setActiveTab] = useState(localStorage.getItem('activeTab') || 'dashboard');
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -1541,7 +1543,7 @@ function App() {
   const [notification, setNotification] = useState(null);
   const [dynamicValues, setDynamicValues] = useState({});
   const [confirmModal, setConfirmModal] = useState({ open: false, title: '', onConfirm: null });
-  const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('pro_theme') || 'theme-light');
+  const [currentTheme, setCurrentTheme] = useState(localStorage.getItem('pro_theme') || 'theme-dark');
   const [scrapeKeyword, setScrapeKeyword] = useState('');
   const [scrapeCity, setScrapeCity] = useState('');
   const [scrapeMode, setScrapeMode] = useState('no_website');
@@ -1583,6 +1585,7 @@ function App() {
   const [cityHistory, setCityHistory] = useState(JSON.parse(localStorage.getItem('city_history') || '[]'));
   const [waModal, setWaModal] = useState({ open: false, phone: '', message: '' });
   const [waStatus, setWaStatus] = useState('disconnected');
+  const [waDailyStats, setWaDailyStats] = useState({ sent: 0, limit: 80, remaining: 80 });
   const [waQr, setWaQr] = useState('');
   const lastSavedPublicEmailRef = useRef('');
   const publicEmailSaveTimerRef = useRef(null);
@@ -1591,6 +1594,11 @@ function App() {
     try {
       const res = await axios.get('/api/whatsapp/status');
       setWaStatus(res.data.status);
+      
+      // Fetch daily stats
+      const statsRes = await axios.get('/api/whatsapp/daily-stats');
+      setWaDailyStats(statsRes.data);
+
       if (res.data.hasQr && res.data.status !== 'connected') {
         const qrRes = await axios.get('/api/whatsapp/qr');
         setWaQr(qrRes.data.qr);
@@ -2368,62 +2376,71 @@ function App() {
   };
 
   if (!isLoggedIn) {
+    if (!showLoginForm) {
+      return <LandingPage onGetStarted={() => setShowLoginForm(true)} />;
+    }
+
     return (
-      <div className="hero-vibe bg-background relative overflow-hidden flex items-center justify-center">
-        {/* Animated Background Blobs */}
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 overflow-hidden relative">
+        {/* Modern Animated Background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] animate-pulse"></div>
-          <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[100px] animate-pulse delay-700"></div>
-          <div className="absolute top-[20%] right-[10%] w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] animate-pulse delay-1000"></div>
+          <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-primary/10 rounded-full blur-[120px] animate-pulse"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[100px] animate-pulse delay-700"></div>
+          <div className="absolute top-[20%] right-[10%] w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[80px] animate-pulse delay-1000"></div>
         </div>
 
-        {/* Floating Grid Pattern */}
-        <div className="absolute inset-0 bg-grid-white opacity-[0.03] pointer-events-none"></div>
+        <div className="absolute top-8 left-8 flex items-center gap-2 cursor-pointer group z-50" onClick={() => setShowLoginForm(false)}>
+          <div className="w-10 h-10 rounded-full border border-border flex items-center justify-center group-hover:border-primary group-hover:text-primary transition-all bg-background/50 backdrop-blur-sm">
+            <ArrowRight className="rotate-180" size={16} />
+          </div>
+          <span className="text-[10px] font-bold text-muted-foreground group-hover:text-foreground transition-colors uppercase tracking-[0.2em] hidden sm:block">Back to Home</span>
+        </div>
 
-        <div className="relative z-10 w-full max-w-md px-6 flex flex-col items-center text-center space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-          <div className="flex flex-col items-center gap-4">
-            <div className="bg-primary p-3 rounded-2xl shadow-glow-primary animate-bounce-slow">
-              <Rocket className="w-10 h-10 text-primary-foreground" />
+        <div className="w-full max-w-[440px] space-y-10 text-center relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+          <div className="flex flex-col items-center gap-6">
+            <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center border border-primary/20 shadow-glow-primary/20 relative group">
+              <Rocket className="w-12 h-12 text-primary group-hover:scale-110 transition-transform" />
+              <div className="absolute -inset-2 bg-primary/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
             </div>
-            <div className="flex flex-col gap-1">
-              <h2 className="text-3xl font-black tracking-tighter text-foreground uppercase">{BRAND_NAME}</h2>
-              <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
+            <div className="flex flex-col gap-2">
+              <h2 className="text-4xl font-black tracking-tighter text-foreground uppercase">{BRAND_NAME}</h2>
+              <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
-                <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{BRAND_SUBTITLE}</span>
+                <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{BRAND_SUBTITLE}</span>
               </div>
             </div>
           </div>
 
-          <div className="space-y-3">
-            <h1 className="text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl">
-              Automate Your <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500">Cold Outreach.</span>
+          <div className="space-y-4">
+            <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl leading-tight">
+              Access Your <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-500 to-primary bg-[length:200%_auto] animate-shimmer">Infrastructure.</span>
             </h1>
-            <p className="text-muted-foreground text-sm max-w-[320px] mx-auto leading-relaxed">
-              The most powerful, dynamic, and intelligent outreach infrastructure built for modern growth teams.
+            <p className="text-muted-foreground text-sm max-w-[340px] mx-auto leading-relaxed font-medium">
+              Deploy your cold outreach engine. <br/> Secure administrative access required.
             </p>
           </div>
 
-          <Card className="w-full border-border/40 bg-card/40 backdrop-blur-xl shadow-2xl overflow-hidden group">
+          <Card className="w-full border-border/40 bg-card/40 backdrop-blur-2xl shadow-2xl overflow-hidden group rounded-[3rem]">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <CardContent className="p-8 relative z-10">
-              <form onSubmit={handleLogin} className="space-y-6">
-                <div className="space-y-2 text-left">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest opacity-60 ml-1">Secure Access</Label>
+            <CardContent className="p-12 relative z-10">
+              <form onSubmit={handleLogin} className="space-y-10">
+                <div className="space-y-4 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 ml-1">Master Access Key</Label>
                   <div className="relative">
-                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground opacity-50" />
+                    <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary opacity-50" />
                     <Input
                       type="password"
-                      placeholder="Enter Master Passcode"
+                      placeholder="••••••••"
                       value={passcode}
                       onChange={e => setPasscode(e.target.value)}
-                      className="bg-background/40 border-border/40 pl-10 h-12 text-center font-mono tracking-[0.2em] focus:ring-primary/20 focus:border-primary/40 rounded-xl"
+                      className="bg-background/40 border-border/40 pl-14 h-16 text-center font-mono text-2xl tracking-[0.6em] focus:ring-primary/20 focus:border-primary/40 rounded-2xl"
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full h-12 rounded-xl text-sm font-bold shadow-glow-primary group relative overflow-hidden">
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    Deploy Dashboard <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                <Button type="submit" className="w-full h-16 rounded-2xl text-[11px] font-black shadow-glow-primary group relative overflow-hidden tracking-[0.2em] uppercase">
+                  <span className="relative z-10 flex items-center justify-center gap-3">
+                    Verify & Deploy <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </span>
                   <div className="absolute inset-0 bg-gradient-to-r from-primary via-blue-500 to-primary bg-[length:200%_auto] animate-shimmer opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 </Button>
@@ -2431,8 +2448,8 @@ function App() {
             </CardContent>
           </Card>
 
-          <p className="text-[10px] text-muted-foreground/40 font-medium uppercase tracking-[0.2em]">
-            Protected by Advanced Neural Security
+          <p className="text-[10px] text-muted-foreground/30 font-black uppercase tracking-[0.4em] flex items-center justify-center gap-2">
+            <ShieldCheck size={12} /> Neural Security Active v2.5.0
           </p>
         </div>
       </div>
@@ -2688,6 +2705,22 @@ function App() {
               <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">System Live</span>
             </div>
 
+            <Badge 
+              variant="outline" 
+              className={`hidden md:flex gap-1.5 px-3 py-1 border-none rounded-lg text-[11px] font-bold tracking-tight ${
+                waDailyStats.sent >= waDailyStats.limit ? 'bg-red-500/10 text-red-600' : 
+                waDailyStats.sent >= waDailyStats.limit * 0.8 ? 'bg-amber-500/10 text-amber-600' : 
+                'bg-emerald-500/10 text-emerald-600'
+              }`}
+            >
+              <div className={`w-1 h-1 rounded-full ${
+                waDailyStats.sent >= waDailyStats.limit ? 'bg-red-500' : 
+                waDailyStats.sent >= waDailyStats.limit * 0.8 ? 'bg-amber-500' : 
+                'bg-emerald-500'
+              }`}></div>
+              WA: {waDailyStats.sent}/{waDailyStats.limit} Sent
+            </Badge>
+
             <Button
               variant="ghost"
               size="icon"
@@ -2864,7 +2897,7 @@ function App() {
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="h-[320px] w-full bg-muted/10 rounded-2xl border border-dashed border-border/60 flex items-center justify-center">
-                        <EmailChart recipients={recipients} />
+                        <EmailChart recipients={[...recipients, ...savedLeads]} />
                       </div>
                     </CardContent>
                   </Card>

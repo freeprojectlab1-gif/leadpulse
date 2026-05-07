@@ -181,6 +181,38 @@ let waClient;
 let waQr = "";
 let waStatus = "disconnected";
 
+// --- WhatsApp Daily Limit Tracker ---
+const WA_DAILY_LIMIT = 80;
+let waDailySent = 0;
+let waDailyDate = new Date().toDateString();
+
+const syncWaDailyCounter = async () => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const count = await ScrapedLead.countDocuments({
+      whatsappSentAt: { $gte: today }
+    });
+    waDailySent = count;
+    waDailyDate = new Date().toDateString();
+    console.log(`[WhatsApp] 📊 Daily counter synced from DB: ${waDailySent}/${WA_DAILY_LIMIT}`);
+  } catch (err) {
+    console.error('[WhatsApp] ❌ Failed to sync daily counter:', err.message);
+  }
+};
+
+const resetDailyCounterIfNeeded = async () => {
+  const today = new Date().toDateString();
+  if (today !== waDailyDate) {
+    await syncWaDailyCounter();
+    console.log('[WhatsApp] 🔄 Daily counter reset/synced for new day.');
+  }
+};
+
+// Initial sync
+setTimeout(syncWaDailyCounter, 5000); // Wait for DB connection
+
+
 // --- WhatsApp Client Logic ---
 
 const { execSync } = require('child_process');
@@ -2962,6 +2994,18 @@ app.get('/api/whatsapp/status', (req, res) => {
   res.json({ status: waStatus, hasQr: !!waQr });
 });
 
+// WhatsApp Daily Limit Stats
+app.get('/api/whatsapp/daily-stats', async (req, res) => {
+  await resetDailyCounterIfNeeded();
+  res.json({
+    sent: waDailySent,
+    limit: WA_DAILY_LIMIT,
+    remaining: Math.max(0, WA_DAILY_LIMIT - waDailySent),
+    overLimit: waDailySent >= WA_DAILY_LIMIT,
+    date: waDailyDate
+  });
+});
+
 app.get('/api/whatsapp/debug-chats', async (req, res) => {
   try {
     if (!waClient || waStatus !== 'connected') return res.json({ error: 'Not connected', waStatus });
@@ -3029,7 +3073,12 @@ app.post('/api/whatsapp/send', async (req, res) => {
       await lead.save();
     }
     await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'sent', message });
-    res.json({ success: true });
+    
+    // Increment daily counter for manual sends too
+    await resetDailyCounterIfNeeded();
+    waDailySent++;
+
+    res.json({ success: true, dailySent: waDailySent });
   } catch (e) {
     console.error('[WhatsApp] Send error:', e.message);
     await updateScrapedLeadWhatsappStatus({ phone, status: 'failed', error: e.message });
@@ -3106,11 +3155,21 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
         }
       }
 
+      // ── Daily Limit Check ─────────────────────────────────────────────
+      await resetDailyCounterIfNeeded();
+      if (waDailySent >= WA_DAILY_LIMIT) {
+        console.warn(`[WA Broadcast] ⚠️ Daily limit reached (${waDailySent}/${WA_DAILY_LIMIT}). Sending anyway but be careful!`);
+        results.details.push({ phone: cleanPhone, status: 'warn_overlimit', sentCount: waDailySent });
+      }
+
       if (targetChat) {
         await targetChat.sendMessage(outgoingMessage);
       } else {
         await waClient.sendMessage(resolvedId._serialized, outgoingMessage);
       }
+
+      waDailySent++;
+      console.log(`[WA Broadcast] 📊 Daily count: ${waDailySent}/${WA_DAILY_LIMIT}`);
 
       // ── Step 3: Persist to DB ─────────────────────────────────────────
       let lead = await Recipient.findOne({
@@ -3126,13 +3185,14 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
       await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'sent', message: outgoingMessage });
 
       results.sent++;
-      results.details.push({ phone: cleanPhone, status: 'sent' });
+      results.details.push({ phone: cleanPhone, status: 'sent', dailySent: waDailySent });
       console.log(`[WA Broadcast] ✅ Sent to +${cleanPhone}`);
 
-      // Delay between messages to avoid rate limiting
+      // ── 45s Fixed Delay (anti-ban) ────────────────────────────────────
       if (index < phones.length - 1) {
-        const jitter = Math.floor(Math.random() * 1000);
-        await new Promise(r => setTimeout(r, delay + jitter));
+        const safeDelay = 45000 + Math.floor(Math.random() * 10000); // 45-55s
+        console.log(`[WA Broadcast] ⏳ Waiting ${Math.round(safeDelay/1000)}s before next message...`);
+        await new Promise(r => setTimeout(r, safeDelay));
       }
     } catch (e) {
       await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'failed', message: outgoingMessage, error: e.message });
