@@ -2716,6 +2716,16 @@ function App() {
             <Badge 
               variant="outline" 
               className={`hidden md:flex gap-1.5 px-3 py-1 border-none rounded-lg text-[11px] font-bold tracking-tight ${
+                waStatus === 'connected' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'
+              }`}
+            >
+              <div className={`w-1 h-1 rounded-full ${waStatus === 'connected' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+              {waStatus.toUpperCase()}
+            </Badge>
+
+            <Badge 
+              variant="outline" 
+              className={`hidden md:flex gap-1.5 px-3 py-1 border-none rounded-lg text-[11px] font-bold tracking-tight ${
                 waDailyStats.sent >= waDailyStats.limit ? 'bg-red-500/10 text-red-600' : 
                 waDailyStats.sent >= waDailyStats.limit * 0.8 ? 'bg-amber-500/10 text-amber-600' : 
                 'bg-emerald-500/10 text-emerald-600'
@@ -5346,8 +5356,18 @@ function App() {
                                     className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm border-transparent font-bold"
                                     disabled={isScraperBroadcasting}
                                     onClick={() => {
-                                      const selectedLeads = groupLeads.filter(l => selectedIds.includes(l._id) && l.phone && l.phone !== 'N/A');
-                                      const phones = selectedLeads.map(l => l.phone.replace(/\D/g, ''));
+                                      // Robust lead filtering
+                                      const selectedLeads = groupLeads.filter(l => {
+                                        if (!selectedIds.includes(l._id)) return false;
+                                        const p = l.phone || l.data?.Phone || l.email; // Fallback to email if it's a WA ID
+                                        return p && p !== 'N/A';
+                                      });
+
+                                      const phones = selectedLeads.map(l => {
+                                        const p = l.phone || l.data?.Phone || l.email || '';
+                                        return p.replace(/\D/g, '');
+                                      }).filter(p => p.length >= 10);
+
                                       if (phones.length === 0) return showToast('No leads with valid phone numbers selected!', 'error');
 
                                       const activeWaTpl = whatsappTemplates.find(t => t.isActive);

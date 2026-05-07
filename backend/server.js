@@ -182,7 +182,7 @@ let waQr = "";
 let waStatus = "disconnected";
 
 // --- WhatsApp Daily Limit Tracker ---
-const WA_DAILY_LIMIT = 80;
+const WA_DAILY_LIMIT = 45;
 let waDailySent = 0;
 let waDailyDate = new Date().toDateString();
 
@@ -3156,6 +3156,8 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
       }
 
       // ── Daily Limit Check ─────────────────────────────────────────────
+      // ── 5s Fixed Delay (anti-ban) ────────────────────────────────────
+      const safeDelay = 5000 + Math.floor(Math.random() * 2000); // 5-7s
       await resetDailyCounterIfNeeded();
       if (waDailySent >= WA_DAILY_LIMIT) {
         console.warn(`[WA Broadcast] ⚠️ Daily limit reached (${waDailySent}/${WA_DAILY_LIMIT}). Sending anyway but be careful!`);
@@ -3188,9 +3190,9 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
       results.details.push({ phone: cleanPhone, status: 'sent', dailySent: waDailySent });
       console.log(`[WA Broadcast] ✅ Sent to +${cleanPhone}`);
 
-      // ── 45s Fixed Delay (anti-ban) ────────────────────────────────────
+      // ── 5s Fixed Delay (anti-ban) ────────────────────────────────────
       if (index < phones.length - 1) {
-        const safeDelay = 45000 + Math.floor(Math.random() * 10000); // 45-55s
+        const safeDelay = 5000 + Math.floor(Math.random() * 2000); // 5-7s
         console.log(`[WA Broadcast] ⏳ Waiting ${Math.round(safeDelay/1000)}s before next message...`);
         await new Promise(r => setTimeout(r, safeDelay));
       }
