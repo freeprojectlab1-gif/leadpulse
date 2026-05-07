@@ -882,196 +882,328 @@ const WhatsAppInboxTab = ({ waStatus, savedLeads = [], onRefreshSavedLeads }) =>
 
 const EmailChart = ({ recipients }) => {
   const [filter, setFilter] = useState('daily');
-  const [mode, setMode] = useState('overall'); // 'emails', 'whatsapp', 'overall'
+  const [mode, setMode] = useState('overall');
   const [chartType, setChartType] = useState('bar');
-  const chartViews = ['bar', 'line', 'area', 'steps', 'dots', 'heat', 'blocks'];
 
   const toStartOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const getDayKey = (date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
   const getMonthKey = (date) => `${date.getFullYear()}-${date.getMonth()}`;
   const getWeekStart = (date) => {
     const d = toStartOfDay(date);
-    const day = d.getDay();
-    d.setDate(d.getDate() - day);
+    d.setDate(d.getDate() - d.getDay());
     return d;
   };
 
   const now = new Date();
-  const sentDates = [];
+  const emailDates = [], waDates = [];
   recipients.forEach(r => {
-    // Collect Email dates
-    if (mode === 'emails' || mode === 'overall') {
-      if (r.history) {
-        r.history.forEach(h => {
-          if (h.sentAt) {
-            const date = new Date(h.sentAt);
-            if (!Number.isNaN(date.getTime())) sentDates.push(date);
-          }
-        });
-      }
-    }
-    // Collect WhatsApp dates — use whatsappSentAt (the actual send timestamp)
-    if (mode === 'whatsapp' || mode === 'overall') {
-      if (r.whatsappSentAt) {
-        const date = new Date(r.whatsappSentAt);
-        if (!Number.isNaN(date.getTime())) sentDates.push(date);
-      }
-      // Also count from replies that were sent by us (fromMe = true)
-      if (r.replies) {
-        r.replies.forEach(rep => {
-          if (rep.type === 'whatsapp' && rep.fromMe && rep.receivedAt) {
-            const date = new Date(rep.receivedAt);
-            if (!Number.isNaN(date.getTime())) sentDates.push(date);
-          }
-        });
-      }
-    }
+    if (r.history) r.history.forEach(h => { if (h.sentAt) { const d = new Date(h.sentAt); if (!isNaN(d)) emailDates.push(d); }});
+    if (r.whatsappSentAt) { const d = new Date(r.whatsappSentAt); if (!isNaN(d)) waDates.push(d); }
+    if (r.replies) r.replies.forEach(rep => { if (rep.type === 'whatsapp' && rep.fromMe && rep.receivedAt) { const d = new Date(rep.receivedAt); if (!isNaN(d)) waDates.push(d); }});
   });
 
-  let points = [];
+  const buildPoints = (dates) => {
+    let pts = [];
+    if (filter === 'daily') {
+      pts = Array.from({ length: 7 }).map((_, i) => { const d = toStartOfDay(now); d.setDate(d.getDate() - (6 - i)); return { key: getDayKey(d), label: d.toLocaleDateString('en-IN', { weekday: 'short' }), count: 0 }; });
+      const m = new Map(pts.map((p, i) => [p.key, i]));
+      dates.forEach(d => { const i = m.get(getDayKey(toStartOfDay(d))); if (i !== undefined) pts[i].count++; });
+    } else if (filter === 'weekly') {
+      const ws = getWeekStart(now);
+      pts = Array.from({ length: 4 }).map((_, i) => { const d = new Date(ws); d.setDate(d.getDate() - (3 - i) * 7); return { key: getDayKey(d), label: i === 3 ? 'This Week' : `Wk ${i + 1}`, count: 0 }; });
+      const m = new Map(pts.map((p, i) => [p.key, i]));
+      dates.forEach(d => { const i = m.get(getDayKey(getWeekStart(d))); if (i !== undefined) pts[i].count++; });
+    } else {
+      pts = Array.from({ length: 6 }).map((_, i) => { const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1); return { key: getMonthKey(d), label: d.toLocaleDateString('en-IN', { month: 'short' }), count: 0 }; });
+      const m = new Map(pts.map((p, i) => [p.key, i]));
+      dates.forEach(d => { const i = m.get(getMonthKey(d)); if (i !== undefined) pts[i].count++; });
+    }
+    return pts;
+  };
 
-  if (filter === 'daily') {
-    points = Array.from({ length: 7 }).map((_, i) => {
-      const d = toStartOfDay(now);
-      d.setDate(d.getDate() - (6 - i));
-      return {
-        key: getDayKey(d),
-        label: d.toLocaleDateString('en-IN', { weekday: 'short' }),
-        count: 0
-      };
-    });
-    const pointMap = new Map(points.map((point, index) => [point.key, index]));
-    sentDates.forEach(d => {
-      const index = pointMap.get(getDayKey(toStartOfDay(d)));
-      if (index !== undefined) points[index].count += 1;
-    });
-  } else if (filter === 'weekly') {
-    const currentWeekStart = getWeekStart(now);
-    points = Array.from({ length: 4 }).map((_, i) => {
-      const d = new Date(currentWeekStart);
-      d.setDate(d.getDate() - ((3 - i) * 7));
-      return {
-        key: getDayKey(d),
-        label: i === 3 ? 'This Week' : `Week ${i + 1}`,
-        count: 0
-      };
-    });
-    const pointMap = new Map(points.map((point, index) => [point.key, index]));
-    sentDates.forEach(d => {
-      const index = pointMap.get(getDayKey(getWeekStart(d)));
-      if (index !== undefined) points[index].count += 1;
-    });
-  } else if (filter === 'monthly') {
-    points = Array.from({ length: 6 }).map((_, i) => {
-      const d = new Date(now.getFullYear(), now.getMonth(), 1);
-      d.setMonth(d.getMonth() - (5 - i));
-      return {
-        key: getMonthKey(d),
-        label: d.toLocaleDateString('en-IN', { month: 'short' }),
-        count: 0
-      };
-    });
-    const pointMap = new Map(points.map((point, index) => [point.key, index]));
-    sentDates.forEach(d => {
-      const index = pointMap.get(getMonthKey(d));
-      if (index !== undefined) points[index].count += 1;
-    });
-  }
-
-  const counts = points.map(point => point.count);
-  const maxCount = Math.max(...counts, 10);
-  const totalSent = counts.reduce((sum, count) => sum + count, 0);
+  const emailPts = buildPoints(emailDates);
+  const waPts = buildPoints(waDates);
+  const allPts = emailPts.map((p, i) => ({ ...p, count: p.count + (waPts[i]?.count || 0) }));
+  const points = mode === 'emails' ? emailPts : mode === 'whatsapp' ? waPts : allPts;
+  const counts = points.map(p => p.count);
+  const maxCount = Math.max(...counts, 1);
+  const totalSent = counts.reduce((s, c) => s + c, 0);
   const peak = Math.max(...counts, 0);
-  const chartWidth = 640;
-  const chartHeight = 210;
-  const chartPadding = { top: 24, right: 26, bottom: 34, left: 26 };
-  const plotHeight = chartHeight - chartPadding.top - chartPadding.bottom;
-  const plotWidth = chartWidth - chartPadding.left - chartPadding.right;
-  const trendPoints = points.map((point, index) => {
-    const x = chartPadding.left + (points.length <= 1 ? plotWidth / 2 : (plotWidth / (points.length - 1)) * index);
-    const y = chartPadding.top + plotHeight - ((point.count / maxCount) * plotHeight);
-    return { ...point, x, y };
+
+  // SVG dimensions
+  const W = 580, H = 200;
+  const pad = { t: 20, r: 20, b: 36, l: 32 };
+  const pw = W - pad.l - pad.r, ph = H - pad.t - pad.b;
+  const pts2svg = points.map((p, i) => ({
+    ...p,
+    x: pad.l + (points.length <= 1 ? pw / 2 : (pw / (points.length - 1)) * i),
+    y: pad.t + ph - (p.count / maxCount) * ph
+  }));
+
+  const linePath = pts2svg.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const smoothPath = pts2svg.reduce((acc, p, i, arr) => {
+    if (i === 0) return `M${p.x},${p.y}`;
+    const prev = arr[i - 1];
+    const cx = (prev.x + p.x) / 2;
+    return acc + ` C${cx},${prev.y} ${cx},${p.y} ${p.x},${p.y}`;
+  }, '');
+  const areaPath = pts2svg.length ? `${smoothPath} L${pts2svg[pts2svg.length - 1].x},${pad.t + ph} L${pts2svg[0].x},${pad.t + ph}Z` : '';
+
+  const emailTotal = emailPts.reduce((s, p) => s + p.count, 0);
+  const waTotal = waPts.reduce((s, p) => s + p.count, 0);
+  const donutTotal = emailTotal + waTotal || 1;
+  const emailAngle = (emailTotal / donutTotal) * 360;
+  const cx = 90, cy = 90, r = 65, ri = 42;
+  const polarToXY = (angle, radius) => ({ x: cx + radius * Math.cos((angle - 90) * Math.PI / 180), y: cy + radius * Math.sin((angle - 90) * Math.PI / 180) });
+  const describeArc = (start, end, outerR, innerR) => {
+    const s1 = polarToXY(start, outerR), e1 = polarToXY(end, outerR);
+    const s2 = polarToXY(end, innerR), e2 = polarToXY(start, innerR);
+    const lg = end - start > 180 ? 1 : 0;
+    return `M${s1.x},${s1.y} A${outerR},${outerR} 0 ${lg} 1 ${e1.x},${e1.y} L${s2.x},${s2.y} A${innerR},${innerR} 0 ${lg} 0 ${e2.x},${e2.y} Z`;
+  };
+
+  // Heatmap - last 28 days grid
+  const heatDays = Array.from({ length: 28 }).map((_, i) => {
+    const d = toStartOfDay(now); d.setDate(d.getDate() - (27 - i));
+    const key = getDayKey(d);
+    const eCount = emailDates.filter(ed => getDayKey(toStartOfDay(ed)) === key).length;
+    const wCount = waDates.filter(wd => getDayKey(toStartOfDay(wd)) === key).length;
+    return { d, count: eCount + wCount, label: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) };
   });
-  const linePath = trendPoints.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
-  const stepPath = trendPoints.map((point, index) => {
-    if (index === 0) return `M ${point.x} ${point.y}`;
-    const previous = trendPoints[index - 1];
-    const midX = (previous.x + point.x) / 2;
-    return `L ${midX} ${previous.y} L ${midX} ${point.y} L ${point.x} ${point.y}`;
-  }).join(' ');
-  const areaPath = trendPoints.length
-    ? `${linePath} L ${trendPoints[trendPoints.length - 1].x} ${chartPadding.top + plotHeight} L ${trendPoints[0].x} ${chartPadding.top + plotHeight} Z`
-    : '';
-  const activeLinePath = chartType === 'steps' ? stepPath : linePath;
+  const maxHeat = Math.max(...heatDays.map(d => d.count), 1);
+
+  const chartTypes = [
+    { id: 'bar', label: 'Bar', icon: '▐' },
+    { id: 'area', label: 'Area', icon: '◠' },
+    { id: 'line', label: 'Line', icon: '╱' },
+    { id: 'donut', label: 'Donut', icon: '◎' },
+    { id: 'heat', label: 'Heat', icon: '▦' },
+  ];
 
   return (
-    <div className="w-full flex flex-col space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+    <div className="w-full flex flex-col gap-5 p-1">
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h3 className="text-lg font-bold text-foreground">
-            {mode === 'emails' ? 'Email' : mode === 'whatsapp' ? 'WhatsApp' : 'Overall'} Delivery Analytics
+          <h3 className="text-base font-black text-foreground">
+            {mode === 'emails' ? '📧 Email' : mode === 'whatsapp' ? '📱 WhatsApp' : '📊 Overall'} Delivery Analytics
           </h3>
-          <p className="text-sm text-muted-foreground">
-            {totalSent} total messages • Peak of {peak}
-          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">{totalSent} total sent • Peak: {peak}</p>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Select value={mode} onValueChange={setMode}>
-            <SelectTrigger className="w-[140px] bg-background/50 border-border">
-              <SelectValue placeholder="Mode" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="overall">Overall</SelectItem>
-              <SelectItem value="emails">Emails Only</SelectItem>
-              <SelectItem value="whatsapp">WhatsApp Only</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={filter} onValueChange={setFilter}>
-            <SelectTrigger className="w-[120px] bg-background/50 border-border">
-              <SelectValue placeholder="Timeframe" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="daily">Daily</SelectItem>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap gap-2">
+          {/* Chart type buttons */}
+          <div className="flex rounded-lg border border-border/50 overflow-hidden bg-background/50">
+            {chartTypes.map(ct => (
+              <button
+                key={ct.id}
+                onClick={() => setChartType(ct.id)}
+                className={`px-3 py-1.5 text-[11px] font-bold transition-all ${chartType === ct.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
+                title={ct.label}
+              >
+                <span className="mr-1">{ct.icon}</span>{ct.label}
+              </button>
+            ))}
+          </div>
+          {/* Mode & Filter - hide for donut/heat */}
+          {!['donut', 'heat'].includes(chartType) && (
+            <>
+              <Select value={mode} onValueChange={setMode}>
+                <SelectTrigger className="w-[110px] h-8 text-[11px] bg-background/50 border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="overall">Overall</SelectItem>
+                  <SelectItem value="emails">Emails</SelectItem>
+                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filter} onValueChange={setFilter}>
+                <SelectTrigger className="w-[100px] h-8 text-[11px] bg-background/50 border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="relative w-full h-[250px] bg-card/30 border border-border/50 rounded-xl p-4 flex items-end justify-between gap-2 mt-4">
-        {/* Background Grid Lines */}
-        <div className="absolute inset-x-4 inset-y-8 flex flex-col justify-between pointer-events-none">
-          <div className="w-full h-px bg-border/40"></div>
-          <div className="w-full h-px bg-border/40"></div>
-          <div className="w-full h-px bg-border/40"></div>
-          <div className="w-full h-px bg-border/40"></div>
-        </div>
-
-        {points.map((point) => {
-          const heightPercent = maxCount > 0 ? (point.count / maxCount) * 100 : 0;
-          return (
-            <div key={point.key} className="relative flex flex-col items-center justify-end h-full w-full group">
-              <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-primary text-primary-foreground text-xs font-bold py-1 px-2 rounded">
-                {point.count}
-              </div>
-              <div className="w-full flex justify-center items-end h-[85%] z-10 relative">
-                <div
-                  className={`w-full max-w-[40px] rounded-t-sm transition-all duration-500 ease-out ${point.count === peak && point.count > 0 ? 'bg-primary shadow-[0_0_15px_rgba(66,120,244,0.5)]' : 'bg-primary/40 hover:bg-primary/60'}`}
-                  style={{ height: `${Math.max(heightPercent, 2)}%` }}
-                ></div>
-              </div>
-              <span className="text-xs text-muted-foreground mt-3 font-medium text-center z-10">
-                {point.label}
-              </span>
+      {/* ── BAR CHART ── */}
+      {chartType === 'bar' && (
+        <div className="relative w-full h-[320px] bg-gradient-to-b from-muted/10 to-transparent rounded-2xl border border-border/40 p-4 flex items-end justify-between gap-2">
+          {[0.25, 0.5, 0.75, 1].map(ratio => (
+            <div key={ratio} className="absolute left-4 right-4 h-px bg-border/30" style={{ bottom: `${ratio * 80 + 12}%` }}>
+              <span className="absolute -top-3 -left-1 text-[9px] text-muted-foreground/60">{Math.round(maxCount * ratio)}</span>
             </div>
-          );
-        })}
-      </div>
+          ))}
+          {points.map((p) => {
+            const h = maxCount > 0 ? (p.count / maxCount) * 100 : 0;
+            const isPeak = p.count === peak && p.count > 0;
+            return (
+              <div key={p.key} className="relative flex flex-col items-center justify-end h-full flex-1 group cursor-default">
+                <div className="absolute -top-1 opacity-0 group-hover:opacity-100 transition-all bg-primary text-primary-foreground text-[10px] font-black py-0.5 px-2 rounded-full shadow-lg z-20 pointer-events-none whitespace-nowrap">
+                  {p.count} sent
+                </div>
+                <div className="w-full px-1 flex justify-center items-end h-[85%]">
+                  <div
+                    className={`w-full max-w-[48px] rounded-t-lg transition-all duration-700 ease-out relative overflow-hidden ${isPeak ? 'bg-primary shadow-[0_0_20px_rgba(66,120,244,0.6)]' : 'bg-primary/30 group-hover:bg-primary/60'}`}
+                    style={{ height: `${Math.max(h, 2)}%` }}
+                  >
+                    {isPeak && <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/20" />}
+                    {isPeak && <div className="absolute inset-x-0 top-0 h-0.5 bg-white/60" />}
+                  </div>
+                </div>
+                <span className="text-[10px] text-muted-foreground font-semibold mt-2">{p.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── AREA / LINE CHART ── */}
+      {(chartType === 'area' || chartType === 'line') && (
+        <div className="w-full rounded-2xl border border-border/40 bg-gradient-to-b from-muted/10 to-transparent overflow-hidden">
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: '320px' }}>
+            <defs>
+              <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#4278f4" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="#4278f4" stopOpacity="0.01" />
+              </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            {/* Grid */}
+            {[0.25, 0.5, 0.75, 1].map(r => (
+              <g key={r}>
+                <line x1={pad.l} y1={pad.t + ph - r * ph} x2={pad.l + pw} y2={pad.t + ph - r * ph} stroke="currentColor" strokeOpacity="0.07" strokeWidth="1" strokeDasharray="4 4" />
+                <text x={pad.l - 4} y={pad.t + ph - r * ph + 4} textAnchor="end" fontSize="9" fill="currentColor" fillOpacity="0.4">{Math.round(maxCount * r)}</text>
+              </g>
+            ))}
+            {/* Area fill */}
+            {chartType === 'area' && <path d={areaPath} fill="url(#areaGrad)" />}
+            {/* Line */}
+            <path d={smoothPath} fill="none" stroke="#4278f4" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" filter="url(#glow)" />
+            {/* Dots */}
+            {pts2svg.map((p, i) => (
+              <g key={i}>
+                <circle cx={p.x} cy={p.y} r="5" fill="#4278f4" opacity="0.2" />
+                <circle cx={p.x} cy={p.y} r="3.5" fill="#4278f4" />
+                <circle cx={p.x} cy={p.y} r="1.5" fill="white" />
+                <text x={p.x} y={pad.t + ph + 22} textAnchor="middle" fontSize="10" fill="currentColor" fillOpacity="0.5">{p.label}</text>
+                {p.count > 0 && <text x={p.x} y={p.y - 10} textAnchor="middle" fontSize="9" fill="#4278f4" fontWeight="bold">{p.count}</text>}
+              </g>
+            ))}
+            {/* Baseline */}
+            <line x1={pad.l} y1={pad.t + ph} x2={pad.l + pw} y2={pad.t + ph} stroke="currentColor" strokeOpacity="0.15" strokeWidth="1" />
+          </svg>
+        </div>
+      )}
+
+      {/* ── DONUT CHART ── */}
+      {chartType === 'donut' && (
+        <div className="flex flex-col sm:flex-row items-center gap-8 p-6 rounded-2xl border border-border/40 bg-gradient-to-br from-muted/10 to-transparent min-h-[240px]">
+          <svg width="180" height="180" viewBox="0 0 180 180" className="shrink-0">
+            <defs>
+              <filter id="dshadow"><feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#4278f4" floodOpacity="0.3"/></filter>
+            </defs>
+            {donutTotal > 1 ? (
+              <>
+                <path d={describeArc(0, emailAngle, r, ri)} fill="#4278f4" filter="url(#dshadow)" />
+                <path d={describeArc(emailAngle, 360, r, ri)} fill="#10b981" filter="url(#dshadow)" />
+              </>
+            ) : (
+              <>
+                <circle cx={cx} cy={cy} r={r} fill="#4278f4" opacity="0.2" />
+                <circle cx={cx} cy={cy} r={ri} fill="none" stroke="#4278f4" strokeWidth="1" strokeDasharray="4 4" />
+              </>
+            )}
+            <text x={cx} y={cy - 8} textAnchor="middle" fontSize="22" fontWeight="900" fill="currentColor">{donutTotal}</text>
+            <text x={cx} y={cy + 12} textAnchor="middle" fontSize="9" fill="currentColor" opacity="0.5" fontWeight="bold">TOTAL</text>
+          </svg>
+          <div className="flex flex-col gap-5 flex-1">
+            <div>
+              <div className="text-xs text-muted-foreground font-bold uppercase tracking-widest mb-1">All-Time Distribution</div>
+              <div className="text-2xl font-black text-foreground">{donutTotal} Messages Sent</div>
+            </div>
+            <div className="space-y-3">
+              {[
+                { label: 'Email Sent', count: emailTotal, color: '#4278f4', bg: 'bg-primary/10' },
+                { label: 'WhatsApp Sent', count: waTotal, color: '#10b981', bg: 'bg-emerald-500/10' },
+              ].map(item => (
+                <div key={item.label} className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                  <div className="flex-1">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-xs font-bold text-foreground">{item.label}</span>
+                      <span className="text-xs font-black" style={{ color: item.color }}>{item.count}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(item.count / donutTotal) * 100}%`, backgroundColor: item.color }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'Email Rate', val: donutTotal > 0 ? `${Math.round((emailTotal / donutTotal) * 100)}%` : '0%' },
+                { label: 'WA Rate', val: donutTotal > 0 ? `${Math.round((waTotal / donutTotal) * 100)}%` : '0%' },
+              ].map(s => (
+                <div key={s.label} className="bg-muted/30 rounded-xl p-3 border border-border/30">
+                  <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">{s.label}</div>
+                  <div className="text-xl font-black text-foreground">{s.val}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── HEATMAP (last 28 days) ── */}
+      {chartType === 'heat' && (
+        <div className="rounded-2xl border border-border/40 bg-gradient-to-b from-muted/10 to-transparent p-6">
+          <div className="text-xs text-muted-foreground font-bold mb-4 uppercase tracking-widest">Activity Heatmap — Last 28 Days</div>
+          <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}>
+            {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+              <div key={d} className="text-[9px] text-muted-foreground font-bold text-center uppercase">{d}</div>
+            ))}
+            {heatDays.map((d, i) => {
+              const intensity = d.count / maxHeat;
+              const opacity = d.count === 0 ? 0.07 : 0.15 + intensity * 0.85;
+              return (
+                <div
+                  key={i}
+                  className="aspect-square rounded-md flex items-center justify-center cursor-default relative group transition-transform hover:scale-110"
+                  style={{ backgroundColor: `rgba(66,120,244,${opacity})` }}
+                  title={`${d.label}: ${d.count} messages`}
+                >
+                  {d.count > 0 && <span className="text-[9px] font-black text-white/80">{d.count}</span>}
+                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-popover text-popover-foreground text-[10px] font-bold py-1 px-2 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap border border-border/50 z-10">
+                    {d.label}: {d.count}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-2 mt-4 justify-end">
+            <span className="text-[10px] text-muted-foreground">Less</span>
+            {[0.07, 0.25, 0.5, 0.75, 1].map(o => (
+              <div key={o} className="w-4 h-4 rounded-sm" style={{ backgroundColor: `rgba(66,120,244,${o})` }} />
+            ))}
+            <span className="text-[10px] text-muted-foreground">More</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
 
 // ============================================================
 
@@ -2839,22 +2971,23 @@ function App() {
                 <p className="text-muted-foreground text-sm font-medium">Here's what's happening across your outreach channels today.</p>
               </div>
 
+
               {/* TOP STATS GRID */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
                   {
-                    label: 'Total Active Leads',
-                    value: recipients.filter(r => !r.email?.includes('@whatsapp.com')).length + recipients.filter(r => r.replies && r.replies.some(rep => rep.type === 'whatsapp' && rep.fromMe)).length,
-                    sub: 'Across all channels',
-                    icon: Users,
+                    label: 'Total CRM Leads',
+                    value: savedLeads.length,
+                    sub: 'Total CRM leads scraped',
+                    icon: Database,
                     color: 'text-primary',
                     bg: 'bg-primary/5',
                     border: 'border-primary/20'
                   },
                   {
                     label: 'Email Campaigns',
-                    value: recipients.filter(r => !r.email?.includes('@whatsapp.com')).length,
-                    sub: 'Verified email leads',
+                    value: savedLeads.filter(l => l.email && l.emailFound).length,
+                    sub: 'Emails found in CRM',
                     icon: Mail,
                     color: 'text-indigo-500',
                     bg: 'bg-indigo-500/5',
@@ -2862,21 +2995,21 @@ function App() {
                   },
                   {
                     label: 'WhatsApp Leads',
-                    value: whatsappLeadStats.total,
-                    sub: 'WhatsApp-tracked CRM leads',
+                    value: savedLeads.filter(l => l.phone && l.phone !== 'N/A').length,
+                    sub: 'Valid WA numbers in CRM',
                     icon: MessageSquare,
                     color: 'text-emerald-500',
                     bg: 'bg-emerald-500/5',
                     border: 'border-emerald-500/20'
                   },
                   {
-                    label: 'Active Automations',
-                    value: getStatCount('pending') + getStatCount('Step 1 Sent') + getStatCount('Step 2 Sent'),
-                    sub: 'Sequences in progress',
-                    icon: Rocket,
-                    color: 'text-amber-500',
-                    bg: 'bg-amber-500/5',
-                    border: 'border-amber-500/20'
+                    label: 'Completed',
+                    value: getStatCount('finished'),
+                    sub: 'Finished sequences',
+                    icon: CheckCircle,
+                    color: 'text-blue-500',
+                    bg: 'bg-blue-500/5',
+                    border: 'border-blue-500/20'
                   }
                 ].map((stat, i) => (
                   <Card key={i} className="premium-card bg-card/50 backdrop-blur-sm shadow-none hover:shadow-none">
@@ -2919,7 +3052,7 @@ function App() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 {[
                   { label: 'Replied', value: recipients.filter(r => r.status === 'replied' && !r.email?.includes('@whatsapp.com')).length, icon: Reply, color: 'text-emerald-500' },
-                  { label: 'Completed', value: getStatCount('finished'), icon: CheckCircle, color: 'text-blue-500' },
+                  { label: 'Active Automations', value: getStatCount('pending') + getStatCount('Step 1 Sent') + getStatCount('Step 2 Sent'), icon: Rocket, color: 'text-amber-500' },
                   { label: 'Stopped', value: getStatCount('stopped'), icon: X, color: 'text-destructive' },
                   { label: 'Failed', value: getStatCount('failed'), icon: AlertTriangle, color: 'text-amber-500' }
                 ].map((stat, i) => (
@@ -2958,7 +3091,7 @@ function App() {
                       </div>
                     </CardHeader>
                     <CardContent className="p-6">
-                      <div className="h-[320px] w-full bg-muted/10 rounded-2xl border border-dashed border-border/60 flex items-center justify-center">
+                      <div className="h-[480px] w-full bg-muted/10 rounded-2xl border border-dashed border-border/60 flex items-center justify-center">
                         <EmailChart recipients={[...recipients, ...savedLeads]} />
                       </div>
                     </CardContent>
