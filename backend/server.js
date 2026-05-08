@@ -3088,27 +3088,78 @@ app.post('/api/whatsapp/send', async (req, res) => {
 });
 
 // WhatsApp Broadcast - send message to multiple contacts
+const INTERAKT_SECRET_KEY = process.env.INTERAKT_SECRET_KEY || "";
+
+const sendWhatsappInterakt = async (phone, message) => {
+  if (!INTERAKT_SECRET_KEY) throw new Error("Interakt API Key not configured");
+  
+  let normalizedPhone = phone.replace(/\D/g, '');
+  if (normalizedPhone.startsWith('0')) normalizedPhone = normalizedPhone.slice(1);
+  if (normalizedPhone.length === 10) normalizedPhone = '91' + normalizedPhone;
+  if (!normalizedPhone.startsWith('+')) normalizedPhone = '+' + normalizedPhone;
+
+  // Note: For official API, you usually need a pre-approved template.
+  // For now, we attempt a session message or a generic template approach.
+  const response = await fetch('https://api.interakt.ai/v1/public/message/', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${INTERAKT_SECRET_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      fullPhoneNumber: normalizedPhone,
+      type: "Template", 
+      template: {
+        name: "lead_pulse_generic", // This template name must exist and be approved in Interakt
+        languageCode: "en",
+        bodyValues: [message] // Passing the custom message as a variable
+      }
+    })
+  });
+
+  const resData = await response.json();
+  if (!response.ok) throw new Error(resData.message || "Interakt API Error");
+  return resData;
+};
+
 app.post('/api/whatsapp/broadcast', async (req, res) => {
-  const { phones, message, messages, delay = 3000 } = req.body;
+  const { phones, message, messages, delay = 3000, provider = 'browser' } = req.body;
   if (!phones || !Array.isArray(phones) || phones.length === 0) return res.status(400).json({ error: 'phones array required' });
   if (!message && (!Array.isArray(messages) || messages.length === 0)) return res.status(400).json({ error: 'message required' });
-  if (!waClient || waStatus !== 'connected') return res.status(503).json({ error: 'WhatsApp not connected' });
+  
+  if (provider === 'browser' && (!waClient || waStatus !== 'connected')) {
+    return res.status(503).json({ error: 'WhatsApp not connected' });
+  }
 
   const results = { sent: 0, failed: 0, skipped: 0, details: [] };
 
-  // Pre-build chat map once
-  const allChats = await waClient.getChats().catch(() => []);
-  const chatMap = {};
-  for (const chat of allChats) {
-    if (chat.isGroup) continue;
-    const chatPhone = chat.id.user || chat.id._serialized.split('@')[0];
-    chatMap[chatPhone] = chat;
+  // Pre-build chat map once (only for browser mode)
+  let chatMap = {};
+  if (provider === 'browser') {
+    const allChats = await waClient.getChats().catch(() => []);
+    for (const chat of allChats) {
+      if (chat.isGroup) continue;
+      const chatPhone = chat.id.user || chat.id._serialized.split('@')[0];
+      chatMap[chatPhone] = chat;
+    }
   }
 
   for (const [index, phone] of phones.entries()) {
     const cleanPhone = String(phone).replace(/\D/g, '');
     const outgoingMessage = Array.isArray(messages) && messages[index] ? String(messages[index]) : message;
+    
     try {
+      if (provider === 'interakt') {
+        console.log(`[Interakt Broadcast] Sending to: ${phone}`);
+        await sendWhatsappInterakt(cleanPhone, outgoingMessage);
+        results.sent++;
+        await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'sent', message: outgoingMessage });
+        results.details.push({ phone: cleanPhone, status: 'sent', provider: 'interakt' });
+        // Minimal delay for API calls to avoid rate limits
+        if (index < phones.length - 1) await new Promise(r => setTimeout(r, 200));
+        continue;
+      }
+
       // ── Step 1: Normalize phone to full international format ───────────
       let normalizedPhone = cleanPhone;
       // Strip leading 0 (local format: 07xxx or 09xxx → 7xxx/9xxx)

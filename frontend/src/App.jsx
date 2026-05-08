@@ -236,7 +236,8 @@ const WhatsAppInboxTab = ({ waStatus, savedLeads = [], onRefreshSavedLeads }) =>
       const res = await axios.post('/api/whatsapp/broadcast', {
         phones: selectedPhones,
         message: broadcastMsg.trim(),
-        delay: broadcastDelay * 1000
+        delay: broadcastDelay * 1000,
+        provider: waProvider
       });
       setBroadcastResult(res.data);
       setTimeout(fetchConversations, 2000);
@@ -1696,7 +1697,7 @@ function App() {
   const [isMapSearching, setIsMapSearching] = useState(false);
   const [selectedScrapedPhones, setSelectedScrapedPhones] = useState([]);
   const [isScraperBroadcasting, setIsScraperBroadcasting] = useState(false);
-  const [scraperWaDelay, setScraperWaDelay] = useState(3);
+  const [scraperWaDelay, setScraperWaDelay] = useState(20);
   const [waStatuses, setWaStatuses] = useState({});
   const [isScraping, setIsScraping] = useState(false);
   const [isLoadingSavedLeads, setIsLoadingSavedLeads] = useState(false);
@@ -1717,6 +1718,7 @@ function App() {
   const [cityHistory, setCityHistory] = useState(JSON.parse(localStorage.getItem('city_history') || '[]'));
   const [waModal, setWaModal] = useState({ open: false, phone: '', message: '' });
   const [waStatus, setWaStatus] = useState('disconnected');
+  const [waProvider, setWaProvider] = useState('browser'); // 'browser' or 'interakt'
   const [waDailyStats, setWaDailyStats] = useState({ sent: 0, limit: 80, remaining: 80 });
   const [waQr, setWaQr] = useState('');
   const lastSavedPublicEmailRef = useRef('');
@@ -2582,7 +2584,7 @@ function App() {
 
         <div className="w-full max-w-[440px] space-y-10 text-center relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
           <div className="flex flex-col items-center gap-6">
-            <div className="w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center border border-primary/20 shadow-glow-primary/20 relative group">
+            <div className="w-24 h-24 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-glow-primary/20 relative group">
               <Rocket className="w-12 h-12 text-primary group-hover:scale-110 transition-transform" />
               <div className="absolute -inset-2 bg-primary/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
             </div>
@@ -2605,7 +2607,7 @@ function App() {
             </p>
           </div>
 
-          <Card className="w-full border-border/40 bg-card/40 backdrop-blur-2xl shadow-2xl overflow-hidden group rounded-[3rem]">
+          <Card className="w-full border-border/40 bg-card/40 backdrop-blur-2xl shadow-2xl overflow-hidden group rounded-2xl">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <CardContent className="p-12 relative z-10">
               <form onSubmit={handleLogin} className="space-y-10">
@@ -4576,7 +4578,7 @@ function App() {
                   <h2 className="text-3xl font-extrabold tracking-tight text-foreground mb-3">WhatsApp Automation Linker</h2>
                   <p className="text-muted-foreground mb-10 max-w-md">Scan the QR code to sync your WhatsApp and start receiving replies directly here.</p>
 
-                  <div className="w-full bg-muted/30 p-8 rounded-3xl border-2 border-dashed border-border/60 flex flex-col items-center gap-6">
+                  <div className="w-full bg-muted/30 p-8 rounded-2xl border-2 border-dashed border-border/60 flex flex-col items-center gap-6">
                     {waStatus === 'connected' ? (
                       <div className="flex flex-col items-center gap-4 text-emerald-500 animate-in zoom-in duration-300">
                         <CheckCircle size={72} className="drop-shadow-sm" />
@@ -4642,6 +4644,29 @@ function App() {
                         <h4 className="font-bold text-foreground text-sm mb-1">Multi-device</h4>
                         <p className="text-xs text-muted-foreground leading-relaxed">Keep using WhatsApp on your phone normally while linked.</p>
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 pt-8 border-t border-border/40 w-full text-left">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-lg">
+                        <Zap size={20} />
+                      </div>
+                      <h3 className="text-xl font-bold text-foreground">Official API (Interakt)</h3>
+                    </div>
+                    
+                    <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-500/5 to-primary/5 border border-indigo-500/10">
+                      <div className="flex justify-between items-center mb-4">
+                        <div>
+                          <p className="text-sm font-bold text-foreground">Interakt Integration Status</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Official WhatsApp Business API</p>
+                        </div>
+                        <Badge className="bg-emerald-500 text-white border-transparent">ACTIVE</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed mb-4">
+                        API is connected. To use this mode, select "Interakt" in the CRM Lead Group dropdown when sending messages.
+                        <br /><span className="text-indigo-500 font-bold mt-1 block">Note: Ensure "lead_pulse_generic" template is approved in Interakt.</span>
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -5138,7 +5163,7 @@ function App() {
                               const phones = uniqueMobileLeads.map(l => l.phone.replace(/\D/g, ''));
                               const activeWaTpl = whatsappTemplates.find(t => t.isActive);
                               if (!activeWaTpl) return showToast("Please activate a WhatsApp template in WhatsApp Settings first!", 'error');
-                              if (waStatus !== 'connected') return showToast("WhatsApp is not connected!", 'error');
+                                      if (waProvider === 'browser' && waStatus !== 'connected') return showToast("WhatsApp is not connected!", 'error');
 
                               setConfirmModal({
                                 open: true,
@@ -5498,9 +5523,28 @@ function App() {
                                 <Folder size={24} />
                               </div>
                               <h4 className="font-bold text-foreground text-sm mb-2 line-clamp-2">{groupName}</h4>
-                              <Badge className="bg-emerald-500/10 text-emerald-600 border-transparent hover:bg-emerald-500/20">
-                                {leads.length} Target Leads
-                              </Badge>
+                              
+                              <div className="flex flex-wrap justify-center gap-2 mb-4">
+                                <Badge className="bg-emerald-500/10 text-emerald-600 border-transparent text-[10px]">
+                                  {leads.length} Total
+                                </Badge>
+                                <Badge className="bg-blue-500/10 text-blue-600 border-transparent text-[10px]">
+                                  {leads.filter(l => l.whatsappStatus === 'sent').length} Sent
+                                </Badge>
+                                <Badge className="bg-rose-500/10 text-rose-600 border-transparent text-[10px]">
+                                  {leads.filter(l => l.whatsappStatus === 'failed').length} Failed
+                                </Badge>
+                                <Badge className="bg-amber-500/10 text-amber-600 border-transparent text-[10px]">
+                                  {leads.filter(l => !l.whatsappStatus || l.whatsappStatus === 'pending').length} Pending
+                                </Badge>
+                              </div>
+
+                              <div className="w-full bg-muted/40 h-1.5 rounded-full overflow-hidden mt-auto">
+                                <div 
+                                  className="h-full bg-emerald-500 transition-all duration-500" 
+                                  style={{ width: `${(leads.filter(l => l.whatsappStatus === 'sent').length / leads.length) * 100}%` }}
+                                ></div>
+                              </div>
                             </div>
                           </div>
                         );
@@ -5552,7 +5596,7 @@ function App() {
 
                                       const activeWaTpl = whatsappTemplates.find(t => t.isActive);
                                       if (!activeWaTpl) return showToast("Please activate a WhatsApp template in WhatsApp Settings first!", 'error');
-                                      if (waStatus !== 'connected') return showToast("WhatsApp is not connected!", 'error');
+                                              if (waProvider === 'browser' && waStatus !== 'connected') return showToast("WhatsApp is not connected!", 'error');
 
                                       setConfirmModal({
                                         open: true,
@@ -5564,7 +5608,8 @@ function App() {
                                               phones: phones,
                                               message: activeWaTpl.message,
                                               messages: selectedLeads.map(lead => renderTemplateMessage(activeWaTpl.message, lead)),
-                                              delay: scraperWaDelay * 1000 || 3000
+                                              delay: scraperWaDelay * 1000 || 3000,
+                                              provider: waProvider
                                             });
                                             showToast(`WhatsApp done. Sent: ${res.data.sent} | Failed: ${res.data.failed}`, res.data.failed ? 'info' : 'success');
                                             setSelectedIds([]);
@@ -5590,6 +5635,14 @@ function App() {
                                   >
                                     {isScraperBroadcasting ? <><Loader2 size={16} className="animate-spin mr-2" /> Sending...</> : <><Phone size={16} className="mr-2" /> Send WA Msg</>}
                                   </Button>
+                                  <select 
+                                    className="h-9 rounded-md border border-input bg-background px-3 py-1 text-xs font-bold shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                                    value={waProvider}
+                                    onChange={(e) => setWaProvider(e.target.value)}
+                                  >
+                                    <option value="browser">🌐 Browser</option>
+                                    <option value="interakt">⚡ Interakt</option>
+                                  </select>
                                   <Button
                                     variant="secondary"
                                     className="font-bold text-primary"

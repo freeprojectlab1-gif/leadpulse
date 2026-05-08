@@ -106,7 +106,7 @@ Real Estate,
 *   **Vapi & Ankleshwar** (Chemical Industrial Belt)
 *   **Gandhidham** (Port & Logistics)
 *   **Bhavnagar, Jamnagar, Junagadh, Mehsana, Anand, Bharuch**
-
+Real Estate,
 ### 🗺️ Maharashtra (Economic Powerhouse)
 *   **Mumbai** (Finance & Corporate)
 *   **Pune** (IT & Automobile)
@@ -122,7 +122,7 @@ Real Estate,
 *   **Chennai** (Automobile & Manufacturing)
 *   **Coimbatore** (Textile & Motors)
 *   **Mysore, Mangalore, Hubli-Dharwad**
-*   **Visakhapatnam, Vijayawada, Guntur**
+*   **Visakhapatnam, Vijayawada, Guntur**, **Vizianagaram**, **Srikakulam**, **Rajahmundry**, **Nellore** ,real estate 
 *   **Madurai, Tiruchirappalli, Tiruppur, Kochi**
 
 ### 🗺️ North India Hubs
