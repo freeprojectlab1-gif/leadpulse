@@ -1,44 +1,45 @@
-# India Dehydration Plants & Factories - Target List
+# India Dehydration Plants & Factories - Mega Target List
 
-## 🏭 Core Focus: Dehydration Units
-*Targeting food processing units that dehydrate onions, garlic, and vegetables.*
+## 🏭 Core Focus: Dehydration & Food Processing
+*High priority for web-dev targeting as many units are old-school.*
 
-### 📍 Key Locations (Hubs)
-| State | City/Area | Reason |
-|-------|-----------|--------|
-| **Gujarat** | **Mahuva (Bhavnagar)** | India's onion dehydration hub (100+ factories) |
-| **Gujarat** | Gondal (Rajkot) | Garlic and vegetable processing center |
-| **Maharashtra** | Nasik | Major onion producing and processing belt |
-| **Maharashtra** | Jalgaon | Banana and vegetable dehydration plants |
-| **Madhya Pradesh** | Indore/Mandsaur | Dehydrated garlic and onion units |
-| **Rajasthan** | Alwar | Vegetable processing and dehydration |
-
-### 🔍 Search Keywords (Map Finder)
-- `Dehydrated Onion Factory`
-- `Dehydrated Vegetable Plant`
-- `Food Processing Factory`
-- `Garlic Dehydration Unit`
-- `Onion Flakes Manufacturer`
+| State | City / Hub | Industry Focus |
+|-------|------------|----------------|
+| **Gujarat** | **Mahuva** | Onion Dehydration (Largest Hub) |
+| **Gujarat** | **Bhavnagar** | Vegetable & Onion Drying |
+| **Gujarat** | **Gondal / Rajkot** | Garlic, Peanut & Veg processing |
+| **Maharashtra** | **Nasik (Lasalgaon)** | Asia's biggest onion market & dehydration units |
+| **Maharashtra** | **Jalgaon** | Banana & Fruit processing plants |
+| **Madhya Pradesh** | **Indore / Mandsaur** | Garlic & Onion flakes manufacturing |
+| **Rajasthan** | **Alwar / Jodhpur** | Spice and vegetable dehydration |
 
 ---
 
-## 🏗️ General Factories & Industrial Zones
-*Targeting larger manufacturing units across industrial corridors.*
+## 🏗️ Major Industrial Clusters (Factories)
+*Targeting massive industrial areas for general manufacturing.*
 
-### 📍 Top Industrial Hubs
-1. **Gujarat:** Vapi, Ankleshwar, Morbi (Ceramics/Tiles), Ahmedabad (Naroda/Vatva GIDC).
-2. **Maharashtra:** Pimpri-Chinchwad (Pune), Thane (Belapur), Aurangabad.
-3. **Tamil Nadu:** Sriperumbudur (Chennai), Coimbatore (Pump/Motor manufacturing).
-4. **Haryana:** Manesar, Gurugram (Automotive/General).
+### 1. West Zone (Gujarat & Maharashtra)
+- **Vapi & Ankleshwar (GIDC):** Chemical, Pharma & Textile hub.
+- **Morbi:** World's ceramic and tile manufacturing capital.
+- **Ahmedabad (Naroda, Vatva, Changodar):** Diversified manufacturing.
+- **Pune (Chakan, Talegaon, Bhosari):** Automotive and Engineering giant.
+- **Nagpur (Butibori):** Textile and Power plants.
+- **Aurangabad (Waluj):** Auto components and Appliances.
 
-### 🔍 Search Keywords
-- `Manufacturing Plant`
-- `Industrial Unit`
-- `Chemical Factory`
-- `Textile Mill`
-- `Packaging Factory`
+### 2. North Zone (NCR & Punjab)
+- **Noida / Greater Noida:** Electronics, IT, and Mobile manufacturing.
+- **Gurugram / Manesar:** Automobile hub (Maruti Suzuki belt).
+- **Ludhiana:** India's hub for Textiles and Hosiery.
+- **Baddi (Himachal Pradesh):** Pharma and FMCG manufacturing hub.
+- **Panipat:** Textile and Handloom industries.
 
-## 🚀 Execution Strategy
-1. **Map Finder:** Mahuva aur Nasik se start karein specifically dehydration plants ke liye.
-2. **Settings:** Kyunki inme se kai factories purani hain, **"No-website businesses only"** ON rakhein taaki aap unhe web development services pitch kar sakein.
-3. **Radius:** Industrial areas ke liye 10-20km ka radius rakhein.
+### 3. South Zone (Tamil Nadu, Karnataka, AP)
+- **Sriperumbudur (Chennai):** Electronics and Auto hub (Hyundai, Samsung).
+- **Coimbatore:** Known as the "Manchester of South India" for Pumps & Motors.
+- **Peenya (Bengaluru):** One of Asia's largest industrial estates (SME focus).
+- **Hosur:** Auto and Manufacturing (TVS, Ashok Leyland).
+- **Visakhapatnam:** Steel and Pharma clusters.
+
+### 4. East Zone
+- **Jamshedpur:** The Steel City (Tata Steel & associated industries).
+- **Haldia:** Chemicals and Port-based manufacturing.
