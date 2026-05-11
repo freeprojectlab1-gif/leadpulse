@@ -2006,8 +2006,8 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
     }
   }
 
-  await workerPage.waitForSelector('h1', { timeout: 2000 }).catch(() => { });
-  await new Promise(r => setTimeout(r, 200));
+  await workerPage.waitForSelector('h1', { timeout: 3000 }).catch(() => { });
+  await new Promise(r => setTimeout(r, 500));
 
   let details;
   try {
@@ -2015,26 +2015,46 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
       const pageText = document.body?.innerText || '';
       if (/permanently\s+closed/i.test(pageText)) return null;
 
+      // --- NAME: multiple fallback selectors ---
       let name = document.querySelector('h1')?.innerText?.trim();
-      if (!name) {
-        const title = document.title || '';
-        name = title.split('- Google')[0].trim() || 'Unknown';
+      if (!name || name === 'Google Maps') {
+        // Try aria-label on the main section
+        name = document.querySelector('[role="main"]')?.getAttribute('aria-label')?.trim();
       }
-      // if (!name || name === 'Unknown' || name === '' || name === 'Google Maps') return null;
-      if (!name || name === 'Unknown' || name === '' || name === 'Google Maps') {
+      if (!name || name === 'Google Maps') {
+        const title = document.title || '';
+        name = title.split('·')[0].split('-')[0].trim();
+      }
+      if (!name || name === 'Google Maps' || name === '') {
         name = 'Business';
       }
 
-      const websiteBtn = document.querySelector('[data-item-id="authority"]');
+      // --- WEBSITE FILTER ---
+      const websiteBtn = document.querySelector('[data-item-id="authority"], a[data-item-id="authority"], [aria-label*="website" i]');
       if (skipWebsites && websiteBtn) return null;
 
-      const phoneBtn = document.querySelector('[data-item-id^="phone:tel:"]');
-      let phone = phoneBtn ? phoneBtn.innerText || phoneBtn.getAttribute('aria-label') : 'N/A';
-      if (phone !== 'N/A') phone = phone.replace(/[^\d+\s-]/g, '').trim();
+      // --- PHONE: multiple fallback selectors ---
+      let phone = 'N/A';
+      const phoneSelectors = [
+        '[data-item-id^="phone:tel:"]',
+        'button[data-item-id^="phone"]',
+        '[aria-label^="Phone:"]',
+        '[aria-label^="phone:"]',
+        'a[href^="tel:"]',
+      ];
+      for (const sel of phoneSelectors) {
+        const el = document.querySelector(sel);
+        if (el) {
+          phone = el.innerText?.trim() || el.getAttribute('aria-label')?.trim() || el.getAttribute('href')?.replace('tel:', '') || 'N/A';
+          if (phone && phone !== 'N/A') break;
+        }
+      }
+      if (phone !== 'N/A') phone = phone.replace(/[^\d+\s\-]/g, '').trim();
 
-      const addressBtn = document.querySelector('[data-item-id="address"]');
-      let address = addressBtn ? addressBtn.innerText || addressBtn.getAttribute('aria-label') : 'N/A';
-      if (address !== 'N/A') address = address.replace('Address: ', '').trim();
+      // --- ADDRESS ---
+      const addressBtn = document.querySelector('[data-item-id="address"], [aria-label^="Address:"]');
+      let address = addressBtn ? addressBtn.innerText?.trim() || addressBtn.getAttribute('aria-label')?.trim() : 'N/A';
+      if (address !== 'N/A') address = address.replace(/^Address:\s*/i, '').trim();
 
       return { name, phone, address, pageUrl: window.location.href };
     }, noWebsiteOnly);
