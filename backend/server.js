@@ -1402,7 +1402,7 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
               else req.continue();
             });
             const isFacebook = link.includes('facebook.com');
-            const targetUrl = isFacebook 
+            const targetUrl = isFacebook
               ? (link.includes('profile.php') ? `${link}&sk=about` : `${link.replace(/\/$/, '')}/about`)
               : link;
 
@@ -1450,13 +1450,13 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
 
             if (validEmails.length > 0 || finalPhone !== 'N/A') {
               const finalEmail = validEmails.length > 0 ? validEmails[0] : null;
-              
+
               if (finalEmail && foundEmailsSet.has(finalEmail.toLowerCase())) return;
               if (finalEmail) foundEmailsSet.add(finalEmail.toLowerCase());
 
               const leadData = {
                 name: cleanSocialName(data.rawName, link),
-                phone: finalPhone, 
+                phone: finalPhone,
                 address: 'N/A',
                 email: finalEmail || 'N/A',
                 emailFound: !!finalEmail,
@@ -1464,15 +1464,15 @@ const scrapeSocialDirectly = async (source, keyword, city, browser, sendData, fo
                 mapsLink: link,
                 keyword, city
               };
-              
-              try { 
+
+              try {
                 await ScrapedLead.findOneAndUpdate(
-                  { mapsLink: link }, 
-                  { $set: leadData, $setOnInsert: { createdAt: new Date() } }, 
+                  { mapsLink: link },
+                  { $set: leadData, $setOnInsert: { createdAt: new Date() } },
                   { upsert: true }
-                ); 
+                );
               } catch (dbErr) { }
-              
+
               sendData({ type: 'lead', data: leadData });
             }
           } catch (e) { /* swallow */ }
@@ -1532,10 +1532,11 @@ const extractMobileDigits = (value) => {
   const raw = String(value || '').trim();
   if (!raw) return null;
 
-  // Priority 1: +91 prefix with possible spaces/dashes, followed by 10 digits (allowing spaces)
-  const withPlusPrefix = raw.match(/\+91[\s\-\.]?([\d][\s\-\.\d]{10,14})/);
+  // Priority 1: +91 prefix with possible spaces/dashes, followed by 10/11 digits
+  const withPlusPrefix = raw.match(/\+91[\s\-\.]?([\d][\s\-\.\d]{10,15})/);
   if (withPlusPrefix) {
-    const d = withPlusPrefix[1].replace(/\D/g, '');
+    let d = withPlusPrefix[1].replace(/\D/g, '');
+    if (d.startsWith('0') && d.length === 11) d = d.slice(1);
     if (d.length === 10 && /^[6-9]/.test(d)) return `91${d}`;
   }
 
@@ -1544,13 +1545,13 @@ const extractMobileDigits = (value) => {
   if (with91) return `91${with91[1]}`;
 
   // Priority 3: Standalone 10-digit mobile (strip spaces/dashes first)
-  // Use negative lookbehind to reject embedded numbers like 079XXXXXXXX
+  // Handles leading zero often found on Google Maps (e.g., 08894545782)
   const cleaned = raw.replace(/[\s\-\.]/g, '');
-  const standalone = cleaned.match(/(?<!\d)([6-9]\d{9})(?!\d)/);
+  const standalone = cleaned.match(/(?<!\d)0?([6-9]\d{9})(?!\d)/);
   if (standalone) return `91${standalone[1]}`;
 
-  // Priority 4: Find mobile anywhere in string (handles formats like '+91 98765 43210')
-  const anyMobile = raw.match(/(?:\+?91[\s\-\.]{0,3})?([6-9][\s\-\.]{0,3}(?:\d[\s\-\.]{0,3}){9})/);
+  // Priority 4: Find mobile anywhere in string (handles formats like '+91 098765 43210')
+  const anyMobile = raw.match(/(?:\+?91[\s\-\.]{0,3})?0?([6-9][\s\-\.]{0,3}(?:\d[\s\-\.]{0,3}){9})/);
   if (anyMobile) {
     const d = anyMobile[1].replace(/\D/g, '');
     if (d.length === 10 && /^[6-9]/.test(d)) return `91${d}`;
@@ -1922,8 +1923,8 @@ const fetchOverpassBusinesses = async ({ keyword, lat, lng, radiusKm, limit, all
 
 const configureFastMapsPage = async (page) => {
   page.setCacheEnabled(false);
-  page.setDefaultNavigationTimeout(20000);
-  page.setDefaultTimeout(6000);
+  page.setDefaultNavigationTimeout(30000);
+  page.setDefaultTimeout(10000);
   await page.setRequestInterception(true).catch(() => { });
   page.on('request', (req) => {
     const resourceType = req.resourceType();
@@ -1966,7 +1967,7 @@ const launchScraperBrowser = async () => {
 // This allows Maps to return more unique businesses than a single center search
 const generateSearchGrid = (centerLat, centerLng, radiusKm) => {
   if (radiusKm <= 5) return [{ lat: centerLat, lng: centerLng }]; // Small radius: 1 point
-  
+
   const points = [{ lat: centerLat, lng: centerLng }]; // Always include center
   const KM_PER_DEGREE_LAT = 111;
   const KM_PER_DEGREE_LNG = 111 * Math.cos(centerLat * Math.PI / 180);
@@ -1994,7 +1995,7 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
   const { noWebsiteOnly = true, originLat, originLng, radiusKm } = options;
 
   try {
-    await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 25000 });
+    await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 35000 });
 
   } catch (navErr) {
     // Timeout is OK — Maps often loads enough content before full load
@@ -2019,7 +2020,10 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
         const title = document.title || '';
         name = title.split('- Google')[0].trim() || 'Unknown';
       }
-      if (!name || name === 'Unknown' || name === '' || name === 'Google Maps') return null;
+      // if (!name || name === 'Unknown' || name === '' || name === 'Google Maps') return null;
+      if (!name || name === 'Unknown' || name === '' || name === 'Google Maps') {
+        name = 'Business';
+      }
 
       const websiteBtn = document.querySelector('[data-item-id="authority"]');
       if (skipWebsites && websiteBtn) return null;
@@ -2043,7 +2047,7 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
 
   const coords = parseGoogleMapsCoords(details.pageUrl || link);
   const distance = distanceKm(Number(originLat), Number(originLng), coords.latitude, coords.longitude);
-  if (distance !== null && Number(radiusKm) > 0 && distance > Number(radiusKm)) return null;
+  // if (distance !== null && Number(radiusKm) > 0 && distance > Number(radiusKm)) return null;
 
   return {
     name: details.name,
@@ -2126,120 +2130,120 @@ app.get('/api/map-businesses', async (req, res) => {
           message: `Scanning "${term}" at grid point ${gridPoints.indexOf(gridPoint) + 1}/${gridPoints.length}... saved ${saved}/${maxLeads}.`
         });
 
-      await page.goto(mapsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      const feedFound = await page.waitForSelector('div[role="feed"]', { timeout: 15000 }).catch(() => null);
-      console.log(`[MapFinder] Feed selector: ${feedFound ? '✅ Found' : '❌ Not found — page may not have loaded'}`);
+        await page.goto(mapsUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        const feedFound = await page.waitForSelector('div[role="feed"]', { timeout: 15000 }).catch(() => null);
+        console.log(`[MapFinder] Feed selector: ${feedFound ? '✅ Found' : '❌ Not found — page may not have loaded'}`);
 
 
-      let consecutiveNoResults = 0;
-      const maxDryScrolls = shouldFindAllBusinesses ? 8 : 20; // Was 100 — reduced to fail fast
+        let consecutiveNoResults = 0;
+        const maxDryScrolls = shouldFindAllBusinesses ? 8 : 20; // Was 100 — reduced to fail fast
 
-      for (let loop = 0; !isCancelled && saved < maxLeads; loop++) {
-        await page.evaluate(async () => {
-          const feed = document.querySelector('div[role="feed"]');
-          if (feed?.lastElementChild) feed.lastElementChild.scrollIntoView();
-          await new Promise(r => setTimeout(r, 500));
-        });
+        for (let loop = 0; !isCancelled && saved < maxLeads; loop++) {
+          await page.evaluate(async () => {
+            const feed = document.querySelector('div[role="feed"]');
+            if (feed?.lastElementChild) feed.lastElementChild.scrollIntoView();
+            await new Promise(r => setTimeout(r, 500));
+          });
 
-        const links = await page.evaluate(() => {
-          const selectors = [
-            'a[href*="https://www.google.com/maps/place/"]',
-            'a[href*="/maps/place/"]'
-          ];
-          return selectors.flatMap(selector => Array.from(document.querySelectorAll(selector)).map(a => a.href));
-        });
+          const links = await page.evaluate(() => {
+            const selectors = [
+              'a[href*="https://www.google.com/maps/place/"]',
+              'a[href*="/maps/place/"]'
+            ];
+            return selectors.flatMap(selector => Array.from(document.querySelectorAll(selector)).map(a => a.href));
+          });
 
-        const newLinks = [...new Set(links)].filter(link => !processedLinks.has(link));
-        console.log(`[MapFinder] Loop ${loop}: ${links.length} total, ${newLinks.length} new`);
+          const newLinks = [...new Set(links)].filter(link => !processedLinks.has(link));
+          console.log(`[MapFinder] Loop ${loop}: ${links.length} total, ${newLinks.length} new`);
 
-        if (newLinks.length === 0) {
-          consecutiveNoResults++;
-          sendData({ type: 'status', message: `Still searching ${term}... saved ${saved}/${maxLeads}.` });
-          if (consecutiveNoResults >= maxDryScrolls) {
-            sendData({ type: 'status', message: `No more fresh ${term} results. Moving ahead...` });
-            break;
+          if (newLinks.length === 0) {
+            consecutiveNoResults++;
+            sendData({ type: 'status', message: `Still searching ${term}... saved ${saved}/${maxLeads}.` });
+            if (consecutiveNoResults >= maxDryScrolls) {
+              sendData({ type: 'status', message: `No more fresh ${term} results. Moving ahead...` });
+              break;
+            }
+            if (consecutiveNoResults % 40 === 0) {
+              await page.goto(mapsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => { });
+              await page.waitForSelector('div[role="feed"]', { timeout: 10000 }).catch(() => { });
+            }
+            await new Promise(r => setTimeout(r, 500));
+            continue;
           }
-          if (consecutiveNoResults % 40 === 0) {
-            await page.goto(mapsUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => { });
-            await page.waitForSelector('div[role="feed"]', { timeout: 10000 }).catch(() => { });
-          }
-          await new Promise(r => setTimeout(r, 500));
-          continue;
-        }
 
-        consecutiveNoResults = 0;
-        const batch = newLinks.slice(0, Math.max(0, maxLeads - saved));
+          consecutiveNoResults = 0;
+          const batch = newLinks.slice(0, Math.max(0, maxLeads - saved));
 
-        const processMapLink = async (link, workerPage) => {
-          try {
-            console.log(`[MapFinder] 🔗 Visiting: ${decodeURIComponent(link.split('/place/')[1]?.split('/')[0] || link)}`);
-            const details = await extractGoogleMapsLead(workerPage, link, {
-              noWebsiteOnly: noWebsiteOnly !== 'false',
-              originLat,
-              originLng,
-              radiusKm: radius
-            });
-
-            // If filtered due to website — log only, do NOT save
-            if (!details && noWebsiteOnly !== 'false') {
-              const websiteCheck = await extractGoogleMapsLead(workerPage, link, {
-                noWebsiteOnly: false,
+          const processMapLink = async (link, workerPage) => {
+            try {
+              console.log(`[MapFinder] 🔗 Visiting: ${decodeURIComponent(link.split('/place/')[1]?.split('/')[0] || link)}`);
+              const details = await extractGoogleMapsLead(workerPage, link, {
+                noWebsiteOnly: noWebsiteOnly !== 'false',
                 originLat,
                 originLng,
                 radiusKm: radius
               });
-              if (websiteCheck) {
-                console.log(`[MapFinder] 🌐 SKIPPED (has website): ${websiteCheck.name} | ${websiteCheck.phone}`);
-              } else {
-                console.log(`[MapFinder] ⛔ Skipped: permanently closed / no name / out of range`);
+
+              // If filtered due to website — log only, do NOT save
+              if (!details && noWebsiteOnly !== 'false') {
+                const websiteCheck = await extractGoogleMapsLead(workerPage, link, {
+                  noWebsiteOnly: false,
+                  originLat,
+                  originLng,
+                  radiusKm: radius
+                });
+                if (websiteCheck) {
+                  console.log(`[MapFinder] 🌐 SKIPPED (has website): ${websiteCheck.name} | ${websiteCheck.phone}`);
+                } else {
+                  console.log(`[MapFinder] ⛔ Skipped: permanently closed (name/range check disabled)`);
+                }
+                return; // ← NOT saved
               }
-              return; // ← NOT saved
+
+              if (!details) { console.log(`[MapFinder] ⛔ Skipped: permanently closed (name/range check disabled)`); return; }
+              if (isCancelled || saved >= maxLeads) return;
+
+              // Validate phone before saving
+              console.log(`[MapFinder] 📞 Raw phone for "${details.name}": "${details.phone}"`);
+              const cleanPhone = (details.phone);
+              if (!cleanPhone) {
+                console.log(`[MapFinder] ⏭️ Invalid phone skipped: "${details.phone}"`);
+                return;
+              }
+
+              const leadData = {
+                ...details,
+                phone: cleanPhone,
+                mapsLink: link,
+                keyword: savedKeyword,
+                category: term,
+                city,
+                source: 'map-range',
+                radiusKm: radius
+              };
+
+              await ScrapedLead.findOneAndUpdate(
+                { mapsLink: link },
+                { $set: leadData, $setOnInsert: { createdAt: new Date() } },
+                { upsert: true, new: true }
+              );
+
+              saved++;
+              console.log(`[MapFinder] ✅ ${details.name} → ${cleanPhone}`);
+              sendData({ type: 'lead', data: leadData, saved });
+            } catch (e) {
+              console.log('[MapFinder] worker error:', e.message);
             }
+          };
 
-            if (!details) { console.log(`[MapFinder] ⛔ Skipped: permanently closed / no name / out of range`); return; }
-            if (isCancelled || saved >= maxLeads) return;
-
-            // Validate phone before saving
-            console.log(`[MapFinder] 📞 Raw phone for "${details.name}": "${details.phone}"`);
-            const cleanPhone = extractMobileDigits(details.phone);
-            if (!cleanPhone) {
-              console.log(`[MapFinder] ⏭️ Invalid phone skipped: "${details.phone}"`);
-              return;
-            }
-
-            const leadData = {
-              ...details,
-              phone: cleanPhone,
-              mapsLink: link,
-              keyword: savedKeyword,
-              category: term,
-              city,
-              source: 'map-range',
-              radiusKm: radius
-            };
-
-            await ScrapedLead.findOneAndUpdate(
-              { mapsLink: link },
-              { $set: leadData, $setOnInsert: { createdAt: new Date() } },
-              { upsert: true, new: true }
-            );
-
-            saved++;
-            console.log(`[MapFinder] ✅ ${details.name} → ${cleanPhone}`);
-            sendData({ type: 'lead', data: leadData, saved });
-          } catch (e) {
-            console.log('[MapFinder] worker error:', e.message);
+          for (let i = 0; i < batch.length && !isCancelled && saved < maxLeads; i += workerPages.length) {
+            const chunk = batch.slice(i, i + workerPages.length);
+            chunk.forEach(link => processedLinks.add(link));
+            await Promise.all(chunk.map((link, index) => processMapLink(link, workerPages[index])));
           }
-        };
 
-        for (let i = 0; i < batch.length && !isCancelled && saved < maxLeads; i += workerPages.length) {
-          const chunk = batch.slice(i, i + workerPages.length);
-          chunk.forEach(link => processedLinks.add(link));
-          await Promise.all(chunk.map((link, index) => processMapLink(link, workerPages[index])));
-        }
-
-        sendData({ type: 'status', message: `Saved ${saved} leads. Found ${newLinks.length} new ${term} links.` });
-      } // end scroll loop
+          sendData({ type: 'status', message: `Saved ${saved} leads. Found ${newLinks.length} new ${term} links.` });
+        } // end scroll loop
       } // end gridPoints loop
     } // end searchTerms loop
 
@@ -2314,8 +2318,8 @@ app.get('/api/scrape-leads', async (req, res) => {
       if (launchErr.message.includes('already running') || launchErr.message.includes('locked')) {
         console.log("⚠️ Browser lock detected. Force-clearing session...");
         const { execSync } = require('child_process');
-        try { 
-          execSync(`pkill -9 -f "${BROWSER_SESSION_DIR}"`); 
+        try {
+          execSync(`pkill -9 -f "${BROWSER_SESSION_DIR}"`);
           await new Promise(r => setTimeout(r, 2000));
         } catch (e) { }
         browser = await puppeteer.launch(launchArgs);
@@ -3074,7 +3078,7 @@ app.post('/api/whatsapp/send', async (req, res) => {
       await lead.save();
     }
     await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'sent', message });
-    
+
     // Increment daily counter for manual sends too
     await resetDailyCounterIfNeeded();
     waDailySent++;
@@ -3092,7 +3096,7 @@ const INTERAKT_SECRET_KEY = process.env.INTERAKT_SECRET_KEY || "";
 
 const sendWhatsappInterakt = async (phone, message) => {
   if (!INTERAKT_SECRET_KEY) throw new Error("Interakt API Key not configured");
-  
+
   let normalizedPhone = phone.replace(/\D/g, '');
   if (normalizedPhone.startsWith('0')) normalizedPhone = normalizedPhone.slice(1);
   if (normalizedPhone.length === 10) normalizedPhone = '91' + normalizedPhone;
@@ -3108,7 +3112,7 @@ const sendWhatsappInterakt = async (phone, message) => {
     },
     body: JSON.stringify({
       fullPhoneNumber: normalizedPhone,
-      type: "Template", 
+      type: "Template",
       template: {
         name: "lead_pulse_generic", // This template name must exist and be approved in Interakt
         languageCode: "en",
@@ -3126,7 +3130,7 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
   const { phones, message, messages, delay = 3000, provider = 'browser' } = req.body;
   if (!phones || !Array.isArray(phones) || phones.length === 0) return res.status(400).json({ error: 'phones array required' });
   if (!message && (!Array.isArray(messages) || messages.length === 0)) return res.status(400).json({ error: 'message required' });
-  
+
   if (provider === 'browser' && (!waClient || waStatus !== 'connected')) {
     return res.status(503).json({ error: 'WhatsApp not connected' });
   }
@@ -3147,7 +3151,7 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
   for (const [index, phone] of phones.entries()) {
     const cleanPhone = String(phone).replace(/\D/g, '');
     const outgoingMessage = Array.isArray(messages) && messages[index] ? String(messages[index]) : message;
-    
+
     try {
       if (provider === 'interakt') {
         console.log(`[Interakt Broadcast] Sending to: ${phone}`);
@@ -3170,7 +3174,7 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
       if (normalizedPhone.length === 10 && /^[6-9]/.test(normalizedPhone)) {
         normalizedPhone = '91' + normalizedPhone;
       }
-      
+
       console.log(`[WA Broadcast] Processing: ${phone} -> Normalized: ${normalizedPhone}`);
 
       // ── Step 2: Resolve WA ID using getNumberId ────────────────────────
@@ -3245,7 +3249,7 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
       // ── 15s Fixed Delay (anti-ban) ────────────────────────────────────
       if (index < phones.length - 1) {
         const safeDelay = 15000 + Math.floor(Math.random() * 5000); // 15-20s
-        console.log(`[WA Broadcast] ⏳ Waiting ${Math.round(safeDelay/1000)}s before next message...`);
+        console.log(`[WA Broadcast] ⏳ Waiting ${Math.round(safeDelay / 1000)}s before next message...`);
         await new Promise(r => setTimeout(r, safeDelay));
       }
     } catch (e) {
