@@ -43,3 +43,51 @@
 ### 4. East Zone
 - **Jamshedpur:** The Steel City (Tata Steel & associated industries).
 - **Haldia:** Chemicals and Port-based manufacturing.
+
+---
+
+## 🏙️ Only City List (For Easy Copy-Paste)
+
+### Dehydration Hubs
+- Mahuva
+- Bhavnagar
+- Gondal
+- Rajkot
+- Nasik
+- Lasalgaon
+- Jalgaon
+- Indore
+- Mandsaur
+- Alwar
+- Jodhpur
+
+### Industrial Cities
+- Vapi
+- Ankleshwar
+- Morbi
+- Ahmedabad
+- Changodar
+- Pune
+- Chakan
+- Talegaon
+- Bhosari
+- Nagpur
+- Butibori
+- Aurangabad
+- Waluj
+- Noida
+- Greater Noida
+- Gurugram
+- Manesar
+- Ludhiana
+- Baddi
+- Panipat
+- Sriperumbudur
+- Chennai
+- Coimbatore
+- Peenya
+- Bengaluru
+- Hosur
+- Visakhapatnam
+- Jamshedpur
+- Haldia
