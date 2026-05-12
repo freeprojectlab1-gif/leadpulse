@@ -281,14 +281,16 @@ const initWhatsapp = async () => {
   waClient.on('disconnected', () => { waStatus = 'disconnected'; console.log('[WhatsApp] Disconnected.'); setTimeout(() => initWhatsapp(), 3000); });
   const processMessage = async (msg, phone) => {
     try {
-      let lead = await Recipient.findOne({
+      const leadLookup = {
         $or: [
           { 'data.Phone': { $regex: phone + '$' } },
           { 'data.phone': { $regex: phone + '$' } },
           { 'data.Phone': { $regex: phone.slice(-10) } },
           { email: phone + '@whatsapp.com' }
         ]
-      });
+      };
+
+      let lead = await Recipient.findOne(leadLookup);
       // Fetch contact via chat (works for both @c.us and @lid formats)
       let contact = null;
       try {
@@ -304,19 +306,26 @@ const initWhatsapp = async () => {
         }
         if (!name) name = '+' + phone;
 
-        lead = new Recipient({
-          email: phone + '@whatsapp.com',
-          status: 'replied',
-          profilePic: pic,
-          whatsappName: name,
-          data: {
-            'First Name': name,
-            Phone: phone,
-            Source: 'WhatsApp Inbound',
-            waId: phone
+        const whatsappEmail = phone + '@whatsapp.com';
+        lead = await Recipient.findOneAndUpdate(
+          { email: whatsappEmail },
+          {
+            $setOnInsert: {
+              email: whatsappEmail,
+              status: 'replied',
+              profilePic: pic,
+              whatsappName: name,
+              data: {
+                'First Name': name,
+                Phone: phone,
+                Source: 'WhatsApp Inbound',
+                waId: phone
+              },
+              replies: []
+            }
           },
-          replies: []
-        });
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
         console.log(`[WhatsApp] 🆕 New lead: ${name} (${phone})`);
       } else {
         // Always refresh name + pic from actual contact
@@ -1580,50 +1589,81 @@ const hasAnyPhone = (value) => {
   return digits.length >= 6;
 };
 
-const findScrapedLeadByPhone = async (value) => {
+const buildDigitFlexibleRegex = (digits) => {
+  const cleaned = String(digits || '').replace(/\D/g, '');
+  if (!cleaned) return null;
+  return new RegExp(cleaned.split('').map(d => `${d}\\D*`).join(''), 'i');
+};
+
+const findScrapedLeadCandidatesByPhone = async (value) => {
   const target = extractMobileDigits(value);
-  if (!target) return null;
+  if (!target) return [];
 
   const digits10 = target.slice(-10);
+  const targetFlex = buildDigitFlexibleRegex(target);
+  const digits10Flex = buildDigitFlexibleRegex(digits10);
   const candidates = await ScrapedLead.find({
     $or: [
       { phone: { $regex: digits10 } },
       { phone: { $regex: target } },
+      ...(digits10Flex ? [{ phone: digits10Flex }] : []),
+      ...(targetFlex ? [{ phone: targetFlex }] : []),
       { 'data.Phone': { $regex: digits10 } },
       { 'data.Phone': { $regex: target } },
+      ...(digits10Flex ? [{ 'data.Phone': digits10Flex }] : []),
+      ...(targetFlex ? [{ 'data.Phone': targetFlex }] : []),
       { 'data.phone': { $regex: digits10 } },
-      { 'data.phone': { $regex: target } }
+      { 'data.phone': { $regex: target } },
+      ...(digits10Flex ? [{ 'data.phone': digits10Flex }] : []),
+      ...(targetFlex ? [{ 'data.phone': targetFlex }] : [])
     ]
-  }).limit(25);
+  }).limit(50);
 
-  return candidates.find(lead => {
+  return candidates.filter(lead => {
     const leadPhone = extractMobileDigits(lead.phone || lead.data?.Phone || lead.data?.phone || '');
-    return leadPhone && (leadPhone === target || leadPhone.endsWith(digits10) || target.endsWith(leadPhone.slice(-10)));
-  }) || null;
+    return leadPhone && (
+      leadPhone === target ||
+      leadPhone.endsWith(digits10) ||
+      target.endsWith(leadPhone.slice(-10))
+    );
+  });
+};
+
+const findScrapedLeadByPhone = async (value) => {
+  const candidates = await findScrapedLeadCandidatesByPhone(value);
+  return candidates[0] || null;
 };
 
 const updateScrapedLeadWhatsappStatus = async ({ phone, status, message = null, error = null }) => {
-  const lead = await findScrapedLeadByPhone(phone);
-  if (!lead) return null;
+  const leads = await findScrapedLeadCandidatesByPhone(phone);
+  if (!leads.length) return null;
 
-  lead.whatsappStatus = status;
-  lead.whatsappUpdatedAt = new Date();
-  if (typeof message === 'string') lead.whatsappLastMessage = message;
+  const now = new Date();
+  const update = {
+    whatsappStatus: status,
+    whatsappUpdatedAt: now
+  };
+
+  if (typeof message === 'string') update.whatsappLastMessage = message;
 
   if (status === 'sent') {
-    lead.whatsappSentAt = new Date();
-    lead.whatsappFailedAt = null;
-    lead.whatsappError = null;
-    lead.isContacted = true;
+    update.whatsappSentAt = now;
+    update.whatsappFailedAt = null;
+    update.whatsappError = null;
+    update.isContacted = true;
   } else if (status === 'failed') {
-    lead.whatsappFailedAt = new Date();
-    lead.whatsappError = error || 'WhatsApp send failed';
+    update.whatsappFailedAt = now;
+    update.whatsappError = error || 'WhatsApp send failed';
   } else if (status === 'pending') {
-    lead.whatsappError = null;
+    update.whatsappError = null;
   }
 
-  await lead.save();
-  return lead;
+  await ScrapedLead.updateMany(
+    { _id: { $in: leads.map(lead => lead._id) } },
+    { $set: update }
+  );
+
+  return leads[0];
 };
 
 const DEFAULT_MAP_BUSINESS_CATEGORIES = [
@@ -3160,6 +3200,15 @@ app.post('/api/extract-map-screenshot', (req, res) => {
       if (String(req.body?.autoSave || '').toLowerCase() === 'true') {
         const cleanName = String(extracted.businessName || 'Unknown').trim() || 'Unknown';
         const cleanPhone = String(extracted.phone || '').trim();
+        if (!hasValidMobileNumber(cleanPhone)) {
+          return res.json({
+            message: 'Map screenshot parsed, but skipped saving because no valid mobile number was found',
+            confidence: ocrPayload.confidence,
+            extracted,
+            saved: false,
+            skipped: true
+          });
+        }
         const savedLead = await ScrapedLead.findOneAndUpdate(
           { mapsLink: `screenshot:${uploadedFile.filename}` },
           {
@@ -3187,6 +3236,7 @@ app.post('/api/extract-map-screenshot', (req, res) => {
           { upsert: true, new: true }
         );
         response.savedLead = savedLead;
+        response.saved = true;
       }
 
       res.json(response);

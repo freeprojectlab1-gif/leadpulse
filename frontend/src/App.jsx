@@ -1775,6 +1775,35 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const getLeadPhoneKey = (lead) => String(lead?.phone || lead?.data?.Phone || lead?.data?.phone || '').replace(/\D/g, '');
+  const getLeadWhatsappStatus = (lead) => {
+    const phoneKey = getLeadPhoneKey(lead);
+    return String(lead?.whatsappStatus || waStatuses[phoneKey] || 'pending').toLowerCase();
+  };
+  const syncLeadWhatsappStatus = (phone, status) => {
+    const cleanPhone = String(phone || '').replace(/\D/g, '');
+    if (!cleanPhone) return;
+
+    setSavedLeads(prev => prev.map(lead => {
+      const leadPhone = getLeadPhoneKey(lead);
+      if (!leadPhone) return lead;
+      if (
+        leadPhone === cleanPhone ||
+        leadPhone.endsWith(cleanPhone) ||
+        cleanPhone.endsWith(leadPhone)
+      ) {
+        return {
+          ...lead,
+          whatsappStatus: status,
+          whatsappUpdatedAt: new Date().toISOString()
+        };
+      }
+      return lead;
+    }));
+
+    setWaStatuses(prev => ({ ...prev, [cleanPhone]: status }));
+  };
+
   // WhatsApp Templates State
   const [whatsappTemplates, setWhatsappTemplates] = useState([]);
   const defaultWaTemplate = {
@@ -2619,7 +2648,12 @@ function App() {
       setMapScreenshotFile(null);
       setIsMapScreenshotDialogOpen(false);
       setIsMapScreenshotDragging(false);
-      showToast('Screenshot parsed and saved to CRM', 'success');
+      showToast(
+        res.data?.saved === false
+          ? 'Screenshot parsed, but skipped because no valid mobile number was found'
+          : 'Screenshot parsed and saved to CRM',
+        res.data?.saved === false ? 'info' : 'success'
+      );
       fetchSavedLeads();
     } catch (err) {
       showToast(err.response?.data?.error || 'Screenshot upload failed', 'error');
@@ -5281,9 +5315,9 @@ function App() {
                                           phone: cleanP,
                                           message: renderTemplateMessage(activeWaTpl.message, lead)
                                         });
-                                        setWaStatuses(prev => ({ ...prev, [cleanP]: 'sent' }));
+                                        syncLeadWhatsappStatus(cleanP, 'sent');
                                       } catch (err) {
-                                        setWaStatuses(prev => ({ ...prev, [cleanP]: 'failed' }));
+                                        syncLeadWhatsappStatus(cleanP, 'failed');
                                       }
 
                                       // Progress Delay
@@ -5298,7 +5332,6 @@ function App() {
                                     showToast('WA Broadcast failed: ' + err.message, 'error');
                                   } finally { 
                                     setIsScraperBroadcasting(false); 
-                                    setWaStatuses({});
                                   }
                                 }
                               });
@@ -5356,15 +5389,15 @@ function App() {
                                     
                                     setWaStatuses(prev => ({ ...prev, [cleanP]: 'sending' }));
 
-                                    try {
-                                      await axios.post('/api/whatsapp/send', {
-                                        phone: cleanP,
-                                        message: renderTemplateMessage(activeWaTpl.message, lead)
-                                      });
-                                      setWaStatuses(prev => ({ ...prev, [cleanP]: 'sent' }));
-                                    } catch (err) {
-                                      setWaStatuses(prev => ({ ...prev, [cleanP]: 'failed' }));
-                                    }
+                                      try {
+                                        await axios.post('/api/whatsapp/send', {
+                                          phone: cleanP,
+                                          message: renderTemplateMessage(activeWaTpl.message, lead)
+                                        });
+                                        syncLeadWhatsappStatus(cleanP, 'sent');
+                                      } catch (err) {
+                                        syncLeadWhatsappStatus(cleanP, 'failed');
+                                      }
 
                                     if (i < selectedLeads.length - 1) {
                                       await new Promise(r => setTimeout(r, (scraperWaDelay * 1000 || 3000) + Math.random() * 500));
@@ -5379,7 +5412,6 @@ function App() {
                                   showToast('Bulk Send failed: ' + err.message, 'error');
                                 } finally { 
                                   setIsScraperBroadcasting(false); 
-                                  setWaStatuses({});
                                 }
                               }
                             });
@@ -5457,7 +5489,7 @@ function App() {
                           <tbody className="divide-y divide-border/50">
                             {uniqueMobileLeads.map((lead, idx) => {
                               const cleanP = lead.phone.replace(/\D/g, '');
-                              const stat = (lead.whatsappStatus || waStatuses[cleanP] || 'pending').toLowerCase();
+                              const stat = getLeadWhatsappStatus(lead);
                               const waStatusClass = stat === 'failed' ? 'bg-destructive/10 text-destructive' : stat === 'sent' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground';
 
                               return (
@@ -5724,20 +5756,20 @@ function App() {
                                   {leads.length} Total
                                 </Badge>
                                 <Badge className="bg-blue-500/10 text-blue-600 border-transparent text-[10px]">
-                                  {leads.filter(l => l.whatsappStatus === 'sent').length} Sent
+                                  {leads.filter(l => getLeadWhatsappStatus(l) === 'sent').length} Sent
                                 </Badge>
                                 <Badge className="bg-rose-500/10 text-rose-600 border-transparent text-[10px]">
-                                  {leads.filter(l => l.whatsappStatus === 'failed').length} Failed
+                                  {leads.filter(l => getLeadWhatsappStatus(l) === 'failed').length} Failed
                                 </Badge>
                                 <Badge className="bg-amber-500/10 text-amber-600 border-transparent text-[10px]">
-                                  {leads.filter(l => !l.whatsappStatus || l.whatsappStatus === 'pending').length} Pending
+                                  {leads.filter(l => getLeadWhatsappStatus(l) === 'pending').length} Pending
                                 </Badge>
                               </div>
 
                               <div className="w-full bg-muted/40 h-1.5 rounded-full overflow-hidden mt-auto">
                                 <div 
                                   className="h-full bg-emerald-500 transition-all duration-500" 
-                                  style={{ width: `${(leads.filter(l => l.whatsappStatus === 'sent').length / leads.length) * 100}%` }}
+                                  style={{ width: `${(leads.filter(l => getLeadWhatsappStatus(l) === 'sent').length / leads.length) * 100}%` }}
                                 ></div>
                               </div>
                             </div>
@@ -5942,7 +5974,7 @@ function App() {
                                               <div className="flex items-center gap-2">
                                                 {(() => {
                                                   const cleanP = lead.phone.replace(/\D/g, '');
-                                                  const stat = (lead.whatsappStatus || waStatuses[cleanP] || 'pending').toLowerCase();
+                                                  const stat = getLeadWhatsappStatus(lead);
                                                   const waStatusClass = stat === 'failed' ? 'text-destructive' : stat === 'sent' ? 'text-emerald-600' : 'text-amber-500';
                                                   return (
                                                     <span className={`font-semibold text-sm ${waStatusClass}`}>{lead.phone}</span>
@@ -5982,7 +6014,7 @@ function App() {
                                       <td className="px-4 py-3">
                                         <div className="flex flex-col gap-2">
                                           {(() => {
-                                            const stat = String(lead.whatsappStatus || waStatuses[lead.phone?.replace(/\D/g, '')] || 'pending').toLowerCase();
+                                            const stat = getLeadWhatsappStatus(lead);
                                             const label = stat === 'sent' ? 'Sent' : stat === 'failed' ? 'Failed' : 'Pending';
                                             const badgeClass = stat === 'sent'
                                               ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'

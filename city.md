@@ -13,12 +13,12 @@ This document contains a comprehensive list of cities in India, categorized by s
 ## 🚀 Developed & Industrial States
 
 ### 🏙️ Maharashtra
-- Mumbai
-- Navi Mumbai
-- Pune
-- Nagpur
-- Thane
-- Pimpri-Chinchwad
+<!-- - Mumbai -->
+<!-- - Navi Mumbai -->
+<!-- - Pune -->
+<!-- - Nagpur -->
+<!-- - Thane -->
+<!-- - Pimpri-Chinchwad -->
 - Nashik
 - Kalyan-Dombivli
 - Vasai-Virar
