@@ -13,6 +13,7 @@ const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const puppeteer = require('puppeteer');
 const { executablePath } = require('puppeteer');
+const { createWorker, PSM } = require('tesseract.js');
 const BROWSER_SESSION_DIR = path.join(__dirname, 'browser_session');
 
 const app = express();
@@ -419,6 +420,18 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage: storage });
+const mapScreenshotUpload = multer({
+  storage,
+  limits: {
+    fileSize: 12 * 1024 * 1024
+  },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype || !file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image uploads are allowed'));
+    }
+    cb(null, true);
+  }
+});
 
 // SPINTAX ENGINE (Support {Hi|Hello|Hey} format - MUST contain a pipe |)
 const applySpintax = (text) => {
@@ -1990,9 +2003,383 @@ const generateSearchGrid = (centerLat, centerLng, radiusKm) => {
   return points;
 };
 
+const isGenericMapsName = (value) => {
+  const normalized = normalizeBusinessText(value);
+  if (!normalized) return true;
+  return [
+    'business',
+    'businesses',
+    'google maps',
+    'google',
+    'unknown',
+    'place'
+  ].includes(normalized);
+};
+
+const extractMapsNameFromUrl = (pageUrl) => {
+  try {
+    const url = new URL(pageUrl);
+    const segments = url.pathname.split('/').filter(Boolean);
+    const placeIndex = segments.indexOf('place');
+    const raw = placeIndex >= 0 ? segments[placeIndex + 1] : segments[segments.length - 1];
+    if (!raw) return '';
+    return decodeURIComponent(raw.replace(/\+/g, ' ')).trim();
+  } catch {
+    return '';
+  }
+};
+
+const isClosedMapsText = (value) => {
+  const normalized = String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  if (!normalized) return false;
+  return [
+    'permanently closed',
+    'temporarily closed',
+    'closed permanently',
+    'business permanently closed'
+  ].some(term => normalized.includes(term));
+};
+
+const normalizeMapScreenshotLines = (rawText) => {
+  const lines = String(rawText || '')
+    .split(/\r?\n/)
+    .map(line => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
+  const deduped = [];
+  const seen = new Set();
+  for (const line of lines) {
+    const key = line.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(line);
+  }
+  return deduped;
+};
+
+const isScreenshotNoiseLine = (line) => {
+  const value = String(line || '').toLowerCase().trim();
+  if (!value) return true;
+  return [
+    'overview',
+    'reviews',
+    'about',
+    'directions',
+    'save',
+    'nearby',
+    'send to phone',
+    'send to',
+    'share',
+    'your maps history',
+    'add a label',
+    'suggest an edit',
+    'from the owner',
+    'see all',
+    'copy address',
+    'copy',
+    'maps',
+    'google maps'
+  ].some(term => value.includes(term));
+};
+
+const extractPhoneFromScreenshotLine = (line) => {
+  const raw = String(line || '').trim();
+  if (!raw) return '';
+  if (!/[\d][\d\s().+\-]{5,}/.test(raw)) return '';
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length < 6) return '';
+  return digits;
+};
+
+const isLikelyWebsiteLine = (line) => {
+  const value = String(line || '').toLowerCase().trim();
+  if (!value || value.includes('google')) return false;
+  return /[a-z0-9-]+\.(com|in|net|org|co|io|biz|info|ai|me|uk|us|ca|au|site|online|store|tech|xyz)\b/i.test(value);
+};
+
+const isLikelyPlusCodeLine = (line) => /[23456789CFGHJMPQRVWX]{4}\+[23456789CFGHJMPQRVWX]{2}/i.test(String(line || ''));
+
+const isLikelyHoursLine = (line) => {
+  const value = String(line || '').toLowerCase().trim();
+  return /^(open|closed)\b/.test(value) || /\bcloses?\b/.test(value) || /\b(am|pm)\b/.test(value);
+};
+
+const isLikelyRatingLine = (line) => {
+  const value = String(line || '');
+  return /\b[0-5](?:\.\d)?\s*\(\s*\d{1,5}\s*\)/.test(value) || /\b[0-5](?:\.\d)?\b/.test(value) && /\(\s*\d+\s*\)/.test(value);
+};
+
+const isLikelyAddressLine = (line) => {
+  const value = String(line || '').trim();
+  if (!value) return false;
+  if (isLikelyWebsiteLine(value) || extractPhoneFromScreenshotLine(value) || isLikelyPlusCodeLine(value) || isLikelyHoursLine(value)) return false;
+  return /,/.test(value) || /\b\d{5,6}\b/.test(value) || /\b(?:Road|Rd|Street|St|Avenue|Ave|Lane|Ln|Taluka|District|Nagar|Cross|Behind|Near|Floor|Block|Bengaluru|Bangalore|Mumbai|Delhi|Gujarat|Maharashtra|Rajasthan|Karnataka|Tamil Nadu|Kerala|Punjab|Haryana|Uttar Pradesh|Madhya Pradesh|Goa|Bengal|Bihar|Odisha|Assam|Telangana|Andhra Pradesh|India)\b/i.test(value);
+};
+
+const isLikelyCategoryLine = (line) => {
+  const value = String(line || '').toLowerCase().trim();
+  if (!value || isLikelyAddressLine(value) || isLikelyWebsiteLine(value) || extractPhoneFromScreenshotLine(value) || isLikelyPlusCodeLine(value) || isLikelyHoursLine(value) || isLikelyRatingLine(value)) return false;
+  return /\b(?:supplier|manufacturer|restaurant|hotel|cafe|clinic|store|shop|wholesale|dealer|service|services|factory|agency|salon|bar|bistro|bakery|pharmacy|hospital|school|manufacturer)\b/i.test(value);
+};
+
+const extractOcrLines = (ocrData) => {
+  const lines = [];
+  const blocks = Array.isArray(ocrData?.blocks) ? ocrData.blocks : [];
+
+  for (const block of blocks) {
+    for (const paragraph of block.paragraphs || []) {
+      for (const line of paragraph.lines || []) {
+        const rawText = String(line?.text || '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (!rawText) continue;
+
+        const bbox = line?.bbox || {};
+        const confidence = Number.isFinite(line?.confidence) ? line.confidence : 0;
+        lines.push({
+          text: rawText,
+          confidence,
+          bbox,
+          x0: Number.isFinite(bbox.x0) ? bbox.x0 : 0,
+          y0: Number.isFinite(bbox.y0) ? bbox.y0 : 0,
+          x1: Number.isFinite(bbox.x1) ? bbox.x1 : 0,
+          y1: Number.isFinite(bbox.y1) ? bbox.y1 : 0,
+          height: Number.isFinite(bbox.y1) && Number.isFinite(bbox.y0) ? Math.max(0, bbox.y1 - bbox.y0) : 0,
+        });
+      }
+    }
+  }
+
+  if (lines.length === 0 && ocrData?.text) {
+    normalizeMapScreenshotLines(ocrData.text).forEach((text, index) => {
+      lines.push({
+        text,
+        confidence: 0,
+        bbox: {},
+        x0: 0,
+        y0: index * 10,
+        x1: 0,
+        y1: 0,
+        height: 0,
+      });
+    });
+  }
+
+  const deduped = [];
+  const seen = new Set();
+  for (const line of lines.sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0)) {
+    const key = line.text.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(line);
+  }
+  return deduped;
+};
+
+const scoreBusinessNameLine = (line, index) => {
+  let score = (line.confidence || 0) + (line.height || 0) * 1.8;
+  if (index <= 1) score += 40;
+  else if (index <= 3) score += 25;
+  else if (index <= 5) score += 10;
+
+  const text = String(line.text || '').trim();
+  const lower = text.toLowerCase();
+  if (!text || isScreenshotNoiseLine(text)) score -= 200;
+  if (isLikelyWebsiteLine(text) || extractPhoneFromScreenshotLine(text) || isLikelyPlusCodeLine(text) || isLikelyRatingLine(text) || isLikelyHoursLine(text)) score -= 150;
+  if (isLikelyAddressLine(text)) score -= 80;
+  if (/^\d+$/.test(text)) score -= 150;
+  if (/[|]/.test(text)) score -= 30;
+  if (lower.split(/\s+/).length <= 1 && text.length < 4) score -= 50;
+  return score;
+};
+
+const pickBusinessName = (lines) => {
+  const topLines = lines.slice(0, Math.min(8, lines.length));
+  const candidates = topLines
+    .map((line, index) => ({ ...line, score: scoreBusinessNameLine(line, index) }))
+    .filter(line => line.score > -50)
+    .sort((a, b) => b.score - a.score);
+  return candidates[0]?.text || lines[0]?.text || 'Unknown';
+};
+
+const pickRating = (lines) => {
+  for (const line of lines) {
+    const text = String(line.text || '');
+    const match = text.match(/\b([0-5](?:\.\d)?)\s*\(\s*(\d{1,5})\s*\)/);
+    if (match) return { rating: Number(match[1]), reviews: Number(match[2]) };
+  }
+  return { rating: null, reviews: null };
+};
+
+const pickWebsite = (lines) => {
+  const site = lines.find(line => isLikelyWebsiteLine(line.text));
+  return site?.text || '';
+};
+
+const pickPhone = (lines) => {
+  const candidates = lines
+    .map(line => {
+      const digits = extractPhoneFromScreenshotLine(line.text);
+      return digits ? { ...line, digits } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      const aLen = a.digits.length;
+      const bLen = b.digits.length;
+      if (bLen !== aLen) return bLen - aLen;
+      return (b.confidence || 0) - (a.confidence || 0);
+    });
+
+  return candidates[0]?.digits || '';
+};
+
+const pickPlusCode = (lines) => {
+  const candidate = lines.find(line => isLikelyPlusCodeLine(line.text));
+  return candidate?.text || '';
+};
+
+const pickHours = (lines) => {
+  const candidate = lines.find(line => isLikelyHoursLine(line.text));
+  return candidate?.text || '';
+};
+
+const pickCategory = (lines, nameIndex) => {
+  for (let i = nameIndex + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (isLikelyRatingLine(line.text)) continue;
+    if (isLikelyCategoryLine(line.text)) return line.text;
+    if (i - nameIndex <= 2 && !isLikelyAddressLine(line.text) && !isLikelyWebsiteLine(line.text) && !extractPhoneFromScreenshotLine(line.text)) {
+      if (String(line.text || '').split(/\s+/).length <= 4) return line.text;
+    }
+  }
+  return '';
+};
+
+const pickAddress = (lines, nameIndex) => {
+  let startIdx = -1;
+  for (let i = nameIndex + 1; i < lines.length; i++) {
+    if (isLikelyAddressLine(lines[i].text)) {
+      startIdx = i;
+      break;
+    }
+  }
+  if (startIdx === -1) {
+    startIdx = lines.findIndex(line => isLikelyAddressLine(line.text));
+  }
+  if (startIdx === -1) return '';
+
+  const parts = [];
+  for (let i = startIdx; i < lines.length; i++) {
+    const text = String(lines[i].text || '').trim();
+    if (!text || isScreenshotNoiseLine(text)) continue;
+    if (isLikelyWebsiteLine(text) || extractPhoneFromScreenshotLine(text) || isLikelyPlusCodeLine(text) || isLikelyHoursLine(text)) break;
+    if (isLikelyRatingLine(text)) break;
+    if (i > startIdx && isLikelyCategoryLine(text)) break;
+
+    parts.push(text);
+    if (parts.length >= 3) {
+      const next = lines[i + 1]?.text || '';
+      if (!isLikelyAddressLine(next) && !/\b\d{6}\b/.test(next)) break;
+    }
+  }
+  return parts.join(', ');
+};
+
+const buildOcrPayload = (ocrPasses) => {
+  const passes = Array.isArray(ocrPasses) ? ocrPasses.filter(Boolean) : [ocrPasses].filter(Boolean);
+  const lines = [];
+  const seen = new Set();
+  let confidence = null;
+
+  for (const pass of passes) {
+    if (typeof pass?.confidence === 'number') {
+      confidence = confidence === null ? pass.confidence : Math.max(confidence, pass.confidence);
+    }
+    for (const line of extractOcrLines(pass)) {
+      const key = line.text.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      lines.push(line);
+    }
+  }
+
+  lines.sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0);
+  return {
+    text: lines.map(line => line.text).join('\n'),
+    confidence,
+    lines
+  };
+};
+
+const runMapScreenshotOcrPass = async (filePath, psm) => {
+  const worker = await createWorker('eng', 1);
+  try {
+    await worker.setParameters({
+      tessedit_pageseg_mode: psm,
+      preserve_interword_spaces: '1',
+      user_defined_dpi: '300',
+    });
+    const result = await worker.recognize(filePath, {}, { text: true, blocks: true, tsv: true });
+    return result?.data || {};
+  } finally {
+    await worker.terminate().catch(() => { });
+  }
+};
+
+const extractMapScreenshotData = (ocrPayload) => {
+  const lines = Array.isArray(ocrPayload?.lines) ? ocrPayload.lines : normalizeMapScreenshotLines(ocrPayload?.text || '').map((text, index) => ({
+    text,
+    confidence: 0,
+    x0: 0,
+    y0: index * 10,
+    x1: 0,
+    y1: 0,
+    height: 0,
+  }));
+
+  const cleanedLines = lines.filter(line => !isScreenshotNoiseLine(line.text));
+  const businessName = pickBusinessName(cleanedLines);
+  const businessIndex = cleanedLines.findIndex(line => line.text === businessName);
+  const rating = pickRating(cleanedLines);
+  const website = pickWebsite(cleanedLines);
+  const phone = pickPhone(cleanedLines);
+  const plusCode = pickPlusCode(cleanedLines);
+  const hours = pickHours(cleanedLines);
+  const category = pickCategory(cleanedLines, Math.max(0, businessIndex));
+  const address = pickAddress(cleanedLines, Math.max(0, businessIndex));
+
+  return {
+    businessName,
+    rating: rating.rating,
+    reviews: rating.reviews,
+    category,
+    address,
+    hours,
+    website,
+    phone,
+    plusCode,
+    extractedAt: new Date().toISOString(),
+    rawText: cleanedLines.map(line => line.text).join('\n')
+  };
+};
+
+const extractMapScreenshotText = async (filePath) => {
+  const autoPass = await runMapScreenshotOcrPass(filePath, PSM.AUTO);
+  const autoPayload = buildOcrPayload(autoPass);
+
+  let passes = [autoPass];
+  if (!autoPayload.lines || autoPayload.lines.length < 5 || (autoPayload.confidence || 0) < 45) {
+    const sparsePass = await runMapScreenshotOcrPass(filePath, PSM.SPARSE_TEXT);
+    passes.push(sparsePass);
+  }
+
+  const payload = buildOcrPayload(passes);
+  return payload;
+};
+
 const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
 
-  const { noWebsiteOnly = true, originLat, originLng, radiusKm } = options;
+  const { noWebsiteOnly = true, originLat, originLng, radiusKm, fallbackName = '' } = options;
 
   try {
     await workerPage.goto(link, { waitUntil: 'domcontentloaded', timeout: 35000 });
@@ -2006,27 +2393,65 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
     }
   }
 
-  await workerPage.waitForSelector('h1', { timeout: 3000 }).catch(() => { });
-  await new Promise(r => setTimeout(r, 500));
+  // Wait for page to render business info
+  await workerPage.waitForSelector('h1', { timeout: 5000 }).catch(() => { });
+  // Also try to wait for phone or address to appear — indicates page is ready
+  await workerPage.waitForSelector('[data-item-id^="phone:tel:"], a[href^="tel:"], [aria-label^="Phone:"]', { timeout: 4000 }).catch(() => { });
+  await new Promise(r => setTimeout(r, 1500));
 
   let details;
   try {
-    details = await workerPage.evaluate((skipWebsites) => {
-      const pageText = document.body?.innerText || '';
-      if (/permanently\s+closed/i.test(pageText)) return null;
+    details = await workerPage.evaluate((skipWebsites, fallbackName) => {
+      const pageText = [
+        document.body?.innerText || '',
+        document.body?.textContent || '',
+        document.title || '',
+        document.querySelector('[role="main"]')?.getAttribute('aria-label') || ''
+      ].join(' \n ');
+      const closedPatterns = [
+        /permanently\s+closed/i,
+        /temporarily\s+closed/i,
+        /closed\s+permanently/i,
+        /business\s+permanently\s+closed/i
+      ];
+      if (closedPatterns.some(pattern => pattern.test(pageText))) return { closed: true };
+
+      const isGeneric = (value) => {
+        const normalized = String(value || '').toLowerCase().trim().replace(/\s+/g, ' ');
+        if (!normalized) return true;
+        return ['business', 'businesses', 'google maps', 'google', 'unknown', 'place'].includes(normalized);
+      };
+
+      const extractFromPath = () => {
+        try {
+          const segments = location.pathname.split('/').filter(Boolean);
+          const placeIndex = segments.indexOf('place');
+          const raw = placeIndex >= 0 ? segments[placeIndex + 1] : segments[segments.length - 1];
+          return raw ? decodeURIComponent(raw.replace(/\+/g, ' ')).trim() : '';
+        } catch {
+          return '';
+        }
+      };
 
       // --- NAME: multiple fallback selectors ---
+      // NOTE: [role="main"] aria-label returns the SEARCH KEYWORD, not the business name — DO NOT USE
       let name = document.querySelector('h1')?.innerText?.trim();
-      if (!name || name === 'Google Maps') {
-        // Try aria-label on the main section
-        name = document.querySelector('[role="main"]')?.getAttribute('aria-label')?.trim();
+      if (!name || isGeneric(name)) {
+        // Try specific Google Maps business name classes
+        name = document.querySelector('h1.DUwDvf, h1[class*="fontHeadlineLarge"], .DUwDvf')?.innerText?.trim();
       }
-      if (!name || name === 'Google Maps') {
+      if (!name || isGeneric(name)) {
+        // Try title tag — split by · and - to get just the business name
         const title = document.title || '';
-        name = title.split('·')[0].split('-')[0].trim();
+        const fromTitle = title.split('·')[0].split(' - Google')[0].trim();
+        if (fromTitle && !isGeneric(fromTitle)) name = fromTitle;
       }
-      if (!name || name === 'Google Maps' || name === '') {
-        name = 'Business';
+      if (!name || isGeneric(name)) {
+        // Try URL path — most reliable fallback
+        name = extractFromPath();
+      }
+      if (!name || isGeneric(name)) {
+        name = fallbackName || 'Business';
       }
 
       // --- WEBSITE FILTER ---
@@ -2052,25 +2477,51 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
       if (phone !== 'N/A') phone = phone.replace(/[^\d+\s\-]/g, '').trim();
 
       // --- ADDRESS ---
-      const addressBtn = document.querySelector('[data-item-id="address"], [aria-label^="Address:"]');
-      let address = addressBtn ? addressBtn.innerText?.trim() || addressBtn.getAttribute('aria-label')?.trim() : 'N/A';
+      const addressSelectors = [
+        '[data-item-id="address"]',
+        'button[data-item-id="address"]',
+        '[aria-label^="Address:"]',
+        'button[aria-label^="Address:"]'
+      ];
+      let address = 'N/A';
+      for (const sel of addressSelectors) {
+        const el = document.querySelector(sel);
+        if (!el) continue;
+        address = el.innerText?.trim() || el.textContent?.trim() || el.getAttribute('aria-label')?.trim() || 'N/A';
+        if (address && address !== 'N/A') break;
+      }
       if (address !== 'N/A') address = address.replace(/^Address:\s*/i, '').trim();
 
       return { name, phone, address, pageUrl: window.location.href };
-    }, noWebsiteOnly);
+    }, noWebsiteOnly, fallbackName);
   } catch (evalErr) {
     console.log(`[extractGMaps] Evaluate error (detached?): ${evalErr.message.slice(0, 60)}`);
     return null;
   }
 
   if (!details) return null;
+  if (details.closed) return { closed: true };
+
+  const combinedText = [
+    details.name,
+    details.address,
+    details.pageUrl || link
+  ].join(' ');
+  if (isClosedMapsText(combinedText)) return null;
 
   const coords = parseGoogleMapsCoords(details.pageUrl || link);
   const distance = distanceKm(Number(originLat), Number(originLng), coords.latitude, coords.longitude);
   // if (distance !== null && Number(radiusKm) > 0 && distance > Number(radiusKm)) return null;
 
+  const resolvedName = !isGenericMapsName(details.name)
+    ? details.name
+    : (!isGenericMapsName(extractMapsNameFromUrl(details.pageUrl || link))
+      ? extractMapsNameFromUrl(details.pageUrl || link)
+      : fallbackName || details.name || 'Business');
+
   return {
-    name: details.name,
+    name: resolvedName,
+    rawName: details.name,
     phone: details.phone,
     address: details.address,
     latitude: coords.latitude,
@@ -2201,8 +2652,14 @@ app.get('/api/map-businesses', async (req, res) => {
                 noWebsiteOnly: noWebsiteOnly !== 'false',
                 originLat,
                 originLng,
-                radiusKm: radius
+                radiusKm: radius,
+                fallbackName: term
               });
+
+              if (details?.closed) {
+                sendData({ type: 'status', message: `⏭️ Skipped permanently closed place: ${term}` });
+                return;
+              }
 
               // If filtered due to website — log only, do NOT save
               if (!details && noWebsiteOnly !== 'false') {
@@ -2210,7 +2667,8 @@ app.get('/api/map-businesses', async (req, res) => {
                   noWebsiteOnly: false,
                   originLat,
                   originLng,
-                  radiusKm: radius
+                  radiusKm: radius,
+                  fallbackName: term
                 });
                 if (websiteCheck) {
                   console.log(`[MapFinder] 🌐 SKIPPED (has website): ${websiteCheck.name} | ${websiteCheck.phone}`);
@@ -2456,8 +2914,14 @@ app.get('/api/scrape-leads', async (req, res) => {
               noWebsiteOnly: mode === 'no_website', // ← only filter if user chose 'No Website' mode
               originLat: cityLat,
               originLng: cityLng,
-              radiusKm: 0  // 0 = entire city, no radius limit
+              radiusKm: 0,  // 0 = entire city, no radius limit
+              fallbackName: keyword
             });
+
+            if (details?.closed) {
+              sendData({ type: 'status', message: `⏭️ Skipped permanently closed place: ${keyword}` });
+              return;
+            }
 
             if (!details || isCancelled) {
               console.log(`[Scraper] ⛔ No details returned (website filtered / closed / no name)`);
@@ -2675,6 +3139,63 @@ app.post('/api/upload-avatar', cloudUpload.single('avatar'), async (req, res) =>
 
     res.json({ url: avatarUrl });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/extract-map-screenshot', (req, res) => {
+  mapScreenshotUpload.single('image')(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+
+    const uploadedFile = req.file;
+    if (!uploadedFile) return res.status(400).json({ error: 'No image uploaded' });
+
+    try {
+      const ocrPayload = await extractMapScreenshotText(uploadedFile.path);
+      const extracted = extractMapScreenshotData(ocrPayload);
+      const response = {
+        message: 'Map screenshot parsed successfully',
+        confidence: ocrPayload.confidence,
+        extracted
+      };
+
+      if (String(req.body?.autoSave || '').toLowerCase() === 'true') {
+        const cleanName = String(extracted.businessName || 'Unknown').trim() || 'Unknown';
+        const cleanPhone = String(extracted.phone || '').trim();
+        const savedLead = await ScrapedLead.findOneAndUpdate(
+          { mapsLink: `screenshot:${uploadedFile.filename}` },
+          {
+            $set: {
+              name: cleanName,
+              phone: cleanPhone
+            },
+            $unset: {
+              address: '',
+              website: '',
+              category: '',
+              keyword: '',
+              city: '',
+              email: '',
+              emailFound: '',
+              emailSource: '',
+              socialLinks: '',
+              latitude: '',
+              longitude: '',
+              source: '',
+              radiusKm: ''
+            },
+            $setOnInsert: { createdAt: new Date() }
+          },
+          { upsert: true, new: true }
+        );
+        response.savedLead = savedLead;
+      }
+
+      res.json(response);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    } finally {
+      fs.unlink(uploadedFile.path, () => { });
+    }
+  });
 });
 
 // ─── ENROLL ENRICHER LEADS into the auto-sequence (creates Recipients) ──

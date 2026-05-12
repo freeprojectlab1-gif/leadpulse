@@ -1208,6 +1208,28 @@ const EmailChart = ({ recipients }) => {
 
 // ============================================================
 
+const isGenericMapLeadName = (value) => {
+  const normalized = String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!normalized) return true;
+  return ['business', 'businesses', 'google maps', 'google', 'unknown', 'n/a', 'place'].includes(normalized);
+};
+
+const getMapLeadDisplayName = (lead = {}) => {
+  const name = String(lead.name || '').trim();
+  if (name && !isGenericMapLeadName(name)) return name;
+  const fallback = String(lead.category || lead.keyword || lead.city || lead.mapsLink || '').trim();
+  return fallback || name || 'Business';
+};
+
+const getMapLeadDisplaySubtitle = (lead = {}) => {
+  const phone = String(lead.phone || '').trim();
+  if (phone && phone !== 'N/A') return phone;
+  const address = String(lead.address || '').trim();
+  if (address && address !== 'N/A') return address;
+  const fallback = String(lead.keyword || lead.category || lead.city || '').trim();
+  return fallback || 'Address not found';
+};
+
 const MapBusinessFinder = ({
   keyword,
   setKeyword,
@@ -1611,8 +1633,8 @@ const MapBusinessFinder = ({
               ) : mapLeads.slice(0, 8).map((lead, idx) => (
                 <div className="flex justify-between items-center p-3 rounded-lg bg-card border border-border/50 shadow-sm text-sm hover:border-primary/30 transition-colors" key={`${lead.mapsLink || lead.name}-${idx}`}>
                   <div className="flex flex-col truncate pr-2">
-                    <strong className="text-foreground truncate">{lead.name}</strong>
-                    <span className="text-xs text-muted-foreground truncate">{lead.phone && lead.phone !== 'N/A' ? lead.phone : lead.address}</span>
+                    <strong className="text-foreground truncate">{getMapLeadDisplayName(lead)}</strong>
+                    <span className="text-xs text-muted-foreground truncate">{getMapLeadDisplaySubtitle(lead)}</span>
                   </div>
                   {lead.mapsLink && <Button variant="secondary" size="sm" className="h-6 text-[10px] uppercase font-bold shrink-0 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary" asChild><a href={lead.mapsLink} target="_blank" rel="noreferrer">Map</a></Button>}
                 </div>
@@ -1701,6 +1723,11 @@ function App() {
   const [waStatuses, setWaStatuses] = useState({});
   const [isScraping, setIsScraping] = useState(false);
   const [isLoadingSavedLeads, setIsLoadingSavedLeads] = useState(false);
+  const [isMapScreenshotDialogOpen, setIsMapScreenshotDialogOpen] = useState(false);
+  const [mapScreenshotFile, setMapScreenshotFile] = useState(null);
+  const [isMapScreenshotUploading, setIsMapScreenshotUploading] = useState(false);
+  const [mapScreenshotResult, setMapScreenshotResult] = useState(null);
+  const [isMapScreenshotDragging, setIsMapScreenshotDragging] = useState(false);
   const [isBulkFinding, setIsBulkFinding] = useState(false);
   const [emailFindLog, setEmailFindLog] = useState('');
   const [isEnricherSending, setIsEnricherSending] = useState(false);
@@ -1824,6 +1851,14 @@ function App() {
       fetchSavedLeads();
     }
   }, [isLoggedIn, activeTab]);
+
+  useEffect(() => {
+    if (!isMapScreenshotDialogOpen) return;
+
+    const onPaste = (e) => handleMapScreenshotPaste(e);
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [isMapScreenshotDialogOpen]);
 
   const showToast = (msg, type = 'success') => {
     setNotification({ msg, type });
@@ -2529,6 +2564,68 @@ function App() {
       if (Array.isArray(res.data)) setSavedLeads(res.data);
     } catch (e) { } finally {
       setTimeout(() => setIsLoadingSavedLeads(false), 800); // Small delay for smooth transition
+    }
+  };
+
+  const pickMapScreenshotFile = (file) => {
+    if (!file) return;
+    if (!file.type || !file.type.startsWith('image/')) {
+      showToast('Please choose an image file', 'error');
+      return;
+    }
+    setMapScreenshotFile(file);
+  };
+
+  const handleMapScreenshotPick = (e) => {
+    const selectedFile = e.target.files?.[0] || null;
+    pickMapScreenshotFile(selectedFile);
+  };
+
+  const handleMapScreenshotDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsMapScreenshotDragging(false);
+    const droppedFile = e.dataTransfer?.files?.[0] || null;
+    pickMapScreenshotFile(droppedFile);
+  };
+
+  const handleMapScreenshotPaste = (e) => {
+    const items = Array.from(e.clipboardData?.items || []);
+    const imageItem = items.find(item => item.type && item.type.startsWith('image/'));
+    const pastedFile = imageItem?.getAsFile?.() || null;
+    if (pastedFile) {
+      e.preventDefault();
+      pickMapScreenshotFile(pastedFile);
+      showToast('Screenshot pasted from clipboard', 'success');
+    }
+  };
+
+  const handleMapScreenshotUpload = async () => {
+    if (!mapScreenshotFile) {
+      showToast('Please choose a screenshot first', 'error');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('image', mapScreenshotFile);
+    formData.append('autoSave', 'true');
+
+    setIsMapScreenshotUploading(true);
+    try {
+      const res = await postApiWithFallback('/api/extract-map-screenshot', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setMapScreenshotResult(res.data);
+      setMapScreenshotFile(null);
+      setIsMapScreenshotDialogOpen(false);
+      setIsMapScreenshotDragging(false);
+      showToast('Screenshot parsed and saved to CRM', 'success');
+      fetchSavedLeads();
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Screenshot upload failed', 'error');
+    } finally {
+      setIsMapScreenshotUploading(false);
+      setIsMapScreenshotDragging(false);
     }
   };
 
@@ -5472,13 +5569,111 @@ function App() {
                       </CardTitle>
                       <CardDescription>Centralized vault for all AI-scraped high-intent leads.</CardDescription>
                     </div>
-                    <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button variant="secondary" size="sm" onClick={() => setIsMapScreenshotDialogOpen(true)}>
+                        <UploadCloud size={14} className="mr-2" /> Upload Screenshot
+                      </Button>
                       <Button variant="outline" size="sm" onClick={fetchSavedLeads}>
                         <RefreshCw size={14} className="mr-2" /> Refresh CRM
                       </Button>
                     </div>
                   </div>
                 </CardHeader>
+                <Dialog
+                  open={isMapScreenshotDialogOpen}
+                  onOpenChange={(open) => {
+                    setIsMapScreenshotDialogOpen(open);
+                    if (!open) setIsMapScreenshotDragging(false);
+                  }}
+                >
+                  <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Camera size={18} className="text-primary" /> Upload Map Screenshot
+                      </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+                      <div
+                        className={`rounded-2xl border border-dashed p-6 text-center transition-all outline-none ${
+                          isMapScreenshotDragging
+                            ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
+                            : 'border-border bg-muted/20'
+                        }`}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setIsMapScreenshotDragging(true);
+                        }}
+                        onDragEnter={(e) => {
+                          e.preventDefault();
+                          setIsMapScreenshotDragging(true);
+                        }}
+                        onDragLeave={() => setIsMapScreenshotDragging(false)}
+                        onDrop={handleMapScreenshotDrop}
+                        onClick={() => document.getElementById('map-screenshot-input')?.click()}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            document.getElementById('map-screenshot-input')?.click();
+                          }
+                        }}
+                      >
+                        <div className={`mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full ${isMapScreenshotDragging ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'}`}>
+                          <UploadCloud size={22} />
+                        </div>
+                        <p className="text-sm font-medium text-foreground">Drop a Google Maps screenshot here</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Paste with Ctrl+V, drop a file, or choose one manually.
+                        </p>
+                        <input
+                          id="map-screenshot-input"
+                          type="file"
+                          accept="image/*"
+                          className="sr-only"
+                          onChange={handleMapScreenshotPick}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-4"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            document.getElementById('map-screenshot-input')?.click();
+                          }}
+                        >
+                          Choose file
+                        </Button>
+                      </div>
+
+                      {mapScreenshotFile && (
+                        <div className="rounded-xl border border-border bg-muted/20 p-4 text-sm">
+                          <div className="font-medium text-foreground">Selected file</div>
+                          <div className="mt-1 truncate text-muted-foreground">{mapScreenshotFile.name}</div>
+                        </div>
+                      )}
+
+                      {mapScreenshotResult?.extracted && (
+                        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm space-y-1">
+                          <div className="font-semibold text-emerald-600">Last extracted data</div>
+                          <div><span className="text-muted-foreground">Name:</span> {mapScreenshotResult.extracted.businessName || 'Unknown'}</div>
+                          <div><span className="text-muted-foreground">Mobile:</span> {mapScreenshotResult.extracted.phone || '—'}</div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-end gap-2">
+                        <Button variant="ghost" onClick={() => setIsMapScreenshotDialogOpen(false)} disabled={isMapScreenshotUploading}>
+                          Cancel
+                        </Button>
+                        <Button onClick={handleMapScreenshotUpload} disabled={isMapScreenshotUploading || !mapScreenshotFile}>
+                          {isMapScreenshotUploading ? 'Uploading...' : 'Upload & Save'}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
 
                 <CardContent className="p-6">
                   {isLoadingSavedLeads ? (

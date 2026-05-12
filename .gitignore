@@ -6,10 +6,13 @@ backend/browser_session/
 frontend/dist/
 .DS_Store
 *.log
-*.png
-*.html
+*.log
+# *.png (removed to allow frontend assets)
+# *.html (removed to allow landing pages)
 !backend/ddg_*.html
 !backend/yahoo_*.html
 backend/wa_session/
 backend/.cache/
 backend/browser_session_scraper/
+backend/.wwebjs_cache/
+backend/eng.traineddata
