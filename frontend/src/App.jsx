@@ -1997,6 +1997,18 @@ function App() {
     return message;
   };
 
+  const openWhatsappComposer = (lead) => {
+    const activeTpl = whatsappTemplates.find(t => t.isActive);
+    const cleanPhone = String(lead?.phone || lead?.data?.Phone || lead?.data?.phone || lead?.email?.replace('@whatsapp.com', '') || '').replace(/\D/g, '');
+    if (!cleanPhone) {
+      showToast('No phone number found for this lead.', 'error');
+      return;
+    }
+
+    const msg = activeTpl ? renderTemplateMessage(activeTpl.message, lead) : '';
+    setWaModal({ open: true, phone: cleanPhone, message: msg });
+  };
+
   const handleWhatsappReply = (leadEmail) => {
     const activeTpl = whatsappTemplates.find(t => t.isActive);
     if (!activeTpl) {
@@ -5569,12 +5581,7 @@ function App() {
                                         variant="outline"
                                         size="sm"
                                         className="h-8 px-3 border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 text-xs font-bold"
-                                        onClick={() => {
-                                          const activeTpl = whatsappTemplates.find(t => t.isActive);
-                                          const cleanPhone = lead.phone.replace(/\D/g, '');
-                                          let msg = activeTpl ? renderTemplateMessage(activeTpl.message, lead) : '';
-                                          setWaModal({ open: true, phone: cleanPhone, message: msg });
-                                        }}
+                                        onClick={() => openWhatsappComposer(lead)}
                                       >
                                         <MessageSquare size={14} className="mr-1.5" /> WhatsApp
                                       </Button>
@@ -6016,11 +6023,11 @@ function App() {
                                           </div>
                                         ) : (
                                           <div className="flex flex-col gap-2">
-                                            {lead.phone && lead.phone !== 'N/A' ? (
-                                              <div className="flex items-center gap-2">
-                                                {(() => {
-                                                  const cleanP = lead.phone.replace(/\D/g, '');
-                                                  const stat = getLeadWhatsappStatus(lead);
+                                          {lead.phone && lead.phone !== 'N/A' ? (
+                                            <div className="flex items-center gap-2">
+                                              {(() => {
+                                                const cleanP = lead.phone.replace(/\D/g, '');
+                                                const stat = getLeadWhatsappStatus(lead);
                                                   const waStatusClass = stat === 'failed' ? 'text-destructive' : stat === 'sent' ? 'text-emerald-600' : 'text-amber-500';
                                                   return (
                                                     <span className={`font-semibold text-sm ${waStatusClass}`}>{lead.phone}</span>
@@ -6030,12 +6037,7 @@ function App() {
                                                   variant="ghost"
                                                   size="icon"
                                                   className="h-6 w-6 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
-                                                  onClick={() => {
-                                                    const activeTpl = whatsappTemplates.find(t => t.isActive);
-                                                    const cleanPhone = lead.phone.replace(/\D/g, '');
-                                                    let msg = activeTpl ? renderTemplateMessage(activeTpl.message, lead) : '';
-                                                    setWaModal({ open: true, phone: cleanPhone, message: msg });
-                                                  }}
+                                                  onClick={() => openWhatsappComposer(lead)}
                                                   title="Send WhatsApp Message"
                                                 >
                                                   <MessageSquare size={14} />
@@ -6100,6 +6102,16 @@ function App() {
                                           ) : (
                                             <>
                                               <Button variant="outline" size="sm" className="h-7 px-2 text-xs border-primary/30 text-primary hover:bg-primary/10" onClick={() => { setInlineEditLeadId(lead._id); setInlineEditData({ name: lead.name, phone: lead.phone, email: lead.email, address: lead.address, city: lead.city }); }}>Edit</Button>
+                                              {lead.phone && lead.phone !== 'N/A' && (
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  className="h-7 px-2 text-xs border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10"
+                                                  onClick={() => openWhatsappComposer(lead)}
+                                                >
+                                                  <MessageSquare size={14} className="mr-1" /> WhatsApp
+                                                </Button>
+                                              )}
                                               {lead.mapsLink && (
                                                 <Button variant="outline" size="sm" className="h-7 px-2 text-xs border-amber-500/30 text-amber-600 hover:bg-amber-500/10" asChild>
                                                   <a href={lead.mapsLink} target="_blank" rel="noreferrer">Map</a>
