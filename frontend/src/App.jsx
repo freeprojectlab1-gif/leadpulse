@@ -2408,6 +2408,25 @@ function App() {
     }
   };
 
+  const toggleLeadContacted = async (leadId, currentVal) => {
+    try {
+      await axios.put(`/api/saved-leads/${leadId}`, { isContacted: !currentVal });
+      fetchSavedLeads();
+      showToast(`Marked as ${!currentVal ? 'Contacted' : 'Not Contacted'}`, "success");
+    } catch (err) { showToast("Failed to update", "error"); }
+  };
+
+  const cycleWhatsappStatus = async (leadId, currentStatus) => {
+    const statuses = ['pending', 'sent', 'failed'];
+    const nextIndex = (statuses.indexOf(currentStatus) + 1) % statuses.length;
+    const nextStatus = statuses[nextIndex];
+    try {
+      await axios.put(`/api/saved-leads/${leadId}`, { whatsappStatus: nextStatus });
+      fetchSavedLeads();
+      showToast(`WhatsApp status: ${nextStatus}`, "success");
+    } catch (err) { showToast("Failed to update status", "error"); }
+  };
+
   const handleDeleteTemplate = async (id) => {
     setConfirmModal({
       open: true,
@@ -5602,6 +5621,12 @@ function App() {
                       <CardDescription>Centralized vault for all AI-scraped high-intent leads.</CardDescription>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => {
+                        setInlineEditLeadId('new');
+                        setInlineEditData({ name: '', phone: '', email: '', city: '', address: '', keyword: 'Manual' });
+                      }}>
+                        <Plus size={14} className="mr-2" /> Add Lead
+                      </Button>
                       <Button variant="secondary" size="sm" onClick={() => setIsMapScreenshotDialogOpen(true)}>
                         <UploadCloud size={14} className="mr-2" /> Upload Screenshot
                       </Button>
@@ -5724,6 +5749,27 @@ function App() {
                     </div>
                   ) : !selectedGroup ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {inlineEditLeadId === 'new' && (
+                        <div className="bg-card rounded-2xl border-2 border-dashed border-primary/40 p-6 flex flex-col items-center justify-center text-center animate-in zoom-in duration-300">
+                           <h4 className="font-bold text-primary mb-4">Add New Lead</h4>
+                           <div className="space-y-3 w-full">
+                             <Input placeholder="Business Name" value={inlineEditData.name} onChange={e => setInlineEditData({...inlineEditData, name: e.target.value})} className="h-8 text-xs" />
+                             <Input placeholder="Phone Number" value={inlineEditData.phone} onChange={e => setInlineEditData({...inlineEditData, phone: e.target.value})} className="h-8 text-xs" />
+                             <Input placeholder="City" value={inlineEditData.city} onChange={e => setInlineEditData({...inlineEditData, city: e.target.value})} className="h-8 text-xs" />
+                             <div className="flex gap-2">
+                               <Button size="sm" className="flex-1 h-8 text-xs" onClick={async () => {
+                                 try {
+                                   await axios.post('/api/saved-leads', inlineEditData);
+                                   showToast("Lead Added!", "success");
+                                   setInlineEditLeadId(null);
+                                   fetchSavedLeads();
+                                 } catch(e) { showToast("Add failed", "error"); }
+                               }}>Save</Button>
+                               <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs" onClick={() => setInlineEditLeadId(null)}>Cancel</Button>
+                             </div>
+                           </div>
+                        </div>
+                      )}
                       {Object.entries(savedLeads.reduce((acc, lead) => {
                         const groupName = `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}`;
                         if (!acc[groupName]) acc[groupName] = [];
@@ -6017,22 +6063,31 @@ function App() {
                                             const stat = getLeadWhatsappStatus(lead);
                                             const label = stat === 'sent' ? 'Sent' : stat === 'failed' ? 'Failed' : 'Pending';
                                             const badgeClass = stat === 'sent'
-                                              ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                                              ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/20'
                                               : stat === 'failed'
-                                                ? 'bg-destructive/10 text-destructive border-destructive/20'
-                                                : 'bg-amber-500/10 text-amber-600 border-amber-500/20';
+                                                ? 'bg-destructive/10 text-destructive border-destructive/20 hover:bg-destructive/20'
+                                                : 'bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20';
                                             const Icon = stat === 'sent' ? CheckCheck : stat === 'failed' ? AlertTriangle : Clock;
                                             return (
-                                              <Badge variant="outline" className={`w-fit ${badgeClass}`}>
+                                              <Badge 
+                                                variant="outline" 
+                                                className={`w-fit cursor-pointer transition-all ${badgeClass}`}
+                                                onClick={(e) => { e.stopPropagation(); cycleWhatsappStatus(lead._id, stat); }}
+                                                title="Click to cycle status"
+                                              >
                                                 <Icon size={12} className="mr-1" /> WhatsApp {label}
                                               </Badge>
                                             );
                                           })()}
-                                          {lead.isContacted && (
-                                            <Badge variant="outline" className="w-fit bg-blue-500/10 text-blue-600 border-blue-500/20">
-                                              <Check size={12} className="mr-1" /> Contacted
-                                            </Badge>
-                                          )}
+                                          <Badge 
+                                            variant="outline" 
+                                            className={`w-fit cursor-pointer transition-all ${lead.isContacted ? 'bg-blue-500/10 text-blue-600 border-blue-500/20 hover:bg-blue-500/20' : 'bg-slate-500/5 text-slate-400 border-slate-500/10 hover:bg-slate-500/10'}`}
+                                            onClick={(e) => { e.stopPropagation(); toggleLeadContacted(lead._id, lead.isContacted); }}
+                                            title="Click to toggle contact status"
+                                          >
+                                            {lead.isContacted ? <Check size={12} className="mr-1" /> : <Clock size={12} className="mr-1" />} 
+                                            {lead.isContacted ? 'Contacted' : 'Not Contacted'}
+                                          </Badge>
                                         </div>
                                       </td>
                                       <td className="px-4 py-3 text-right">

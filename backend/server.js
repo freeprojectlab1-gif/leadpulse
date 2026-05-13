@@ -3074,6 +3074,20 @@ app.delete('/api/saved-leads/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/saved-leads', async (req, res) => {
+  try {
+    const leadData = { ...req.body };
+    if (leadData.phone) {
+      leadData.phone = extractMobileDigits(leadData.phone) || leadData.phone;
+    }
+    const newLead = new ScrapedLead(leadData);
+    await newLead.save();
+    res.status(201).json(newLead);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.put('/api/saved-leads/:id', async (req, res) => {
   try {
     const nextBody = { ...req.body };
