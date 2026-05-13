@@ -1997,16 +1997,23 @@ function App() {
     return message;
   };
 
+  const getWhatsAppDigits = (value) => {
+    const digits = String(value || '').replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.length <= 10) return digits;
+    return digits.slice(-10);
+  };
+
   const openWhatsappComposer = (lead) => {
     const activeTpl = whatsappTemplates.find(t => t.isActive);
-    const cleanPhone = String(lead?.phone || lead?.data?.Phone || lead?.data?.phone || lead?.email?.replace('@whatsapp.com', '') || '').replace(/\D/g, '');
+    const cleanPhone = getWhatsAppDigits(lead?.phone || lead?.data?.Phone || lead?.data?.phone || lead?.email?.replace('@whatsapp.com', ''));
     if (!cleanPhone) {
       showToast('No phone number found for this lead.', 'error');
       return;
     }
 
     const msg = activeTpl ? renderTemplateMessage(activeTpl.message, lead) : '';
-    setWaModal({ open: true, phone: cleanPhone, message: msg });
+    setWaModal({ open: true, phone: cleanPhone, message: msg, leadId: lead?._id || '' });
   };
 
   const handleWhatsappReply = (leadEmail) => {
@@ -2029,7 +2036,7 @@ function App() {
     const finalMsg = renderTemplateMessage(activeTpl.message, lead);
 
     // Show modal with message so user can copy and open WhatsApp
-    setWaModal({ open: true, phone: cleanPhone, message: finalMsg });
+    setWaModal({ open: true, phone: cleanPhone, message: finalMsg, leadId: lead?._id || '' });
   };
 
   const copyWaMessage = () => {
@@ -2046,6 +2053,51 @@ function App() {
       showToast('Could not copy — please select and copy manually.', 'error');
     }
     document.body.removeChild(textArea);
+  };
+
+  const copyWaNumber = () => {
+    const cleanPhone = getWhatsAppDigits(waModal.phone);
+    if (!cleanPhone) {
+      showToast('No phone number available to copy.', 'error');
+      return;
+    }
+
+    const textArea = document.createElement('textarea');
+    textArea.value = cleanPhone;
+    textArea.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      showToast('✅ Number copied to clipboard!', 'success');
+    } catch {
+      showToast('Could not copy number — please select and copy manually.', 'error');
+    }
+    document.body.removeChild(textArea);
+  };
+
+  const markWhatsappStatusFromModal = async (status) => {
+    const cleanPhone = getWhatsAppDigits(waModal.phone);
+    if (!cleanPhone) {
+      showToast('No phone number available.', 'error');
+      return;
+    }
+
+    try {
+      if (waModal.leadId) {
+        await axios.put(`/api/saved-leads/${waModal.leadId}`, {
+          whatsappStatus: status,
+          whatsappUpdatedAt: new Date().toISOString()
+        });
+      }
+      syncLeadWhatsappStatus(cleanPhone, status);
+      fetchSavedLeads();
+      showToast(`WhatsApp status marked as ${status}.`, 'success');
+      setWaModal({ open: false, phone: '', message: '', leadId: '' });
+    } catch (err) {
+      showToast(`Failed to update WhatsApp status: ${err.response?.data?.error || err.message}`, 'error');
+    }
   };
 
   const fetchSettings = async () => {
@@ -6090,6 +6142,19 @@ function App() {
                                             {lead.isContacted ? <Check size={12} className="mr-1" /> : <Clock size={12} className="mr-1" />} 
                                             {lead.isContacted ? 'Contacted' : 'Not Contacted'}
                                           </Badge>
+                                          {lead.phone && lead.phone !== 'N/A' && (
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="w-fit h-7 px-2 text-xs border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                openWhatsappComposer(lead);
+                                              }}
+                                            >
+                                              <MessageSquare size={12} className="mr-1" /> WhatsApp
+                                            </Button>
+                                          )}
                                         </div>
                                       </td>
                                       <td className="px-4 py-3 text-right">
@@ -6224,7 +6289,7 @@ function App() {
                 <h3 className="text-xl font-bold flex items-center gap-2 text-foreground">
                   <Phone size={24} className="text-[#25D366]" /> Send WhatsApp
                 </h3>
-                <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:bg-muted" onClick={() => setWaModal({ open: false, phone: '', message: '' })}>
+                <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:bg-muted" onClick={() => setWaModal({ open: false, phone: '', message: '', leadId: '' })}>
                   <X size={20} />
                 </Button>
               </div>
@@ -6233,7 +6298,7 @@ function App() {
                 <span className="text-2xl">📱</span>
                 <div>
                   <div className="text-xs text-muted-foreground font-medium">Recipient</div>
-                  <div className="font-bold text-foreground">+{waModal.phone}</div>
+                  <div className="font-bold text-foreground">{getWhatsAppDigits(waModal.phone)}</div>
                 </div>
               </div>
 
@@ -6247,19 +6312,42 @@ function App() {
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Button
                   variant="outline"
-                  className="flex-1 h-12 border-2 border-[#25D366] text-[#25D366] hover:bg-[#25D366]/10 font-bold"
+                  className="h-12 border-2 border-[#25D366] text-[#25D366] hover:bg-[#25D366]/10 font-bold"
+                  onClick={copyWaNumber}
+                >
+                  <Copy size={18} className="mr-2" /> Copy Number
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-12 border-2 border-[#25D366] text-[#25D366] hover:bg-[#25D366]/10 font-bold"
                   onClick={copyWaMessage}
                 >
                   <Copy size={18} className="mr-2" /> Copy Message
                 </Button>
                 <Button
-                  className="flex-1 h-12 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold border-none"
+                  variant="secondary"
+                  className="h-12 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 hover:text-blue-700 font-bold border border-blue-500/20"
+                  onClick={() => markWhatsappStatusFromModal('sent')}
+                >
+                  <CheckCircle size={18} className="mr-2" /> Mark Sent
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="h-12 bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 hover:text-rose-700 font-bold border border-rose-500/20"
+                  onClick={() => markWhatsappStatusFromModal('failed')}
+                >
+                  <X size={18} className="mr-2" /> Mark Failed
+                </Button>
+                <Button
+                  className="h-12 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold border-none"
                   onClick={() => {
-                    const encodedMsg = encodeURIComponent(waModal.message);
-                    window.open(`https://web.whatsapp.com/send?phone=${waModal.phone}&text=${encodedMsg}`, '_blank');
+                    const encodedMsg = encodeURIComponent(waModal.message || '');
+                    const cleanPhone = getWhatsAppDigits(waModal.phone);
+                    const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMsg}`;
+                    window.open(waUrl, '_blank', 'noopener,noreferrer');
                   }}
                 >
                   <Phone size={18} className="mr-2" /> Open WhatsApp
@@ -6267,7 +6355,7 @@ function App() {
               </div>
 
               <p className="text-center text-muted-foreground text-xs mt-4">
-                Tip: Click <strong className="text-foreground">Copy Message</strong> first, then <strong className="text-foreground">Open WhatsApp</strong> and paste with Ctrl+V
+                Tip: Copy the number/message if needed, then use <strong className="text-foreground">Mark Sent</strong> after sending.
               </p>
             </div>
           </Card>
