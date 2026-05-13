@@ -54,6 +54,7 @@ import {
   Camera,
   Database,
   RefreshCw,
+  RefreshCcw,
   ChevronLeft,
   AlertCircle,
   PenTool,
@@ -61,13 +62,17 @@ import {
   Sun,
   Moon,
   Upload,
+  CloudUpload,
   MessageCircle,
   Smartphone,
   Activity,
   Hash,
   Brackets,
   Zap,
-  MousePointer2
+  MousePointer2,
+  Trash2,
+  UserPlus,
+  Edit2
 } from 'lucide-react';
 
 // --- ICONS (SVG) ---
@@ -1748,8 +1753,10 @@ function App() {
   const [waProvider, setWaProvider] = useState('browser'); // 'browser' or 'interakt'
   const [waDailyStats, setWaDailyStats] = useState({ sent: 0, limit: 80, remaining: 80 });
   const [waQr, setWaQr] = useState('');
+  const [waHighlightedLeadId, setWaHighlightedLeadId] = useState('');
   const lastSavedPublicEmailRef = useRef('');
   const publicEmailSaveTimerRef = useRef(null);
+  const waHighlightTimerRef = useRef(null);
 
   const fetchWaStatus = async () => {
     try {
@@ -1802,6 +1809,31 @@ function App() {
     }));
 
     setWaStatuses(prev => ({ ...prev, [cleanPhone]: status }));
+  };
+
+  const getLeadPhoneValue = (lead) => String(lead?.phone || lead?.data?.Phone || lead?.data?.phone || lead?.email?.replace('@whatsapp.com', '') || '').trim();
+  const hasLeadPhoneNumber = (lead) => {
+    const raw = getLeadPhoneValue(lead);
+    if (!raw || raw === 'N/A' || raw === '—') return false;
+    return raw.replace(/\D/g, '').length > 0;
+  };
+  const getSavedLeadSortRank = (lead) => {
+    if (!hasLeadPhoneNumber(lead)) return 3;
+    const stat = getLeadWhatsappStatus(lead);
+    if (stat === 'pending') return 0;
+    if (stat === 'sent') return 1;
+    if (stat === 'failed') return 2;
+    return 2;
+  };
+  const compareSavedLeads = (a, b) => {
+    const rankDiff = getSavedLeadSortRank(a) - getSavedLeadSortRank(b);
+    if (rankDiff !== 0) return rankDiff;
+
+    const aTime = new Date(a?.whatsappUpdatedAt || a?.updatedAt || a?.createdAt || 0).getTime();
+    const bTime = new Date(b?.whatsappUpdatedAt || b?.updatedAt || b?.createdAt || 0).getTime();
+    if (aTime !== bTime) return bTime - aTime;
+
+    return String(a?.name || a?.email || '').localeCompare(String(b?.name || b?.email || ''));
   };
 
   // WhatsApp Templates State
@@ -2013,7 +2045,12 @@ function App() {
     }
 
     const msg = activeTpl ? renderTemplateMessage(activeTpl.message, lead) : '';
-    setWaModal({ open: true, phone: cleanPhone, message: msg, leadId: lead?._id || '' });
+    setWaModal({
+      open: true,
+      phone: cleanPhone,
+      message: msg,
+      leadId: lead?._id || '',
+    });
   };
 
   const handleWhatsappReply = (leadEmail) => {
@@ -2036,7 +2073,12 @@ function App() {
     const finalMsg = renderTemplateMessage(activeTpl.message, lead);
 
     // Show modal with message so user can copy and open WhatsApp
-    setWaModal({ open: true, phone: cleanPhone, message: finalMsg, leadId: lead?._id || '' });
+    setWaModal({
+      open: true,
+      phone: cleanPhone,
+      message: finalMsg,
+      leadId: lead?._id || '',
+    });
   };
 
   const copyWaMessage = () => {
@@ -2090,11 +2132,14 @@ function App() {
           whatsappStatus: status,
           whatsappUpdatedAt: new Date().toISOString()
         });
+        setWaHighlightedLeadId(waModal.leadId);
+        clearTimeout(waHighlightTimerRef.current);
+        waHighlightTimerRef.current = setTimeout(() => setWaHighlightedLeadId(''), 2500);
       }
       syncLeadWhatsappStatus(cleanPhone, status);
-      fetchSavedLeads();
       showToast(`WhatsApp status marked as ${status}.`, 'success');
       setWaModal({ open: false, phone: '', message: '', leadId: '' });
+      fetchSavedLeads();
     } catch (err) {
       showToast(`Failed to update WhatsApp status: ${err.response?.data?.error || err.message}`, 'error');
     }
@@ -2489,6 +2534,24 @@ function App() {
       fetchSavedLeads();
       showToast(`WhatsApp status: ${nextStatus}`, "success");
     } catch (err) { showToast("Failed to update status", "error"); }
+  };
+
+  const handleDeleteLead = (id) => {
+    const lead = savedLeads.find(l => l._id === id);
+    if (!lead) return;
+    setConfirmModal({
+      open: true,
+      title: `Delete ${lead.name}?`,
+      onConfirm: async () => {
+        try {
+          await axios.delete(`/api/saved-leads/${id}`);
+          showToast("Lead Deleted!", "success");
+          fetchSavedLeads();
+        } catch (e) {
+          showToast("Delete failed", "error");
+        }
+      }
+    });
   };
 
   const handleDeleteTemplate = async (id) => {
@@ -5576,10 +5639,12 @@ function App() {
                               const waStatusClass = stat === 'failed' ? 'bg-destructive/10 text-destructive' : stat === 'sent' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground';
 
                               return (
-                                <tr
+                                  <tr
                                   key={lead._id}
+                                  data-lead-id={lead._id}
                                   className={`transition-colors hover:bg-muted/30 
-                                    ${enricherEditMode && selectedIds.includes(lead._id) ? 'bg-primary/5' : ''}`
+                                    ${enricherEditMode && selectedIds.includes(lead._id) ? 'bg-primary/5' : ''}
+                                    ${waHighlightedLeadId === lead._id ? 'bg-primary/10 ring-2 ring-primary/50 ring-offset-2 ring-offset-background shadow-[0_0_0_1px_rgba(59,130,246,0.18)]' : ''}`
                                   }
                                 >
                                   {enricherEditMode && (
@@ -5679,18 +5744,33 @@ function App() {
                       </CardTitle>
                       <CardDescription>Centralized vault for all AI-scraped high-intent leads.</CardDescription>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => {
-                        setInlineEditLeadId('new');
-                        setInlineEditData({ name: '', phone: '', email: '', city: '', address: '', keyword: 'Manual' });
-                      }}>
-                        <Plus size={14} className="mr-2" /> Add Lead
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="bg-primary/5 border-primary/20 hover:bg-primary/10 text-primary font-bold shadow-sm transition-all hover:scale-105 active:scale-95"
+                        onClick={() => {
+                          setInlineEditLeadId('new');
+                          setInlineEditData({ name: '', phone: '', email: '', city: '', address: '', keyword: 'Manual' });
+                        }}
+                      >
+                        <UserPlus size={14} className="mr-2" /> Add Lead
                       </Button>
-                      <Button variant="secondary" size="sm" onClick={() => setIsMapScreenshotDialogOpen(true)}>
-                        <UploadCloud size={14} className="mr-2" /> Upload Screenshot
+                      <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="bg-indigo-500/10 text-indigo-600 border-indigo-500/20 hover:bg-indigo-500/20 font-bold shadow-sm transition-all hover:scale-105 active:scale-95"
+                        onClick={() => setIsMapScreenshotDialogOpen(true)}
+                      >
+                        <CloudUpload size={14} className="mr-2" /> Upload Screenshot
                       </Button>
-                      <Button variant="outline" size="sm" onClick={fetchSavedLeads}>
-                        <RefreshCw size={14} className="mr-2" /> Refresh CRM
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-muted-foreground hover:text-foreground hover:bg-muted font-medium transition-all"
+                        onClick={fetchSavedLeads}
+                      >
+                        <RefreshCcw size={14} className={`mr-2 ${isLoadingSavedLeads ? 'animate-spin' : ''}`} /> Refresh CRM
                       </Button>
                     </div>
                   </div>
@@ -5895,21 +5975,63 @@ function App() {
                       </div>
 
                       {(() => {
-                        const groupLeads = savedLeads.filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup);
+                        const groupLeads = savedLeads
+                          .filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup)
+                          .sort(compareSavedLeads);
+                        const leadsWithNumber = groupLeads.filter(hasLeadPhoneNumber);
+                        const leadsWithoutNumber = groupLeads.filter(lead => !hasLeadPhoneNumber(lead));
                         const allSelected = groupLeads.length > 0 && groupLeads.every(l => selectedIds.includes(l._id));
                         const someSelected = groupLeads.some(l => selectedIds.includes(l._id));
 
                         return (
                           <>
-                            {someSelected && (
-                              <div className="p-4 rounded-xl bg-primary text-primary-foreground flex flex-col sm:flex-row justify-between items-center gap-4 shadow-lg animate-in slide-in-from-top-2">
-                                <div className="flex items-center gap-2 font-semibold">
-                                  <Info size={18} />
-                                  <span>{selectedIds.filter(id => groupLeads.some(l => l._id === id)).length} leads selected</span>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl border border-border/50 bg-muted/20">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 px-3 py-1.5">
+                                  {leadsWithNumber.length} With Number
+                                </Badge>
+                                <Badge className="bg-slate-500/10 text-slate-400 border-slate-500/20 px-3 py-1.5">
+                                  {leadsWithoutNumber.length} Without Number
+                                </Badge>
+                                <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 px-3 py-1.5">
+                                  {groupLeads.length} Total
+                                </Badge>
+                              </div>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="bg-rose-500/10 text-rose-600 border-rose-500/20 hover:bg-rose-500 hover:text-white font-bold transition-all"
+                                disabled={leadsWithoutNumber.length === 0}
+                                onClick={() => {
+                                  setConfirmModal({
+                                    open: true,
+                                    title: `Delete ${leadsWithoutNumber.length} leads without number?`,
+                                    onConfirm: async () => {
+                                      try {
+                                        await axios.post('/api/saved-leads/bulk-delete', {
+                                          leadIds: leadsWithoutNumber.map(lead => lead._id)
+                                        });
+                                        showToast(`${leadsWithoutNumber.length} no-number leads deleted!`, 'success');
+                                        setSelectedIds(prev => prev.filter(id => !leadsWithoutNumber.some(lead => lead._id === id)));
+                                        fetchSavedLeads();
+                                      } catch (e) {
+                                        showToast('Delete failed', 'error');
+                                      }
+                                    }
+                                  });
+                                                        <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl border border-white/10 animate-in slide-in-from-top-4 duration-500">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md">
+                                    <CheckCircle size={20} className="text-white" />
+                                  </div>
+                                  <div>
+                                    <div className="font-bold text-lg leading-none">{selectedIds.filter(id => groupLeads.some(l => l._id === id)).length} Selected</div>
+                                    <div className="text-blue-100 text-[10px] uppercase tracking-widest font-black opacity-80">Ready for outreach</div>
+                                  </div>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                                   <Button
-                                    className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm border-transparent font-bold"
+                                    className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg border-transparent font-black uppercase text-xs tracking-wider h-10 px-6 transition-all hover:scale-105 active:scale-95"
                                     disabled={isScraperBroadcasting}
                                     onClick={() => {
                                       // Robust lead filtering
@@ -5965,19 +6087,19 @@ function App() {
                                       });
                                     }}
                                   >
-                                    {isScraperBroadcasting ? <><Loader2 size={16} className="animate-spin mr-2" /> Sending...</> : <><Phone size={16} className="mr-2" /> Send WA Msg</>}
+                                    {isScraperBroadcasting ? <><Loader2 size={16} className="animate-spin mr-2" /> Sending...</> : <><MessageCircle size={16} className="mr-2" /> Send WhatsApp</>}
                                   </Button>
                                   <select 
-                                    className="h-9 rounded-md border border-input bg-background px-3 py-1 text-xs font-bold shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                                    className="h-10 rounded-xl border border-white/20 bg-white/10 backdrop-blur-md text-white px-4 py-1 text-xs font-bold shadow-inner focus:outline-none focus:ring-2 focus:ring-white/30 transition-all"
                                     value={waProvider}
                                     onChange={(e) => setWaProvider(e.target.value)}
                                   >
-                                    <option value="browser">🌐 Browser</option>
-                                    <option value="interakt">⚡ Interakt</option>
+                                    <option value="browser" className="bg-slate-900 text-white">🌐 Browser Engine</option>
+                                    <option value="interakt" className="bg-slate-900 text-white">⚡ Cloud API</option>
                                   </select>
                                   <Button
                                     variant="secondary"
-                                    className="font-bold text-primary"
+                                    className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md font-black uppercase text-xs tracking-wider h-10 px-6 transition-all hover:scale-105 active:scale-95"
                                     onClick={() => {
                                       const ids = selectedIds.filter(id => groupLeads.some(l => l._id === id && l.email && l.emailFound));
                                       if (ids.length === 0) return showToast('No leads with emails selected!', 'error');
@@ -6005,13 +6127,14 @@ function App() {
                                       });
                                     }}
                                   >
-                                    {isEnricherSending ? <><Loader2 size={16} className="animate-spin mr-2" /> Starting...</> : <><Rocket size={16} className="mr-2" /> Start Automation</>}
+                                    {isEnricherSending ? <><Loader2 size={16} className="animate-spin mr-2" /> Starting...</> : <><Zap size={16} className="mr-2" /> Start Campaign</>}
                                   </Button>
-                                  <Button variant="ghost" className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10" onClick={() => setSelectedIds([])}>
+                                  <Button variant="ghost" className="text-white/60 hover:text-white hover:bg-white/10 text-xs font-bold" onClick={() => setSelectedIds([])}>
                                     Cancel
                                   </Button>
                                 </div>
                               </div>
+                            )}
                             )}
                             <div className="overflow-x-auto rounded-xl border border-border/50">
                               <table className="w-full text-sm text-left border-collapse">
@@ -6043,8 +6166,8 @@ function App() {
                                 </thead>
                                 <tbody className="divide-y divide-border/50">
                                   {groupLeads.map((lead) => (
-                                    <tr key={lead._id} className={`transition-colors hover:bg-muted/30 ${selectedIds.includes(lead._id) ? 'bg-primary/5' : ''}`}>
-                                      <td className="px-4 py-3 text-center border-r border-border/50">
+                                  <tr key={lead._id} data-lead-id={lead._id} className={`transition-colors hover:bg-muted/30 ${selectedIds.includes(lead._id) ? 'bg-primary/5' : ''} ${waHighlightedLeadId === lead._id ? 'bg-primary/10 ring-2 ring-primary/50 ring-offset-2 ring-offset-background shadow-[0_0_0_1px_rgba(59,130,246,0.18)]' : ''}`}>
+                                    <td className="px-4 py-3 text-center border-r border-border/50">
                                         <input
                                           type="checkbox"
                                           className="rounded border-border text-primary focus:ring-primary h-4 w-4"
@@ -6166,38 +6289,43 @@ function App() {
                                             </>
                                           ) : (
                                             <>
-                                              <Button variant="outline" size="sm" className="h-7 px-2 text-xs border-primary/30 text-primary hover:bg-primary/10" onClick={() => { setInlineEditLeadId(lead._id); setInlineEditData({ name: lead.name, phone: lead.phone, email: lead.email, address: lead.address, city: lead.city }); }}>Edit</Button>
+                                              <Button 
+                                                variant="outline" 
+                                                size="sm" 
+                                                className="h-7 px-2.5 text-[10px] border-primary/30 text-primary hover:bg-primary/10 font-bold uppercase tracking-wider transition-all" 
+                                                onClick={() => { setInlineEditLeadId(lead._id); setInlineEditData({ name: lead.name, phone: lead.phone, email: lead.email, address: lead.address, city: lead.city }); }}
+                                              >
+                                                <Edit2 size={10} className="mr-1" /> Edit
+                                              </Button>
                                               {lead.phone && lead.phone !== 'N/A' && (
                                                 <Button
                                                   variant="outline"
                                                   size="sm"
-                                                  className="h-7 px-2 text-xs border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10"
+                                                  className="h-7 px-2.5 text-[10px] border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 font-bold uppercase tracking-wider transition-all"
                                                   onClick={() => openWhatsappComposer(lead)}
                                                 >
-                                                  <MessageSquare size={14} className="mr-1" /> WhatsApp
+                                                  <MessageCircle size={10} className="mr-1" /> WhatsApp
                                                 </Button>
                                               )}
                                               {lead.mapsLink && (
-                                                <Button variant="outline" size="sm" className="h-7 px-2 text-xs border-amber-500/30 text-amber-600 hover:bg-amber-500/10" asChild>
-                                                  <a href={lead.mapsLink} target="_blank" rel="noreferrer">Map</a>
+                                                <Button 
+                                                  variant="outline" 
+                                                  size="sm" 
+                                                  className="h-7 px-2.5 text-[10px] border-amber-500/30 text-amber-600 hover:bg-amber-500/10 font-bold uppercase tracking-wider transition-all" 
+                                                  asChild
+                                                >
+                                                  <a href={lead.mapsLink} target="_blank" rel="noreferrer">
+                                                    <MapPin size={10} className="mr-1" /> Map
+                                                  </a>
                                                 </Button>
                                               )}
-                                              <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                                onClick={() => {
-                                                  setConfirmModal({
-                                                    open: true,
-                                                    title: `Delete ${lead.name}?`,
-                                                    onConfirm: async () => {
-                                                      await axios.delete(`/api/saved-leads/${lead._id}`);
-                                                      fetchSavedLeads();
-                                                    }
-                                                  });
-                                                }}
+                                              <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-7 w-7 text-destructive hover:bg-destructive/10 transition-all rounded-full" 
+                                                onClick={() => handleDeleteLead(lead._id)}
                                               >
-                                                <X size={14} />
+                                                <Trash2 size={12} />
                                               </Button>
                                             </>
                                           )}
