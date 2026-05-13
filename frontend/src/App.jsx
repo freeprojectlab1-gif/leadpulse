@@ -6135,7 +6135,6 @@ function App() {
                                 </div>
                               </div>
                             )}
-                            )}
                             <div className="overflow-x-auto rounded-xl border border-border/50">
                               <table className="w-full text-sm text-left border-collapse">
                                 <thead className="bg-muted/50 text-muted-foreground text-xs uppercase font-semibold border-b border-border">
