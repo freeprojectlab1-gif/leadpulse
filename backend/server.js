@@ -223,7 +223,7 @@ const initWhatsapp = async () => {
   try { execSync('rm -f ' + path.join(__dirname, 'wa_session/session/Singleton*'), { stdio: 'ignore' }); } catch (e) { }
   await new Promise(r => setTimeout(r, 2000)); // Wait for Chrome to fully die
 
-  const chromePath = path.join(__dirname, '.cache/puppeteer/chrome/linux-146.0.7680.31/chrome-linux64/chrome');
+  const chromePath = '/usr/bin/google-chrome-stable';
   waClient = new Client({
     authStrategy: new LocalAuth({ dataPath: path.join(__dirname, 'wa_session') }),
     puppeteer: { headless: true, executablePath: chromePath, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas', '--disable-gpu'] },
@@ -595,7 +595,7 @@ const findEmailForLead = async (lead, sendStatusUpdate, sharedBrowser = null) =>
   try {
     if (!browser) {
       browser = await puppeteer.launch({
-        executablePath: executablePath(),
+        executablePath: '/usr/bin/google-chrome-stable',
         userDataDir: BROWSER_SESSION_DIR,
         headless: 'new',
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'],
@@ -1261,7 +1261,7 @@ cron.schedule('*/1 * * * *', async () => {
 app.get('/api/open-browser', async (req, res) => {
   try {
     const browser = await puppeteer.launch({
-      executablePath: executablePath(),
+      executablePath: '/usr/bin/google-chrome-stable',
       userDataDir: BROWSER_SESSION_DIR,
       headless: false,
       defaultViewport: null,
@@ -1995,7 +1995,7 @@ const configureFastMapsPage = async (page) => {
 
 const launchScraperBrowser = async () => {
   const launchArgs = {
-    executablePath: executablePath(),
+    executablePath: '/usr/bin/google-chrome-stable',
     userDataDir: BROWSER_SESSION_DIR,
     headless: "new",
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
@@ -2814,7 +2814,7 @@ app.get('/api/scrape-leads', async (req, res) => {
 
   try {
     const launchArgs = {
-      executablePath: executablePath(),
+      executablePath: '/usr/bin/google-chrome-stable',
       userDataDir: BROWSER_SESSION_DIR + '_scraper', // ← separate dir, no lock conflict with Map Finder
       headless: "new",
       args: [
@@ -3539,7 +3539,7 @@ app.get('/api/bulk-find-emails', async (req, res) => {
 
     // Launch ONE browser, reuse for all leads (massive speedup vs per-lead launch)
     browser = await puppeteer.launch({
-      executablePath: executablePath(),
+      executablePath: '/usr/bin/google-chrome-stable',
       userDataDir: BROWSER_SESSION_DIR,
       headless: 'new',
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled'],
