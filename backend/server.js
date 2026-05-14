@@ -219,14 +219,27 @@ setTimeout(syncWaDailyCounter, 5000); // Wait for DB connection
 const { execSync } = require('child_process');
 const initWhatsapp = async () => {
   // Kill any existing Chrome processes and clear locks
-  try { execSync('pkill -9 -f chrome-linux64 2>/dev/null', { stdio: 'ignore' }); } catch (e) { }
-  try { execSync('rm -f ' + path.join(__dirname, 'wa_session/session/Singleton*'), { stdio: 'ignore' }); } catch (e) { }
+  try { execSync('pkill -9 -f google-chrome 2>/dev/null', { stdio: 'ignore' }); } catch (e) { }
+  try { execSync('pkill -9 -f chromium 2>/dev/null', { stdio: 'ignore' }); } catch (e) { }
+  try { execSync('rm -rf ' + path.join(__dirname, 'wa_session/session/Singleton*'), { stdio: 'ignore' }); } catch (e) { }
   await new Promise(r => setTimeout(r, 2000)); // Wait for Chrome to fully die
 
   const chromePath = '/usr/bin/google-chrome-stable';
   waClient = new Client({
     authStrategy: new LocalAuth({ dataPath: path.join(__dirname, 'wa_session') }),
-    puppeteer: { headless: true, executablePath: chromePath, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas', '--disable-gpu'] },
+    puppeteer: { 
+      headless: true, 
+      executablePath: chromePath, 
+      args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox', 
+        '--disable-dev-shm-usage', 
+        '--disable-accelerated-2d-canvas', 
+        '--disable-gpu',
+        '--no-zygote',
+        '--single-process'
+      ] 
+    },
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'
   });
   waClient.on('qr', (qr) => { waQr = qr; waStatus = 'qr-ready'; console.log('[WhatsApp] QR Ready.'); });
@@ -3061,10 +3074,15 @@ app.delete('/api/saved-leads/group', async (req, res) => {
 app.post('/api/saved-leads/bulk-delete', async (req, res) => {
   try {
     const { leadIds } = req.body;
+    console.log(`[API] Bulk delete requested for ${leadIds?.length} leads:`, leadIds);
     if (!Array.isArray(leadIds) || leadIds.length === 0) return res.status(400).json({ error: 'leadIds required' });
-    await ScrapedLead.deleteMany({ _id: { $in: leadIds } });
-    res.json({ message: `${leadIds.length} leads deleted successfully!` });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    const result = await ScrapedLead.deleteMany({ _id: { $in: leadIds } });
+    console.log(`[API] Bulk delete result:`, result);
+    res.json({ message: `${result.deletedCount} leads deleted successfully!` });
+  } catch (e) { 
+    console.error(`[API] Bulk delete error:`, e);
+    res.status(500).json({ error: e.message }); 
+  }
 });
 
 app.delete('/api/saved-leads/:id', async (req, res) => {

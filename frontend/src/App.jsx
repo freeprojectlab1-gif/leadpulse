@@ -6019,7 +6019,14 @@ function App() {
                                       }
                                     }
                                   });
-                                                        <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl border border-white/10 animate-in slide-in-from-top-4 duration-500">
+                                }}
+                              >
+                                <Trash2 size={14} className="mr-2" /> Delete No Number
+                              </Button>
+                            </div>
+
+                            {someSelected && (
+                              <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl border border-white/10 animate-in slide-in-from-top-4 duration-500">
                                 <div className="flex items-center gap-3">
                                   <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md">
                                     <CheckCircle size={20} className="text-white" />
@@ -6498,8 +6505,8 @@ function App() {
               </div>
               <h3 className="text-lg font-bold text-foreground mb-6">{confirmModal.title}</h3>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button variant="secondary" className="w-full sm:w-auto font-medium" onClick={() => setConfirmModal({ open: false })}>Cancel</Button>
-                <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white font-bold shadow-glow-primary" onClick={() => { confirmModal.onConfirm(); setConfirmModal({ open: false }); }}>Yes, Proceed</Button>
+                <Button variant="secondary" className="w-full sm:w-auto font-medium" onClick={() => setConfirmModal(prev => ({ ...prev, open: false }))}>Cancel</Button>
+                <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white font-bold shadow-glow-primary" onClick={async () => { if (confirmModal.onConfirm) await confirmModal.onConfirm(); setConfirmModal(prev => ({ ...prev, open: false })); }}>Yes, Proceed</Button>
               </div>
             </div>
           </Card>
