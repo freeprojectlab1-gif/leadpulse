@@ -16,7 +16,8 @@ import {
   Filter,
   BarChart3,
   Zap,
-  UploadCloud
+  UploadCloud,
+  Trash2
 } from 'lucide-react';
 import { 
   Card, 
@@ -63,6 +64,12 @@ const CricketFun = () => {
   const [verifying, setVerifying] = useState(false);
   const [ssFile, setSsFile] = useState(null);
   const [viewingMatch, setViewingMatch] = useState(null);
+  const [manualInputOpen, setManualInputOpen] = useState(false);
+  const [manualInputMatch, setManualInputMatch] = useState(null);
+  const [manualInputType, setManualInputType] = useState('innings1');
+  const [manualScoreText, setManualScoreText] = useState('');
+  const [savingManualScore, setSavingManualScore] = useState(false);
+  const [activeInningsTab, setActiveInningsTab] = useState('innings1');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -84,6 +91,22 @@ const CricketFun = () => {
     };
     fetchData();
   }, []);
+
+  const refreshCricketData = async (matchId = null) => {
+    const refreshRes = await axios.get('/api/cricket/data');
+    const sortedPoints = (refreshRes.data.pointsTable || []).sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      return parseFloat(b.nrr) - parseFloat(a.nrr);
+    });
+    setPointsTable(sortedPoints);
+    setMostRuns(refreshRes.data.mostRuns);
+    setMostWickets(refreshRes.data.mostWickets);
+    setNextMatches(refreshRes.data.nextMatches);
+    if (matchId) {
+      const freshMatch = refreshRes.data.nextMatches.find(m => m.id === matchId);
+      if (freshMatch) setViewingMatch(freshMatch);
+    }
+  };
 
   const handleFileUpload = async (directFile, matchId, type) => {
     const targetFile = directFile || ssFile;
@@ -108,21 +131,61 @@ const CricketFun = () => {
       }
       
       // Re-fetch data to update UI
-      const refreshRes = await axios.get('/api/cricket/data');
-      const sortedPoints = (refreshRes.data.pointsTable || []).sort((a, b) => {
-        if (b.points !== a.points) return b.points - a.points;
-        return parseFloat(b.nrr) - parseFloat(a.nrr);
-      });
-      setPointsTable(sortedPoints);
-      setMostRuns(refreshRes.data.mostRuns);
-      setMostWickets(refreshRes.data.mostWickets);
-      setNextMatches(refreshRes.data.nextMatches);
+      await refreshCricketData(matchId);
 
     } catch (err) {
       console.error('Error verifying result:', err);
-      alert('Failed to verify result');
+      alert(err.response?.data?.error || 'Failed to verify result');
     } finally {
       setVerifying(false);
+    }
+  };
+
+  const handleDeleteMatch = async (matchId, e) => {
+    e.stopPropagation();
+    if (!window.confirm(`Match ${matchId} ka saara data delete karna chahte ho? (Points table bhi revert ho jaega)`)) return;
+    try {
+      await axios.delete(`/api/cricket/match/${matchId}`);
+      await refreshCricketData();
+      if (viewingMatch?.id === matchId) setViewingMatch(null);
+    } catch (err) {
+      alert('Delete failed: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
+  const openManualInputDialog = (match, inningsType = 'innings1') => {
+    setManualInputMatch(match);
+    setManualInputType(inningsType);
+    setManualScoreText(`{\n  "team": "",\n  "totalScore": "",\n  "totalOvers": "",\n  "extras": 0,\n  "fifties": [],\n  "hundreds": [],\n  "batters": []\n}`);
+    setManualInputOpen(true);
+  };
+
+  const handleManualScoreSave = async () => {
+    if (!manualInputMatch) return;
+
+    try {
+      setSavingManualScore(true);
+      const inningsData = JSON.parse(manualScoreText);
+
+      await axios.post('/api/cricket/save-scorecard', {
+        matchId: manualInputMatch.id,
+        inningsType: manualInputType,
+        inningsData
+      });
+
+      await refreshCricketData(manualInputMatch.id);
+      setManualInputOpen(false);
+      setManualScoreText('');
+      alert(`${manualInputType} data saved successfully`);
+    } catch (err) {
+      console.error('Error saving manual score:', err);
+      if (err instanceof SyntaxError) {
+        alert('JSON format invalid hai. Please valid JSON paste karo.');
+      } else {
+        alert(err.response?.data?.error || 'Manual score save failed');
+      }
+    } finally {
+      setSavingManualScore(false);
     }
   };
 
@@ -145,6 +208,263 @@ const CricketFun = () => {
   };
 
   if (viewingMatch) {
+    const innings1 = viewingMatch.scorecard?.innings1;
+    const innings2 = viewingMatch.scorecard?.innings2;
+    
+    const activeInningsData = activeInningsTab === 'innings1' ? innings1 : innings2;
+    
+    const getTeamShort = (teamName) => {
+      const team = IPL_TEAMS.find(t => t.name === teamName || t.short === teamName);
+      return team ? team.short : teamName;
+    };
+
+    const team1Name = innings1?.team ? getTeamShort(innings1.team) : viewingMatch.team1;
+    const team2Name = innings2?.team ? getTeamShort(innings2.team) : viewingMatch.team2;
+    
+    const activeTeam = activeInningsTab === 'innings1' ? team1Name : team2Name;
+    
+    const displayBatters = activeInningsData?.batters || [];
+    const displayTotal = activeInningsData?.totalScore || 'Pending';
+    const displayOvers = activeInningsData?.totalOvers || null;
+    const displayExtras = activeInningsData?.extras ?? 0;
+
+    return (
+      <div className="px-6 pb-16 pt-4 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <Button variant="ghost" className="w-fit gap-2 rounded-2xl hover:bg-muted/50" onClick={() => setViewingMatch(null)}>
+            <ChevronRight size={18} className="rotate-180" /> Back
+          </Button>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {viewingMatch.status === 'pending' && (
+              <Button
+                variant="outline"
+                className="rounded-2xl border-primary/20 px-4 py-2 text-xs font-bold uppercase tracking-widest text-primary"
+                onClick={() => openManualInputDialog(viewingMatch, 'innings1')}
+              >
+                Input 1st Innings
+              </Button>
+            )}
+            {viewingMatch.status === 'innings1' && (
+              <Button
+                variant="outline"
+                className="rounded-2xl border-orange-500/20 px-4 py-2 text-xs font-bold uppercase tracking-widest text-orange-500"
+                onClick={() => openManualInputDialog(viewingMatch, 'innings2')}
+              >
+                Input 2nd Innings
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-2xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={(e) => handleDeleteMatch(viewingMatch.id, e)} title="Match data delete karo">
+              <Trash2 size={16} />
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.75fr)_420px]">
+          <div className="space-y-6">
+            <Card className="overflow-hidden border border-border/40 bg-[#0d121d] shadow-none">
+              <CardContent className="p-0">
+                <div className="flex items-center justify-center border-b border-border/40 px-6 py-5 text-sm font-bold text-muted-foreground">
+                  <Calendar size={15} className="mr-2" /> Match {viewingMatch.id} • {viewingMatch.time}
+                </div>
+                <div className="grid grid-cols-3 items-center px-8 py-8">
+                  <div className="text-center">
+                    <div className="text-3xl font-black text-white">{innings1?.team || viewingMatch.team1}</div>
+                    <div className="mt-1 text-base font-bold text-slate-400">First Innings</div>
+                  </div>
+                  <div />
+                  <div className="text-center">
+                    <div className="text-3xl font-black text-white">{(innings1?.team || viewingMatch.team1) === viewingMatch.team1 ? viewingMatch.team2 : viewingMatch.team1}</div>
+                    <div className="mt-1 text-base font-bold text-slate-400">Chasing</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-2 gap-4 rounded-[1.75rem] bg-[#111827] p-3">
+              <button 
+                onClick={() => setActiveInningsTab('innings1')}
+                className={`rounded-[1rem] px-6 py-3 text-center text-xl font-black transition-all ${activeInningsTab === 'innings1' ? 'bg-[#0b111a] text-white' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                {team1Name}
+              </button>
+              <button 
+                onClick={() => setActiveInningsTab('innings2')}
+                className={`rounded-[1rem] px-6 py-3 text-center text-xl font-black transition-all ${activeInningsTab === 'innings2' ? 'bg-[#0b111a] text-white' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                {team2Name}
+              </button>
+            </div>
+
+            <Card className="overflow-hidden rounded-[2rem] border border-blue-500/40 bg-[#0d121d] shadow-none">
+              <CardHeader className="border-b border-border/30 px-5 py-6">
+                <CardTitle className="flex items-center gap-3 text-[2rem] font-black uppercase tracking-tight text-white">
+                  <Zap className="text-orange-500" size={24} /> BATTING—{activeTeam}
+                </CardTitle>
+                <div className="mt-2 text-[1.2rem] font-black uppercase tracking-tight text-slate-400">
+                  {activeInningsTab === 'innings1' ? '1st Innings' : '2nd Innings'}
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-[#111827] text-left text-xs font-black uppercase text-slate-400">
+                      <th className="px-5 py-5">BATTER</th>
+                      <th className="px-5 py-5">STATUS</th>
+                      <th className="px-5 py-5 text-center">R</th>
+                      <th className="px-5 py-5 text-center">B</th>
+                      <th className="px-5 py-5 text-center">4S</th>
+                      <th className="px-5 py-5 text-center">6S</th>
+                      <th className="px-5 py-5 text-right">SR</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayBatters.length > 0 ? displayBatters.map((player, index) => (
+                      <tr key={index} className="border-t border-border/20 text-white">
+                        <td className="px-5 py-6 text-[1rem] font-black uppercase">{player.name}</td>
+                        <td className="px-5 py-6 text-[0.85rem] font-medium text-slate-400">
+                          {player.didBat === false ? (
+                            <span className="text-slate-500 font-bold">DNB</span>
+                          ) : player.notOut ? (
+                            <span className="text-emerald-500 font-bold">NOT OUT</span>
+                          ) : player.dismissal ? (
+                            <span>
+                              {player.dismissal.fielder ? `c ${player.dismissal.fielder} ` : ''}
+                              b {player.dismissal.bowler}
+                            </span>
+                          ) : (
+                            'out'
+                          )}
+                        </td>
+                        <td className="px-5 py-6 text-center text-[1rem] font-black">{player.didBat === false ? '-' : player.runs}</td>
+                        <td className="px-5 py-6 text-center text-[1rem] font-medium text-slate-300">{player.didBat === false ? '-' : player.balls}</td>
+                        <td className="px-5 py-6 text-center text-[1rem] font-medium">{player.didBat === false ? '-' : (player.fours ?? 0)}</td>
+                        <td className="px-5 py-6 text-center text-[1rem] font-medium">{player.didBat === false ? '-' : (player.sixes ?? 0)}</td>
+                        <td className="px-5 py-6 text-right font-mono text-[1rem] font-black text-blue-400">{player.didBat === false ? '-' : (player.sr || '-')}</td>
+                      </tr>
+                    )) : (
+                      <tr className="border-t border-border/20 text-white">
+                        <td colSpan={7} className="px-5 py-16 text-center text-lg font-bold text-slate-400">No Data Available for {activeInningsTab === 'innings1' ? '1st' : '2nd'} Innings</td>
+                      </tr>
+                    )}
+                    <tr className="border-t border-border/20 text-white">
+                      <td colSpan={7} className="px-5 py-5 text-lg font-bold text-slate-400">Extras: <span className="font-black text-white">{displayExtras}</span></td>
+                    </tr>
+                    <tr className="border-t border-border/20 bg-[#111827] text-white">
+                      <td colSpan={2} className="px-5 py-5 text-[1.15rem] font-black">TOTAL</td>
+                      <td colSpan={5} className="px-5 py-5 text-right text-[1.15rem] font-black text-blue-400">
+                        {displayTotal}{displayOvers ? ` (${displayOvers} Ov)` : ''}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <Card className="rounded-[2rem] border border-border/40 bg-[#0d121d] shadow-none">
+              <CardHeader className="px-7 pt-8">
+                <CardTitle className="flex items-center gap-3 text-sm font-black uppercase tracking-[0.18em] text-blue-400">
+                  <Award size={18} /> PLAYER OF THE MATCH
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center px-6 pb-10 pt-8 text-center">
+                {(() => {
+                  const allBatters = [...(innings1?.batters || []), ...(innings2?.batters || [])];
+                  const mvp = allBatters.length > 0 ? allBatters.reduce((prev, current) => (parseInt(current.runs || 0) > parseInt(prev.runs || 0) ? current : prev)) : null;
+                  
+                  if (!mvp || viewingMatch.status !== 'completed') {
+                    return (
+                      <>
+                        <div className="flex h-28 w-28 items-center justify-center rounded-full bg-slate-800 text-4xl font-black text-slate-600 border-2 border-slate-700">?</div>
+                        <div className="mt-6 text-2xl font-black text-slate-500">TBA</div>
+                        <div className="mt-1 text-sm font-bold uppercase text-slate-600 italic">Match in Progress</div>
+                      </>
+                    );
+                  }
+
+                  const mvpTeam = (innings1?.batters || []).includes(mvp) ? (innings1?.team || viewingMatch.team1) : (innings2?.team || viewingMatch.team2);
+                  const initials = mvp.name.split(' ').map(n => n[0]).join('').substring(0, 2);
+
+                  return (
+                    <>
+                      <Avatar className="mb-6 h-28 w-28 border-2 border-blue-400/70">
+                        <AvatarFallback className="bg-blue-500 text-4xl font-black text-white">{initials}</AvatarFallback>
+                      </Avatar>
+                      <div className="text-2xl font-black text-white uppercase">{mvp.name}</div>
+                      <div className="mt-1 text-lg font-black uppercase text-slate-400">{getTeamShort(mvpTeam)}</div>
+                      <Badge className="mt-5 rounded-full bg-blue-500 px-8 py-2 text-lg font-black text-white hover:bg-blue-500">
+                        {mvp.runs} ({mvp.balls})
+                      </Badge>
+                    </>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-[2rem] border border-border/40 bg-[#0d121d] shadow-none">
+              <CardHeader className="px-7 pt-8">
+                <CardTitle className="flex items-center gap-3 text-sm font-black uppercase tracking-[0.18em] text-white">
+                  <BarChart3 size={18} /> MATCH INFO
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8 px-7 pb-10 pt-6">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-lg font-black uppercase text-slate-500">STATUS</span>
+                  <span className={`text-right text-lg font-black ${viewingMatch.status === 'completed' ? 'text-emerald-500' : 'text-white'}`}>
+                    {viewingMatch.status === 'completed' ? 'COMPLETED' : viewingMatch.status === 'innings1' ? '1st Innings Over' : 'PENDING'}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-2 pt-2">
+                  <span className="text-lg font-black uppercase text-slate-500">{viewingMatch.status === 'completed' ? 'RESULT' : 'TOSS / INFO'}</span>
+                  <span className="text-left text-lg font-black text-white leading-tight">
+                    {viewingMatch.venue}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-lg font-black uppercase text-slate-500">SERIES</span>
+                  <span className="text-right text-lg font-black text-white">IPL Season 1</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <Dialog open={manualInputOpen} onOpenChange={setManualInputOpen}>
+          <DialogContent className="max-w-3xl border-border/50 bg-[#0d121d] text-white">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black">
+                {manualInputMatch ? `Match ${manualInputMatch.id} - ${manualInputType}` : 'Manual Score Input'}
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <p className="text-sm text-slate-400">
+                JSON paste karo: `team`, `totalScore`, `totalOvers`, `extras`, `fifties`, `hundreds`, `batters`
+              </p>
+              <textarea
+                value={manualScoreText}
+                onChange={(e) => setManualScoreText(e.target.value)}
+                className="min-h-[420px] w-full rounded-2xl border border-border/40 bg-[#111827] p-4 font-mono text-sm text-white outline-none"
+                placeholder='{"team":"","totalScore":"","totalOvers":"","extras":0,"fifties":[],"hundreds":[],"batters":[]}'
+              />
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" className="rounded-2xl" onClick={() => setManualInputOpen(false)}>
+                  Cancel
+                </Button>
+                <Button className="rounded-2xl" onClick={handleManualScoreSave} disabled={savingManualScore}>
+                  {savingManualScore ? 'Saving...' : 'Save Scorecard'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  if (false && viewingMatch) {
     return (
       <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         {/* Back Button & Header */}
@@ -156,7 +476,33 @@ const CricketFun = () => {
           >
             <ChevronRight size={20} className="rotate-180" /> Back to Dashboard
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {/* Upload buttons inside detail view */}
+            {viewingMatch.status === 'pending' && (
+              <label className="cursor-pointer">
+                <input type="file" className="hidden" accept="image/*"
+                  onChange={(e) => { if (e.target.files?.[0]) handleFileUpload(e.target.files[0], viewingMatch.id, 'innings1'); }}
+                />
+                <span className={`inline-flex items-center gap-2 rounded-2xl border border-primary/20 text-primary hover:bg-primary/10 font-bold px-4 py-2 text-xs cursor-pointer bg-background uppercase tracking-widest ${verifying ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <UploadCloud size={14} /> {verifying ? 'Processing...' : '1st Innings SS'}
+                </span>
+              </label>
+            )}
+            {viewingMatch.status === 'innings1' && (
+              <label className="cursor-pointer">
+                <input type="file" className="hidden" accept="image/*"
+                  onChange={(e) => { if (e.target.files?.[0]) handleFileUpload(e.target.files[0], viewingMatch.id, 'innings2'); }}
+                />
+                <span className={`inline-flex items-center gap-2 rounded-2xl border border-orange-500/30 text-orange-500 hover:bg-orange-500/10 font-bold px-4 py-2 text-xs cursor-pointer bg-background uppercase tracking-widest ${verifying ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <UploadCloud size={14} /> {verifying ? 'Processing...' : '2nd Innings SS'}
+                </span>
+              </label>
+            )}
+            {viewingMatch.status === 'completed' && (
+              <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 rounded-xl font-black text-[10px] px-4 py-2">
+                ✅ MATCH COMPLETED
+              </Badge>
+            )}
             <Badge className="bg-primary/10 text-primary border-primary/20 rounded-full font-black px-4 py-1.5 uppercase tracking-widest text-[10px]">
               IPL 2024 • MATCH {viewingMatch.id}
             </Badge>
@@ -214,114 +560,78 @@ const CricketFun = () => {
                 <TabsTrigger value="innings2" className="flex-1 rounded-xl font-black text-sm">{viewingMatch.team2}</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="innings1" className="mt-6 space-y-6">
-                <Card className="premium-card border-border/40">
-                  <CardHeader className="pb-4 border-b border-border/30">
-                    <CardTitle className="text-lg font-black flex items-center gap-2 uppercase">
-                      <Zap className="text-orange-500" /> Batting
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="text-left text-[10px] font-black text-muted-foreground uppercase bg-muted/30">
-                          <th className="p-4">Batter</th>
-                          <th className="p-4 text-center">R</th>
-                          <th className="p-4 text-center">B</th>
-                          <th className="p-4 text-center">4s</th>
-                          <th className="p-4 text-center">6s</th>
-                          <th className="p-4 text-right">SR</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/30">
-                        {viewingMatch.id === 1 ? (
-                          <>
-                            <tr>
-                              <td className="p-4 font-bold">H. Klaasen</td>
-                              <td className="p-4 text-center font-black">73</td>
-                              <td className="p-4 text-center text-muted-foreground">30</td>
-                              <td className="p-4 text-center">4</td>
-                              <td className="p-4 text-center">6</td>
-                              <td className="p-4 text-right font-mono text-primary font-bold">243.3</td>
-                            </tr>
-                            <tr>
-                              <td className="p-4 font-bold">D. Chahar</td>
-                              <td className="p-4 text-center font-black">34</td>
-                              <td className="p-4 text-center text-muted-foreground">22</td>
-                              <td className="p-4 text-center">2</td>
-                              <td className="p-4 text-center">2</td>
-                              <td className="p-4 text-right font-mono">154.5</td>
-                            </tr>
-                          </>
-                        ) : (
-                          <tr><td colSpan={6} className="p-12 text-center text-muted-foreground font-bold italic">No Data Available</td></tr>
-                        )}
-                        <tr className="bg-primary/5">
-                          <td className="p-4 font-black text-lg">TOTAL</td>
-                          <td colSpan={5} className="p-4 text-right font-black text-primary text-xl">
-                            {viewingMatch.id === 1 ? '203/10 (19.1)' : 'Pending'}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+              {['innings1', 'innings2'].map((inn, innIdx) => {
+                const innData = viewingMatch.scorecard?.[inn];
+                const teamCode = inn === 'innings1' ? viewingMatch.team1 : viewingMatch.team2;
+                const batters = innData?.batters || [];
+                const total = innData?.totalScore || null;
+                const overs = innData?.totalOvers || null;
+                const extras = innData?.extras ?? null;
 
-              <TabsContent value="innings2" className="mt-6 space-y-6">
-                 {/* Similar structure for team 2 */}
-                 <Card className="premium-card border-border/40">
-                  <CardHeader className="pb-4 border-b border-border/30">
-                    <CardTitle className="text-lg font-black flex items-center gap-2 uppercase">
-                      <Zap className="text-orange-500" /> Batting
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="text-left text-[10px] font-black text-muted-foreground uppercase bg-muted/30">
-                          <th className="p-4">Batter</th>
-                          <th className="p-4 text-center">R</th>
-                          <th className="p-4 text-center">B</th>
-                          <th className="p-4 text-center">4s</th>
-                          <th className="p-4 text-center">6s</th>
-                          <th className="p-4 text-right">SR</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/30">
-                        {viewingMatch.id === 1 ? (
-                          <>
-                            <tr>
-                              <td className="p-4 font-bold">R. Sharma</td>
-                              <td className="p-4 text-center font-black">85</td>
-                              <td className="p-4 text-center text-muted-foreground">36</td>
-                              <td className="p-4 text-center">8</td>
-                              <td className="p-4 text-center">5</td>
-                              <td className="p-4 text-right font-mono text-primary font-bold">236.1</td>
+                return (
+                  <TabsContent key={inn} value={inn} className="mt-6 space-y-6">
+                    <Card className="premium-card border-border/40">
+                      <CardHeader className="pb-4 border-b border-border/30">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg font-black flex items-center gap-2 uppercase">
+                            <Zap className="text-orange-500" /> Batting — {teamCode}
+                          </CardTitle>
+                          {batters.length === 0 && (
+                            <Badge variant="outline" className="text-[10px] font-bold text-muted-foreground">
+                              {viewingMatch.status === 'pending' ? 'Upload Screenshot' : innIdx === 0 && viewingMatch.status === 'innings1' ? 'Awaiting 2nd Innings' : 'No Data'}
+                            </Badge>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="text-left text-[10px] font-black text-muted-foreground uppercase bg-muted/30">
+                              <th className="p-4">Batter</th>
+                              <th className="p-4 text-center">R</th>
+                              <th className="p-4 text-center">B</th>
+                              <th className="p-4 text-center">4s</th>
+                              <th className="p-4 text-center">6s</th>
+                              <th className="p-4 text-right">SR</th>
                             </tr>
-                            <tr>
-                              <td className="p-4 font-bold">Q. De Kock</td>
-                              <td className="p-4 text-center font-black">73</td>
-                              <td className="p-4 text-center text-muted-foreground">37</td>
-                              <td className="p-4 text-center">7</td>
-                              <td className="p-4 text-center">4</td>
-                              <td className="p-4 text-right font-mono">197.3</td>
+                          </thead>
+                          <tbody className="divide-y divide-border/30">
+                            {batters.length > 0 ? batters.map((p, i) => (
+                              <tr key={i} className="hover:bg-muted/20 transition-colors">
+                                <td className="p-4 font-bold capitalize">{p.name}</td>
+                                <td className="p-4 text-center font-black text-base">{p.runs}</td>
+                                <td className="p-4 text-center text-muted-foreground">{p.balls}</td>
+                                <td className="p-4 text-center">{p.fours ?? '-'}</td>
+                                <td className="p-4 text-center">{p.sixes ?? '-'}</td>
+                                <td className="p-4 text-right font-mono text-primary font-bold">{p.sr}</td>
+                              </tr>
+                            )) : (
+                              <tr>
+                                <td colSpan={6} className="p-12 text-center text-muted-foreground font-bold italic">
+                                  No Data Available
+                                </td>
+                              </tr>
+                            )}
+                            {extras !== null && batters.length > 0 && (
+                              <tr className="bg-muted/10">
+                                <td className="p-4 font-bold text-muted-foreground text-sm" colSpan={6}>
+                                  Extras: <span className="font-black text-foreground">{extras}</span>
+                                </td>
+                              </tr>
+                            )}
+                            <tr className="bg-primary/5">
+                              <td className="p-4 font-black text-lg">TOTAL</td>
+                              <td colSpan={5} className="p-4 text-right font-black text-primary text-xl">
+                                {total ? `${total}${overs ? ` (${overs})` : ''}` : 'Pending'}
+                              </td>
                             </tr>
-                          </>
-                        ) : (
-                          <tr><td colSpan={6} className="p-12 text-center text-muted-foreground font-bold italic">No Data Available</td></tr>
-                        )}
-                        <tr className="bg-primary/5">
-                          <td className="p-4 font-black text-lg">TOTAL</td>
-                          <td colSpan={5} className="p-4 text-right font-black text-primary text-xl">
-                            {viewingMatch.id === 1 ? '204/1 (15.3)' : 'Pending'}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                          </tbody>
+                        </table>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                );
+              })}
             </Tabs>
           </div>
 
@@ -384,23 +694,14 @@ const CricketFun = () => {
           <p className="text-muted-foreground font-medium mt-1">Track matches, points table, and player statistics in real-time.</p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="cursor-pointer">
-            <input 
-              type="file" 
-              className="hidden" 
-              onChange={(e) => {
-                if (e.target.files?.[0]) {
-                  setSsFile(e.target.files[0]);
-                  handleFileUpload(e.target.files[0]);
-                }
-              }}
-              accept="image/*"
-            />
-            <span className={`inline-flex items-center justify-center rounded-2xl gap-2 border border-primary/20 hover:bg-primary/5 h-12 px-6 font-bold transition-colors cursor-pointer bg-background ${verifying ? 'opacity-50' : ''}`}>
-              <UploadCloud size={20} className="text-primary" /> 
-              {verifying ? 'Processing...' : 'Upload Score SS'}
-            </span>
-          </label>
+          <Button
+            variant="outline"
+            className="gap-2 h-12 rounded-2xl px-6 font-bold"
+            onClick={() => setActiveSubTab('matches')}
+          >
+            <UploadCloud size={20} className="text-primary" />
+            Input Score Data
+          </Button>
           <Button className="gap-2 shadow-lg shadow-primary/20 h-12 rounded-2xl px-6">
             <TrendingUp size={20} /> Live Stats
           </Button>
@@ -809,37 +1110,21 @@ const CricketFun = () => {
                     {/* Action - Upload for each match */}
                     <div className="flex items-center gap-2">
                       {match.status === 'pending' ? (
-                        <label className="cursor-pointer">
-                          <input 
-                            type="file" 
-                            className="hidden" 
-                            onChange={(e) => {
-                              if (e.target.files?.[0]) {
-                                handleFileUpload(e.target.files[0], match.id, 'innings1');
-                              }
-                            }}
-                            accept="image/*"
-                          />
-                          <span className="inline-flex items-center justify-center rounded-2xl gap-2 border border-primary/20 text-primary hover:bg-primary/10 font-bold px-4 py-2 text-[10px] transition-colors cursor-pointer bg-background uppercase tracking-widest whitespace-nowrap">
-                            <UploadCloud size={14} /> 1st Innings SS
-                          </span>
-                        </label>
+                        <Button
+                          variant="outline"
+                          className="rounded-2xl border-primary/20 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-primary"
+                          onClick={() => openManualInputDialog(match, 'innings1')}
+                        >
+                          Input 1st Innings
+                        </Button>
                       ) : match.status === 'innings1' ? (
-                        <label className="cursor-pointer">
-                          <input 
-                            type="file" 
-                            className="hidden" 
-                            onChange={(e) => {
-                              if (e.target.files?.[0]) {
-                                handleFileUpload(e.target.files[0], match.id, 'innings2');
-                              }
-                            }}
-                            accept="image/*"
-                          />
-                          <span className="inline-flex items-center justify-center rounded-2xl gap-2 border border-orange-500/20 text-orange-500 hover:bg-orange-500/10 font-bold px-4 py-2 text-[10px] transition-colors cursor-pointer bg-background uppercase tracking-widest whitespace-nowrap">
-                            <UploadCloud size={14} /> 2nd Innings SS
-                          </span>
-                        </label>
+                        <Button
+                          variant="outline"
+                          className="rounded-2xl border-orange-500/20 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-orange-500"
+                          onClick={() => openManualInputDialog(match, 'innings2')}
+                        >
+                          Input 2nd Innings
+                        </Button>
                       ) : (
                         <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 rounded-xl font-black text-[10px]">COMPLETED</Badge>
                       )}
@@ -851,6 +1136,15 @@ const CricketFun = () => {
                       >
                         <ArrowRight size={18} />
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-2xl h-10 w-10 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        onClick={(e) => handleDeleteMatch(match.id, e)}
+                        title="Match data delete karo"
+                      >
+                        <Trash2 size={16} />
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -859,6 +1153,36 @@ const CricketFun = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={manualInputOpen} onOpenChange={setManualInputOpen}>
+        <DialogContent className="max-w-3xl border-border/50 bg-[#0d121d] text-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black">
+              {manualInputMatch ? `Match ${manualInputMatch.id} - ${manualInputType}` : 'Manual Score Input'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <p className="text-sm text-slate-400">
+              JSON paste karo: `team`, `totalScore`, `totalOvers`, `extras`, `fifties`, `hundreds`, `batters`
+            </p>
+            <textarea
+              value={manualScoreText}
+              onChange={(e) => setManualScoreText(e.target.value)}
+              className="min-h-[420px] w-full rounded-2xl border border-border/40 bg-[#111827] p-4 font-mono text-sm text-white outline-none"
+              placeholder='{"team":"","totalScore":"","totalOvers":"","extras":0,"fifties":[],"hundreds":[],"batters":[]}'
+            />
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" className="rounded-2xl" onClick={() => setManualInputOpen(false)}>
+                Cancel
+              </Button>
+              <Button className="rounded-2xl" onClick={handleManualScoreSave} disabled={savingManualScore}>
+                {savingManualScore ? 'Saving...' : 'Save Scorecard'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
