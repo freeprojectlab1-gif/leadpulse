@@ -23,6 +23,8 @@ const uploadsDir = path.join(__dirname, 'uploads');
 fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+const cricketRouter = require('./cricket_router');
+app.use('/api/cricket', cricketRouter);
 // Cloudinary Configuration
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -93,7 +95,8 @@ const settingsSchema = new mongoose.Schema({
   publicEmail: { type: String, default: '' },
   userName: { type: String, default: 'Muntazir' },
   userRole: { type: String, default: 'Admin' },
-  mapBusinessCategories: { type: [String], default: [] }
+  mapBusinessCategories: { type: [String], default: [] },
+  isCricketEnabled: { type: Boolean, default: true }
 });
 const Settings = mongoose.models.Settings || mongoose.model('Settings', settingsSchema);
 
@@ -224,21 +227,20 @@ const initWhatsapp = async () => {
   try { execSync('rm -rf ' + path.join(__dirname, 'wa_session/session/Singleton*'), { stdio: 'ignore' }); } catch (e) { }
   await new Promise(r => setTimeout(r, 2000)); // Wait for Chrome to fully die
 
-  const chromePath = '/usr/bin/google-chrome-stable';
   waClient = new Client({
     authStrategy: new LocalAuth({ dataPath: path.join(__dirname, 'wa_session') }),
     puppeteer: { 
       headless: true, 
-      executablePath: chromePath, 
+      executablePath: '/home/erp/.cache/puppeteer/chrome/linux-148.0.7778.97/chrome-linux64/chrome',
       args: [
         '--no-sandbox', 
         '--disable-setuid-sandbox', 
         '--disable-dev-shm-usage', 
-        '--disable-accelerated-2d-canvas', 
         '--disable-gpu',
-        '--no-zygote',
-        '--single-process'
-      ] 
+        '--disable-extensions',
+        '--remote-debugging-port=9222'
+      ],
+      timeout: 180000 
     },
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'
   });
@@ -3170,6 +3172,7 @@ app.post('/api/settings', async (req, res) => {
     if (req.body.mapBusinessCategories !== undefined) {
       settings.mapBusinessCategories = dedupeCategories(parseCategoryInput(req.body.mapBusinessCategories));
     }
+    if (req.body.isCricketEnabled !== undefined) settings.isCricketEnabled = req.body.isCricketEnabled;
     await settings.save();
     res.json(settings);
   } catch (e) { res.status(500).json({ error: e.message }); }

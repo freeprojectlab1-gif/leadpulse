@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import LandingPage from './LandingPage';
+import CricketFun from './components/CricketFun';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Textarea, Label, Badge, Separator, Progress, Switch, Tabs, TabsList, TabsTrigger, TabsContent, Dialog, DialogContent, DialogHeader, DialogTitle, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Avatar, AvatarFallback, AvatarImage, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, Checkbox } from '@/components/ui';
+import { useToast } from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 import {
   MapPin,
   Facebook,
@@ -72,7 +75,8 @@ import {
   MousePointer2,
   Trash2,
   UserPlus,
-  Edit2
+  Edit2,
+  Trophy
 } from 'lucide-react';
 
 // --- ICONS (SVG) ---
@@ -146,7 +150,10 @@ const PAGE_TITLES = {
   archive: 'Archive',
   profile: 'Profile',
   security: 'Security',
+  cricket_fun: 'Cricket Fun',
 };
+
+// Tab Visibility State managed by Settings
 
 const BACKEND_ORIGIN = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
@@ -1659,6 +1666,8 @@ function App() {
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [passcode, setPasscode] = useState('');
   const [activeTab, setActiveTab] = useState(localStorage.getItem('activeTab') || 'dashboard');
+  const [showCricketTab, setShowCricketTab] = useState(true);
+  const { toast } = useToast();
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const switchTab = (tab) => {
@@ -2157,11 +2166,13 @@ function App() {
           setMapCategories(res.data.mapBusinessCategories);
         }
         lastSavedPublicEmailRef.current = res.data.publicEmail || '';
+        if (res.data.isCricketEnabled !== undefined) setShowCricketTab(res.data.isCricketEnabled);
         setProfile({
           userName: res.data.userName || 'Muntazir',
           userRole: res.data.userRole || 'Admin',
           publicEmail: res.data.publicEmail || '',
-          profilePic: res.data.profilePic || ''
+          profilePic: res.data.profilePic || '',
+          isCricketEnabled: res.data.isCricketEnabled !== undefined ? res.data.isCricketEnabled : true
         });
       }
     } catch (e) { console.error("Error fetching settings:", e); }
@@ -3102,6 +3113,7 @@ function App() {
               {[
                 { id: 'logs', icon: HistoryIcon, label: 'System Logs' },
                 { id: 'archive', icon: ArchiveIcon, label: 'Archive' },
+                ...(showCricketTab ? [{ id: 'cricket_fun', icon: Trophy, label: 'Cricket Fun' }] : []),
               ].map(item => (
                 <TooltipProvider key={item.id} delayDuration={0}>
                   <Tooltip>
@@ -3231,6 +3243,9 @@ function App() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => switchTab('security')} className="text-xs py-2 cursor-pointer rounded-lg mx-1">
                   <ShieldCheck size={14} className="mr-2 opacity-60" /> Security
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => switchTab('cricket_settings')} className="text-xs py-2 cursor-pointer rounded-lg mx-1">
+                  <Trophy size={14} className="mr-2 opacity-60 text-primary" /> Configuration
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => { localStorage.clear(); window.location.reload(); }} className="text-xs py-2 text-destructive focus:bg-destructive/10 cursor-pointer rounded-lg mx-1">
@@ -4628,6 +4643,67 @@ function App() {
                   </CardContent>
                 </Card>
               </div>
+            </div>
+          )}
+
+          {showCricketTab && activeTab === 'cricket_fun' && <CricketFun />}
+
+          {activeTab === 'cricket_settings' && (
+            <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-10">
+              <div className="flex flex-col gap-1 mb-8">
+                <h2 className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                    <Trophy size={24} />
+                  </div>
+                  Cricket Configuration
+                </h2>
+                <p className="text-muted-foreground text-sm font-medium">Control the visibility of the Cricket Fun feature for all users.</p>
+              </div>
+
+              <Card className="premium-card overflow-hidden border-border/40 shadow-xl">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg">General Settings</CardTitle>
+                  <CardDescription>Main toggle for the cricket module</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/30">
+                    <div className="flex flex-col gap-1">
+                      <span className="font-bold">Show Cricket Tab</span>
+                      <span className="text-xs text-muted-foreground">If disabled, the Cricket Fun tab will be hidden from the sidebar and unreachable.</span>
+                    </div>
+                    <Switch 
+                      checked={showCricketTab} 
+                      onCheckedChange={async (val) => {
+                        setShowCricketTab(val);
+                        try {
+                          await axios.post('/api/settings', { isCricketEnabled: val });
+                          toast({ title: "Success", description: `Cricket tab ${val ? 'enabled' : 'disabled'}` });
+                        } catch (e) {
+                          console.error(e);
+                          toast({ title: "Error", description: "Failed to update settings", variant: "destructive" });
+                        }
+                      }}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="premium-card overflow-hidden border-border/40 shadow-xl opacity-50 pointer-events-none">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg">Automation Settings (Coming Soon)</CardTitle>
+                  <CardDescription>Configure auto-updates and notifications</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/10 border border-border/20">
+                    <span className="text-sm font-medium">Auto-verify from SS</span>
+                    <Switch checked={false} disabled />
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/10 border border-border/20">
+                    <span className="text-sm font-medium">WhatsApp Notifications</span>
+                    <Switch checked={false} disabled />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
@@ -6693,6 +6769,7 @@ function App() {
           </Card>
         </div>
       )}
+      <Toaster />
     </div>
   );
 }
