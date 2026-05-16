@@ -17,7 +17,10 @@ import {
   BarChart3,
   Zap,
   UploadCloud,
-  Trash2
+  Trash2,
+  Star,
+  Settings,
+  MoreHorizontal
 } from 'lucide-react';
 import { 
   Card, 
@@ -58,6 +61,7 @@ const CricketFun = () => {
   const [pointsTable, setPointsTable] = useState([]);
   const [mostRuns, setMostRuns] = useState([]);
   const [mostWickets, setMostWickets] = useState([]);
+  const [highestScores, setHighestScores] = useState([]);
   const [nextMatches, setNextMatches] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -82,6 +86,7 @@ const CricketFun = () => {
         setPointsTable(sortedPoints);
         setMostRuns(res.data.mostRuns);
         setMostWickets(res.data.mostWickets);
+        setHighestScores(res.data.highestScores || []);
         setNextMatches(res.data.nextMatches);
       } catch (err) {
         console.error('Error fetching cricket data:', err);
@@ -101,6 +106,7 @@ const CricketFun = () => {
     setPointsTable(sortedPoints);
     setMostRuns(refreshRes.data.mostRuns);
     setMostWickets(refreshRes.data.mostWickets);
+    setHighestScores(refreshRes.data.highestScores || []);
     setNextMatches(refreshRes.data.nextMatches);
     if (matchId) {
       const freshMatch = refreshRes.data.nextMatches.find(m => m.id === matchId);
@@ -197,9 +203,35 @@ const CricketFun = () => {
     );
   }
 
-  const getTeamLogo = (teamName) => {
-    const team = IPL_TEAMS.find(t => t.name === teamName || t.short === teamName);
-    return team ? team.logo : '🏏';
+  const getTeamLogo = (teamName, sizeClass = "w-12 h-12") => {
+    if (!teamName) return '🏏';
+    const urls = {
+      'MI': '/logos/mi.png',
+      'KKR': '/logos/kkr.png',
+      'DC': '/logos/dc.png',
+      'SRH': '/logos/srh.png',
+      'PBKS': '/logos/Punjab_Kings_Logo.svg.png',
+      'RR': '/logos/rajasthan-royals-logo-rr-logo-icon-on-transparent-background-free-png.webp',
+      'GT': '/logos/gujarat-titans-logo-gt-logo-icon-on-transparent-background-free-png.webp',
+      'LSG': '/logos/Lucknow-Super-Giants-Logo.png'
+    };
+    
+    const searchName = String(teamName).toUpperCase();
+    const team = IPL_TEAMS.find(t => t.name.toUpperCase() === searchName || t.short.toUpperCase() === searchName);
+    const shortName = team ? team.short : teamName;
+    
+    if (urls[shortName]) {
+      return (
+        <div className={`${sizeClass} flex items-center justify-center p-1 rounded-2xl bg-black/20 backdrop-blur-sm border border-white/10 shadow-lg shadow-black/40 overflow-hidden group`}>
+          <img 
+            src={urls[shortName]} 
+            alt={shortName} 
+            className="w-full h-full object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] group-hover:scale-110 transition-transform duration-500 ease-out" 
+          />
+        </div>
+      );
+    }
+    return team ? <span className="drop-shadow-lg text-4xl">{team.logo}</span> : '🏏';
   };
 
   const getTeamColor = (teamName) => {
@@ -320,7 +352,7 @@ const CricketFun = () => {
                   </thead>
                   <tbody>
                     {displayBatters.length > 0 ? displayBatters.map((player, index) => (
-                      <tr key={index} className="border-t border-border/20 text-white">
+                      <tr key={index} className="border-t border-white/5 text-white hover:bg-white/[0.03] transition-colors duration-300">
                         <td className="px-5 py-6 text-[1rem] font-black uppercase">{player.name}</td>
                         <td className="px-5 py-6 text-[0.85rem] font-medium text-slate-400">
                           {player.didBat === false ? (
@@ -343,11 +375,11 @@ const CricketFun = () => {
                         <td className="px-5 py-6 text-right font-mono text-[1rem] font-black text-blue-400">{player.didBat === false ? '-' : (player.sr || '-')}</td>
                       </tr>
                     )) : (
-                      <tr className="border-t border-border/20 text-white">
+                      <tr className="border-t border-white/5 text-white hover:bg-white/[0.03] transition-colors duration-300">
                         <td colSpan={7} className="px-5 py-16 text-center text-lg font-bold text-slate-400">No Data Available for {activeInningsTab === 'innings1' ? '1st' : '2nd'} Innings</td>
                       </tr>
                     )}
-                    <tr className="border-t border-border/20 text-white">
+                    <tr className="border-t border-white/5 text-white hover:bg-white/[0.03] transition-colors duration-300">
                       <td colSpan={7} className="px-5 py-5 text-lg font-bold text-slate-400">Extras: <span className="font-black text-white">{displayExtras}</span></td>
                     </tr>
                     <tr className="border-t border-border/20 bg-[#111827] text-white">
@@ -689,7 +721,7 @@ const CricketFun = () => {
             <div className="p-2 bg-primary/10 rounded-xl text-primary">
               <Trophy size={28} />
             </div>
-            Cricket Fun <span className="text-primary">IPL 2024</span>
+            <span className="bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-600 bg-clip-text text-transparent drop-shadow-sm">Cricket Fun</span> <span className="text-primary">IPL 2024</span>
           </h1>
           <p className="text-muted-foreground font-medium mt-1">Track matches, points table, and player statistics in real-time.</p>
         </div>
@@ -710,17 +742,18 @@ const CricketFun = () => {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveSubTab}>
-        <TabsList className="grid w-full grid-cols-4 lg:w-[600px] mb-8 p-1 bg-muted/30 border border-border/50 rounded-2xl">
-          <TabsTrigger value="overview" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm">Overview</TabsTrigger>
-          <TabsTrigger value="points" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm">Points Table</TabsTrigger>
-          <TabsTrigger value="players" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm">Stats</TabsTrigger>
-          <TabsTrigger value="matches" className="rounded-xl data-[state=active]:bg-background data-[state=active]:shadow-sm">Matches</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5 lg:w-[750px] mb-8 p-1.5 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl">
+          <TabsTrigger value="overview" className="rounded-xl font-bold data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-[0_4px_15px_rgba(59,130,246,0.4)] transition-all duration-300">Overview</TabsTrigger>
+          <TabsTrigger value="points" className="rounded-xl font-bold data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-[0_4px_15px_rgba(59,130,246,0.4)] transition-all duration-300">Points Table</TabsTrigger>
+          <TabsTrigger value="players" className="rounded-xl font-bold data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-[0_4px_15px_rgba(59,130,246,0.4)] transition-all duration-300">Stats</TabsTrigger>
+          <TabsTrigger value="milestones" className="rounded-xl font-bold data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-[0_4px_15px_rgba(59,130,246,0.4)] transition-all duration-300">Milestones</TabsTrigger>
+          <TabsTrigger value="matches" className="rounded-xl font-bold data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-[0_4px_15px_rgba(59,130,246,0.4)] transition-all duration-300">Matches</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8">
           {/* Top Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="premium-card bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
+            <Card className="premium-card bg-gradient-to-br from-primary/20 via-primary/5 to-transparent border-primary/30 shadow-[0_0_20px_rgba(59,130,246,0.15)]">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Orange Cap</CardTitle>
               </CardHeader>
@@ -845,7 +878,7 @@ const CricketFun = () => {
             </Card>
 
             {/* Upcoming Matches */}
-            <Card className="premium-card">
+            <Card className="premium-card bg-[#0d121d]/80 backdrop-blur-xl border-white/5 shadow-2xl">
               <CardHeader>
                 <CardTitle>Upcoming Matches</CardTitle>
                 <CardDescription>Don't miss the action</CardDescription>
@@ -884,7 +917,7 @@ const CricketFun = () => {
         </TabsContent>
 
         <TabsContent value="points">
-          <Card className="premium-card">
+          <Card className="premium-card bg-[#0d121d]/80 backdrop-blur-xl border-white/5 shadow-2xl">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Full Points Table</CardTitle>
@@ -957,7 +990,7 @@ const CricketFun = () => {
         <TabsContent value="players" className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Most Runs */}
-            <Card className="premium-card">
+            <Card className="premium-card bg-[#0d121d]/80 backdrop-blur-xl border-white/5 shadow-2xl">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
@@ -1002,7 +1035,7 @@ const CricketFun = () => {
             </Card>
 
             {/* Most Wickets */}
-            <Card className="premium-card">
+            <Card className="premium-card bg-[#0d121d]/80 backdrop-blur-xl border-white/5 shadow-2xl">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
@@ -1042,6 +1075,154 @@ const CricketFun = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="milestones" className="space-y-8">
+          {/* Highest Individual Scores */}
+          <Card className="premium-card bg-[#0d121d]/80 backdrop-blur-xl border-white/5 shadow-2xl mb-8">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <div className="p-1.5 bg-rose-500/10 text-rose-500 rounded-lg">
+                    <TrendingUp size={24} />
+                  </div>
+                  Highest Individual Scores
+                </CardTitle>
+                <CardDescription>Top batting performances in a single innings</CardDescription>
+              </div>
+              <TrendingUp className="text-rose-500 opacity-20" size={48} />
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(highestScores || []).map((score, idx) => (
+                  <div key={`${score.name}-${idx}`} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-rose-500/20 text-rose-500 flex items-center justify-center font-black text-sm">
+                        #{idx + 1}
+                      </div>
+                      <div>
+                        <div className="font-black text-lg group-hover:text-rose-400 transition-colors">{score.name}</div>
+                        <div className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-2">
+                          <span style={{ color: getTeamColor(score.team) }}>{score.team}</span>
+                          <span>•</span>
+                          <span>Innings {score.innType === 'innings1' ? '1' : '2'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-black text-rose-500">{score.runs}{score.notOut ? '*' : ''}</div>
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase">{score.balls} Balls</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {(highestScores || []).length === 0 && (
+                <div className="text-center py-20 text-muted-foreground font-bold">No scores recorded yet.</div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Most Fifties */}
+            <Card className="premium-card bg-[#0d121d]/80 backdrop-blur-xl border-white/5 shadow-2xl">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-1.5 bg-blue-500/10 text-blue-500 rounded-lg">
+                      <Star size={20} />
+                    </div>
+                    Most Fifties (50s)
+                  </CardTitle>
+                </div>
+                <Award className="text-blue-500" size={24} />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {[...mostRuns]
+                    .filter(p => p.fifties > 0)
+                    .sort((a, b) => b.fifties - a.fifties || b.runs - a.runs)
+                    .slice(0, 5)
+                    .map((player, idx) => (
+                    <div key={player.name} className="flex items-center justify-between p-3 rounded-2xl hover:bg-muted/30 transition-colors border border-transparent hover:border-border/50">
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <Avatar className="h-14 w-14 border-2 border-muted/50">
+                            <AvatarFallback className="bg-muted font-bold text-lg">{player.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                          </Avatar>
+                          <div className="absolute -top-2 -left-2 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-[10px] font-black border-2 border-background">
+                            {idx + 1}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-black text-lg">{player.name}</div>
+                          <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase">
+                            <span style={{ color: getTeamColor(player.team) }}>{player.team}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-black text-blue-500">{player.fifties}</div>
+                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Fifties</div>
+                      </div>
+                    </div>
+                  ))}
+                  {mostRuns.filter(p => p.fifties > 0).length === 0 && (
+                    <div className="text-center py-10 text-muted-foreground font-bold">No 50s recorded yet.</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Most Centuries */}
+            <Card className="premium-card bg-[#0d121d]/80 backdrop-blur-xl border-white/5 shadow-2xl">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-1.5 bg-yellow-500/10 text-yellow-500 rounded-lg">
+                      <Trophy size={20} />
+                    </div>
+                    Most Centuries (100s)
+                  </CardTitle>
+                </div>
+                <Award className="text-yellow-500" size={24} />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {[...mostRuns]
+                    .filter(p => p.hundreds > 0)
+                    .sort((a, b) => b.hundreds - a.hundreds || b.runs - a.runs)
+                    .slice(0, 5)
+                    .map((player, idx) => (
+                    <div key={player.name} className="flex items-center justify-between p-3 rounded-2xl hover:bg-muted/30 transition-colors border border-transparent hover:border-border/50">
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <Avatar className="h-14 w-14 border-2 border-muted/50">
+                            <AvatarFallback className="bg-muted font-bold text-lg">{player.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                          </Avatar>
+                          <div className="absolute -top-2 -left-2 w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-[10px] font-black border-2 border-background">
+                            {idx + 1}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-black text-lg">{player.name}</div>
+                          <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase">
+                            <span style={{ color: getTeamColor(player.team) }}>{player.team}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-black text-yellow-500">{player.hundreds}</div>
+                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Centuries</div>
+                      </div>
+                    </div>
+                  ))}
+                  {mostRuns.filter(p => p.hundreds > 0).length === 0 && (
+                    <div className="text-center py-10 text-muted-foreground font-bold">No 100s recorded yet.</div>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -149,6 +149,7 @@ function rebuildTournamentStats(data) {
   data.fifties = [];
   data.hundreds = [];
   data.centuries = [];
+  data.highestScores = [];
 
   const seenFifties = new Set();
   const seenCenturies = new Set();
@@ -261,7 +262,7 @@ function rebuildTournamentStats(data) {
         // Most Runs
         let runEntry = data.mostRuns.find(pr => pr.name.toUpperCase() === p.name.toUpperCase());
         if (!runEntry) {
-          runEntry = { name: p.name.toUpperCase(), team: fullTeamName, runs: 0, matches: 0, matchIds: new Set() };
+          runEntry = { name: p.name.toUpperCase(), team: fullTeamName, runs: 0, matches: 0, matchIds: new Set(), fifties: 0, hundreds: 0 };
           data.mostRuns.push(runEntry);
         }
         runEntry.runs += runs;
@@ -275,11 +276,24 @@ function rebuildTournamentStats(data) {
         if (runs >= 50 && runs < 100 && !seenFifties.has(key)) {
           seenFifties.add(key);
           data.fifties.push({ matchId: match.id, name: p.name, team: fullTeamName, runs, balls: p.balls || 0, notOut: !!p.notOut });
+          runEntry.fifties = (runEntry.fifties || 0) + 1;
         }
         if (runs >= 100 && !seenCenturies.has(key)) {
           seenCenturies.add(key);
           data.hundreds.push({ matchId: match.id, name: p.name, team: fullTeamName, runs, balls: p.balls || 0, notOut: !!p.notOut });
+          runEntry.hundreds = (runEntry.hundreds || 0) + 1;
         }
+
+        // Highest Scores
+        data.highestScores.push({ 
+          matchId: match.id, 
+          name: p.name, 
+          team: fullTeamName, 
+          runs, 
+          balls: p.balls || 0, 
+          notOut: !!p.notOut,
+          innType
+        });
 
         // Wickets
         if (p.dismissal?.bowler) {
@@ -312,6 +326,8 @@ function rebuildTournamentStats(data) {
   data.fifties.sort((a, b) => b.runs - a.runs || a.matchId - b.matchId);
   data.hundreds.sort((a, b) => b.runs - a.runs || a.matchId - b.matchId);
   data.centuries.sort((a, b) => b.runs - a.runs || a.matchId - b.matchId);
+  data.highestScores.sort((a, b) => b.runs - a.runs || a.matchId - b.matchId);
+  data.highestScores = data.highestScores.slice(0, 6); // Keep top 6
 }
 
 // Team rosters for validation

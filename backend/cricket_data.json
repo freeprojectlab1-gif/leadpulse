@@ -10,6 +10,15 @@
       "nrr": "2.570"
     },
     {
+      "team": "Punjab Kings",
+      "played": 1,
+      "won": 1,
+      "lost": 0,
+      "nr": 0,
+      "points": 2,
+      "nrr": "0.200"
+    },
+    {
       "team": "Kolkata Knight Riders",
       "played": 0,
       "won": 0,
@@ -20,15 +29,6 @@
     },
     {
       "team": "Rajasthan Royals",
-      "played": 0,
-      "won": 0,
-      "lost": 0,
-      "nr": 0,
-      "points": 0,
-      "nrr": "0.000"
-    },
-    {
-      "team": "Delhi Capitals",
       "played": 0,
       "won": 0,
       "lost": 0,
@@ -55,13 +55,13 @@
       "nrr": "0.000"
     },
     {
-      "team": "Punjab Kings",
-      "played": 0,
+      "team": "Delhi Capitals",
+      "played": 1,
       "won": 0,
-      "lost": 0,
+      "lost": 1,
       "nr": 0,
       "points": 0,
-      "nrr": "0.000"
+      "nrr": "-0.200"
     },
     {
       "team": "Sunrisers Hyderabad",
@@ -79,16 +79,37 @@
       "team": "Mumbai Indians",
       "runs": 85,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 1,
+      "hundreds": 0,
       "avg": "85.0",
       "sr": "236.1"
+    },
+    {
+      "name": "M.JANSEN",
+      "team": "Punjab Kings",
+      "runs": 79,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 1,
+      "hundreds": 0,
+      "avg": "79.0",
+      "sr": "272.4"
     },
     {
       "name": "H.KLAASEN",
       "team": "Sunrisers Hyderabad",
       "runs": 73,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 1,
+      "hundreds": 0,
       "avg": "73.0",
       "sr": "243.3"
     },
@@ -97,16 +118,63 @@
       "team": "Mumbai Indians",
       "runs": 73,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 1,
+      "hundreds": 0,
       "avg": "73.0",
       "sr": "197.3"
+    },
+    {
+      "name": "T.STUBBS",
+      "team": "Delhi Capitals",
+      "runs": 67,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 1,
+      "hundreds": 0,
+      "avg": "67.0",
+      "sr": "216.1"
+    },
+    {
+      "name": "M.STOINIS",
+      "team": "Punjab Kings",
+      "runs": 50,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 1,
+      "hundreds": 0,
+      "avg": "50.0",
+      "sr": "238.1"
+    },
+    {
+      "name": "N.RANA",
+      "team": "Delhi Capitals",
+      "runs": 48,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "48.0",
+      "sr": "200.0"
     },
     {
       "name": "T.VARMA",
       "team": "Mumbai Indians",
       "runs": 43,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "43.0",
       "sr": "204.8"
     },
@@ -115,16 +183,77 @@
       "team": "Sunrisers Hyderabad",
       "runs": 34,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "34.0",
       "sr": "154.5"
+    },
+    {
+      "name": "L.RAHUL",
+      "team": "Delhi Capitals",
+      "runs": 30,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "30.0",
+      "sr": "166.7"
+    },
+    {
+      "name": "D.MILLER",
+      "team": "Delhi Capitals",
+      "runs": 29,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "29.0",
+      "sr": "145.0"
+    },
+    {
+      "name": "Y.CHAHAL",
+      "team": "Punjab Kings",
+      "runs": 28,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "28.0",
+      "sr": "233.3"
+    },
+    {
+      "name": "A.SHARMA",
+      "team": "Sunrisers Hyderabad",
+      "runs": 27,
+      "matches": 2,
+      "matchIds": [
+        1,
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "13.5",
+      "sr": "208.3"
     },
     {
       "name": "H.PATEL",
       "team": "Sunrisers Hyderabad",
       "runs": 25,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "25.0",
       "sr": "192.3"
     },
@@ -133,16 +262,37 @@
       "team": "Sunrisers Hyderabad",
       "runs": 25,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "25.0",
       "sr": "131.6"
+    },
+    {
+      "name": "A.SINGH",
+      "team": "Punjab Kings",
+      "runs": 22,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "22.0",
+      "sr": "122.2"
     },
     {
       "name": "S.ARORA",
       "team": "Sunrisers Hyderabad",
       "runs": 18,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "18.0",
       "sr": "200.0"
     },
@@ -151,16 +301,115 @@
       "team": "Sunrisers Hyderabad",
       "runs": 15,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "15.0",
       "sr": "214.3"
+    },
+    {
+      "name": "A.PATEL",
+      "team": "Delhi Capitals",
+      "runs": 14,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "14.0",
+      "sr": "280.0"
+    },
+    {
+      "name": "N.WADHERA",
+      "team": "Punjab Kings",
+      "runs": 14,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "14.0",
+      "sr": "116.7"
+    },
+    {
+      "name": "M.STARC",
+      "team": "Delhi Capitals",
+      "runs": 10,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "10.0",
+      "sr": "200.0"
+    },
+    {
+      "name": "P.SINGH",
+      "team": "Punjab Kings",
+      "runs": 10,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "10.0",
+      "sr": "200.0"
+    },
+    {
+      "name": "P.ARYA",
+      "team": "Punjab Kings",
+      "runs": 10,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "10.0",
+      "sr": "166.7"
+    },
+    {
+      "name": "S.IYER",
+      "team": "Punjab Kings",
+      "runs": 10,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "10.0",
+      "sr": "111.1"
+    },
+    {
+      "name": "C.CONNOLLY",
+      "team": "Punjab Kings",
+      "runs": 9,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "9.0",
+      "sr": "180.0"
     },
     {
       "name": "S.MAVI",
       "team": "Sunrisers Hyderabad",
       "runs": 5,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "5.0",
       "sr": "250.0"
     },
@@ -169,25 +418,50 @@
       "team": "Sunrisers Hyderabad",
       "runs": 3,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "3.0",
       "sr": "75.0"
     },
     {
-      "name": "A.SHARMA",
-      "team": "Sunrisers Hyderabad",
+      "name": "B.DUCKETT",
+      "team": "Delhi Capitals",
+      "runs": 3,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "3.0",
+      "sr": "37.5"
+    },
+    {
+      "name": "L.FERGUSON",
+      "team": "Punjab Kings",
       "runs": 2,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "2.0",
-      "sr": "40.0"
+      "sr": "100.0"
     },
     {
       "name": "P.CUMMINS",
       "team": "Sunrisers Hyderabad",
       "runs": 1,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "1.0",
       "sr": "50.0"
     },
@@ -196,7 +470,11 @@
       "team": "Sunrisers Hyderabad",
       "runs": 1,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "1.0",
       "sr": "50.0"
     },
@@ -205,7 +483,11 @@
       "team": "Mumbai Indians",
       "runs": 0,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "0.0",
       "sr": "0.0"
     },
@@ -214,7 +496,11 @@
       "team": "Mumbai Indians",
       "runs": 0,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "0.0",
       "sr": "0.0"
     },
@@ -223,7 +509,11 @@
       "team": "Mumbai Indians",
       "runs": 0,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "0.0",
       "sr": "0.0"
     },
@@ -232,7 +522,11 @@
       "team": "Mumbai Indians",
       "runs": 0,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "0.0",
       "sr": "0.0"
     },
@@ -241,7 +535,11 @@
       "team": "Mumbai Indians",
       "runs": 0,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "0.0",
       "sr": "0.0"
     },
@@ -250,7 +548,11 @@
       "team": "Mumbai Indians",
       "runs": 0,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "0.0",
       "sr": "0.0"
     },
@@ -259,7 +561,11 @@
       "team": "Mumbai Indians",
       "runs": 0,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "0.0",
       "sr": "0.0"
     },
@@ -268,7 +574,63 @@
       "team": "Mumbai Indians",
       "runs": 0,
       "matches": 1,
-      "matchIds": {},
+      "matchIds": [
+        1
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "0.0",
+      "sr": "0.0"
+    },
+    {
+      "name": "A.DAR",
+      "team": "Delhi Capitals",
+      "runs": 0,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "0.0",
+      "sr": "0.0"
+    },
+    {
+      "name": "T.NATARAJAN",
+      "team": "Delhi Capitals",
+      "runs": 0,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "0.0",
+      "sr": "0.0"
+    },
+    {
+      "name": "K.YADAV",
+      "team": "Delhi Capitals",
+      "runs": 0,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
+      "avg": "0.0",
+      "sr": "0.0"
+    },
+    {
+      "name": "S.SINGH",
+      "team": "Punjab Kings",
+      "runs": 0,
+      "matches": 1,
+      "matchIds": [
+        2
+      ],
+      "fifties": 0,
+      "hundreds": 0,
       "avg": "0.0",
       "sr": "0.0"
     }
@@ -277,6 +639,12 @@
     {
       "name": "T.BOULT",
       "team": "Sunrisers Hyderabad",
+      "wickets": 3,
+      "matches": 1
+    },
+    {
+      "name": "A.SINGH",
+      "team": "Punjab Kings",
       "wickets": 3,
       "matches": 1
     },
@@ -293,6 +661,24 @@
       "matches": 1
     },
     {
+      "name": "M.STARC",
+      "team": "Delhi Capitals",
+      "wickets": 2,
+      "matches": 1
+    },
+    {
+      "name": "T.NATAR...",
+      "team": "Delhi Capitals",
+      "wickets": 2,
+      "matches": 1
+    },
+    {
+      "name": "K.YADAV",
+      "team": "Delhi Capitals",
+      "wickets": 2,
+      "matches": 1
+    },
+    {
       "name": "M.SANTNER",
       "team": "Sunrisers Hyderabad",
       "wickets": 1,
@@ -315,17 +701,39 @@
       "team": "Mumbai Indians",
       "wickets": 1,
       "matches": 1
+    },
+    {
+      "name": "P.ARYA",
+      "team": "Punjab Kings",
+      "wickets": 1,
+      "matches": 1
+    },
+    {
+      "name": "N.WADHERA",
+      "team": "Punjab Kings",
+      "wickets": 1,
+      "matches": 1
+    },
+    {
+      "name": "L.FERGU...",
+      "team": "Punjab Kings",
+      "wickets": 1,
+      "matches": 1
+    },
+    {
+      "name": "A.DAR",
+      "team": "Delhi Capitals",
+      "wickets": 1,
+      "matches": 1
+    },
+    {
+      "name": "A.SHARMA",
+      "team": "Delhi Capitals",
+      "wickets": 1,
+      "matches": 1
     }
   ],
   "fifties": [
-    {
-      "matchId": 1,
-      "name": "R.SHARMA",
-      "team": "Mumbai Indians",
-      "runs": 85,
-      "balls": 36,
-      "notOut": false
-    },
     {
       "matchId": 1,
       "name": "H.KLAASEN",
@@ -341,6 +749,38 @@
       "runs": 73,
       "balls": 37,
       "notOut": true
+    },
+    {
+      "matchId": 1,
+      "name": "R.SHARMA",
+      "team": "Mumbai Indians",
+      "runs": 85,
+      "balls": 36,
+      "notOut": false
+    },
+    {
+      "matchId": 2,
+      "name": "T.STUBBS",
+      "team": "Delhi Capitals",
+      "runs": 67,
+      "balls": 31,
+      "notOut": false
+    },
+    {
+      "matchId": 2,
+      "name": "M.STOINIS",
+      "team": "Punjab Kings",
+      "runs": 50,
+      "balls": 21,
+      "notOut": false
+    },
+    {
+      "matchId": 2,
+      "name": "M.JANSEN",
+      "team": "Punjab Kings",
+      "runs": 79,
+      "balls": 29,
+      "notOut": false
     }
   ],
   "hundreds": [],
@@ -681,8 +1121,341 @@
       "team2": "PBKS",
       "date": "Match 2",
       "time": "7:30 PM",
-      "venue": "Toss: PBKS opt to Bowl",
-      "status": "pending"
+      "venue": "PUNJAB KINGS won the match",
+      "status": "completed",
+      "originalVenue": "Toss: PBKS opt to Bowl",
+      "scorecard": {
+        "innings1": {
+          "team": "DELHI CAPITALS",
+          "totalScore": "235/6",
+          "totalOvers": "20.0",
+          "extras": 9,
+          "fifties": [
+            {
+              "name": "T.STUBBS",
+              "runs": 67,
+              "balls": 31
+            }
+          ],
+          "hundreds": [],
+          "points": 0,
+          "matchResult": null,
+          "batters": [
+            {
+              "name": "L.RAHUL",
+              "didBat": true,
+              "runs": 30,
+              "balls": 18,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "166.7",
+              "dismissal": {
+                "bowler": "A.SINGH",
+                "fielder": "M.JANSEN"
+              }
+            },
+            {
+              "name": "B.DUCKETT",
+              "didBat": true,
+              "runs": 3,
+              "balls": 8,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "37.5",
+              "dismissal": {
+                "bowler": "A.SINGH",
+                "fielder": "M.JANSEN"
+              }
+            },
+            {
+              "name": "N.RANA",
+              "didBat": true,
+              "runs": 48,
+              "balls": 24,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "200.0",
+              "dismissal": {
+                "bowler": "P.ARYA",
+                "fielder": "M.JANSEN"
+              }
+            },
+            {
+              "name": "T.STUBBS",
+              "didBat": true,
+              "runs": 67,
+              "balls": 31,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "216.1",
+              "dismissal": {
+                "bowler": "N.WADHERA",
+                "fielder": null
+              }
+            },
+            {
+              "name": "D.MILLER",
+              "didBat": true,
+              "runs": 29,
+              "balls": 20,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "145.0",
+              "dismissal": {
+                "bowler": "L.FERGU...",
+                "fielder": "N.WADHERA"
+              }
+            },
+            {
+              "name": "A.SHARMA",
+              "didBat": true,
+              "runs": 25,
+              "balls": 12,
+              "notOut": true,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "208.3",
+              "dismissal": null
+            },
+            {
+              "name": "A.PATEL",
+              "didBat": true,
+              "runs": 14,
+              "balls": 5,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "280.0",
+              "dismissal": {
+                "bowler": "A.SINGH",
+                "fielder": "L.FERGU..."
+              }
+            },
+            {
+              "name": "M.STARC",
+              "didBat": true,
+              "runs": 10,
+              "balls": 5,
+              "notOut": true,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "200.0",
+              "dismissal": null
+            },
+            {
+              "name": "A.DAR",
+              "didBat": false,
+              "runs": null,
+              "balls": null,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "0.0",
+              "dismissal": null
+            },
+            {
+              "name": "T.NATARAJAN",
+              "didBat": false,
+              "runs": null,
+              "balls": null,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "0.0",
+              "dismissal": null
+            },
+            {
+              "name": "K.YADAV",
+              "didBat": false,
+              "runs": null,
+              "balls": null,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "0.0",
+              "dismissal": null
+            }
+          ]
+        },
+        "innings2": {
+          "team": "PUNJAB KINGS",
+          "totalScore": "239/9",
+          "totalOvers": "20.0",
+          "extras": 5,
+          "fifties": [
+            {
+              "name": "M.STOINIS",
+              "runs": 50,
+              "balls": 21
+            },
+            {
+              "name": "M.JANSEN",
+              "runs": 79,
+              "balls": 29
+            }
+          ],
+          "hundreds": [],
+          "points": 2,
+          "matchResult": "won",
+          "batters": [
+            {
+              "name": "P.SINGH",
+              "didBat": true,
+              "runs": 10,
+              "balls": 5,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "200.0",
+              "dismissal": {
+                "bowler": "M.STARC",
+                "fielder": "A.DAR"
+              }
+            },
+            {
+              "name": "P.ARYA",
+              "didBat": true,
+              "runs": 10,
+              "balls": 6,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "166.7",
+              "dismissal": {
+                "bowler": "A.DAR",
+                "fielder": "D.MILLER"
+              }
+            },
+            {
+              "name": "S.IYER",
+              "didBat": true,
+              "runs": 10,
+              "balls": 9,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "111.1",
+              "dismissal": {
+                "bowler": "M.STARC",
+                "fielder": "T.STUBBS"
+              }
+            },
+            {
+              "name": "C.CONNOLLY",
+              "didBat": true,
+              "runs": 9,
+              "balls": 5,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "180.0",
+              "dismissal": {
+                "bowler": "T.NATAR...",
+                "fielder": "A.SHARMA"
+              }
+            },
+            {
+              "name": "M.STOINIS",
+              "didBat": true,
+              "runs": 50,
+              "balls": 21,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "238.1",
+              "dismissal": {
+                "bowler": "A.SHARMA",
+                "fielder": "T.NATAR..."
+              }
+            },
+            {
+              "name": "N.WADHERA",
+              "didBat": true,
+              "runs": 14,
+              "balls": 12,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "116.7",
+              "dismissal": {
+                "bowler": "K.YADAV",
+                "fielder": null
+              }
+            },
+            {
+              "name": "S.SINGH",
+              "didBat": true,
+              "runs": 0,
+              "balls": 1,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "0.0",
+              "dismissal": {
+                "bowler": "K.YADAV",
+                "fielder": null
+              }
+            },
+            {
+              "name": "M.JANSEN",
+              "didBat": true,
+              "runs": 79,
+              "balls": 29,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "272.4",
+              "dismissal": {
+                "bowler": "T.NATAR...",
+                "fielder": "A.SHARMA"
+              }
+            },
+            {
+              "name": "L.FERGUSON",
+              "didBat": true,
+              "runs": 2,
+              "balls": 2,
+              "notOut": false,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "100.0",
+              "dismissal": {
+                "bowler": null,
+                "fielder": null,
+                "type": "runout"
+              }
+            },
+            {
+              "name": "A.SINGH",
+              "didBat": true,
+              "runs": 22,
+              "balls": 18,
+              "notOut": true,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "122.2",
+              "dismissal": null
+            },
+            {
+              "name": "Y.CHAHAL",
+              "didBat": true,
+              "runs": 28,
+              "balls": 12,
+              "notOut": true,
+              "fours": 0,
+              "sixes": 0,
+              "sr": "233.3",
+              "dismissal": null
+            }
+          ]
+        }
+      },
+      "winner": "PUNJAB KINGS"
     },
     {
       "id": 3,
@@ -917,6 +1690,62 @@
       "time": "7:30 PM",
       "venue": "Toss: PBKS opt to Bat",
       "status": "pending"
+    }
+  ],
+  "highestScores": [
+    {
+      "matchId": 1,
+      "name": "R.SHARMA",
+      "team": "Mumbai Indians",
+      "runs": 85,
+      "balls": 36,
+      "notOut": false,
+      "innType": "innings2"
+    },
+    {
+      "matchId": 2,
+      "name": "M.JANSEN",
+      "team": "Punjab Kings",
+      "runs": 79,
+      "balls": 29,
+      "notOut": false,
+      "innType": "innings2"
+    },
+    {
+      "matchId": 1,
+      "name": "H.KLAASEN",
+      "team": "Sunrisers Hyderabad",
+      "runs": 73,
+      "balls": 30,
+      "notOut": false,
+      "innType": "innings1"
+    },
+    {
+      "matchId": 1,
+      "name": "Q.DE KOCK",
+      "team": "Mumbai Indians",
+      "runs": 73,
+      "balls": 37,
+      "notOut": true,
+      "innType": "innings2"
+    },
+    {
+      "matchId": 2,
+      "name": "T.STUBBS",
+      "team": "Delhi Capitals",
+      "runs": 67,
+      "balls": 31,
+      "notOut": false,
+      "innType": "innings1"
+    },
+    {
+      "matchId": 2,
+      "name": "M.STOINIS",
+      "team": "Punjab Kings",
+      "runs": 50,
+      "balls": 21,
+      "notOut": false,
+      "innType": "innings2"
     }
   ]
 }
