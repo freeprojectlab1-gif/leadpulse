@@ -231,7 +231,7 @@ const initWhatsapp = async () => {
     authStrategy: new LocalAuth({ dataPath: path.join(__dirname, 'wa_session') }),
     puppeteer: { 
       headless: true, 
-      executablePath: '/home/erp/.cache/puppeteer/chrome/linux-148.0.7778.97/chrome-linux64/chrome',
+      executablePath: process.env.CHROME_PATH || puppeteer.executablePath(),
       args: [
         '--no-sandbox', 
         '--disable-setuid-sandbox', 
