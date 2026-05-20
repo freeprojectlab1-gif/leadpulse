@@ -8,6 +8,7 @@ import {
   Instagram,
   Linkedin,
   Lock,
+  ClipboardList,
   Search,
   Info,
   CheckCircle,
@@ -67,8 +68,11 @@ import {
   Hash,
   Brackets,
   Zap,
-  MousePointer2
+  MousePointer2,
+  PhoneCall,
+  Trash2
 } from 'lucide-react';
+
 
 // --- ICONS (SVG) ---
 const DashIcon = () => <LayoutDashboard size={20} />;
@@ -124,6 +128,7 @@ const BRAND_NAME = 'LeadPulse';
 const BRAND_SUBTITLE = 'Social Lead Generation & Outreach';
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
+  tasks: 'Task Management',
   campaign: 'Campaign Studio',
   template: 'Email Templates',
   custom_templates: 'Custom Folders',
@@ -138,6 +143,7 @@ const PAGE_TITLES = {
   email_finder: 'Enrichment',
   mobile_finder: 'Mobile Enricher',
   saved_leads: 'Automation CRM',
+  calling_scripts: 'Calling Scripts',
   archive: 'Archive',
   profile: 'Profile',
   security: 'Security',
@@ -150,6 +156,8 @@ const ACCESS_SECTIONS = [
     label: 'Overview',
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, locked: true },
+      { id: 'tasks', label: 'Tasks', icon: ClipboardList },
+      { id: 'calling_scripts', label: 'Call Scripts', icon: PhoneCall },
       { id: 'campaign', label: 'New Campaign', icon: Rocket },
       { id: 'logs', label: 'Delivery Logs', icon: Activity },
     ],
@@ -198,6 +206,272 @@ const FULL_ACCESS = ACCESS_TAB_IDS.reduce((acc, key) => {
   acc[key] = true;
   return acc;
 }, {});
+
+const SCRIPT_CATEGORIES = [
+  { id: 'all', label: 'All Scripts', emoji: '📋' },
+  { id: 'hotels', label: 'Hotels & Resorts', emoji: '🏨' },
+  { id: 'restaurants', label: 'Restaurants & Cafes', emoji: '🍽️' },
+  { id: 'salons_gyms', label: 'Salons & Gyms', emoji: '💇' },
+  { id: 'clinics', label: 'Clinics & Doctors', emoji: '🏥' },
+  { id: 'retail', label: 'Retail & Shops', emoji: '🛍️' },
+  { id: 'objections', label: 'Objection Handling', emoji: '⚠️' },
+];
+
+const CALLING_SCRIPTS = [
+  {
+    id: 'hotel_intro',
+    category: 'hotels',
+    title: '🏨 Hotel / Resort — Direct Booking Pitch',
+    subtitle: 'OTA commission bachao, direct bookings badhao',
+    steps: [
+      {
+        label: '👋 Introduction',
+        dialogue: 'Hello Sir/Madam! Mera naam [Aapka Naam] hai, main [Company] se bol raha hoon. Humne aapke hotel ki Google Maps listing dekhi — photos bohot sundar hain aur rating bhi 4+ hai! Lekin humne notice kiya ki aapki apni official website nahi hai, ya bohot purani hai. Kya main 2 minute mein bata sakta hoon ki isse aapka kitna business loss ho raha hai?',
+        tip: 'Awaaz confident aur friendly rakhein. Hotel ka naam lein taaki personal lage.'
+      },
+      {
+        label: '😰 Problem',
+        dialogue: 'Sir, abhi kya ho raha hai ki aapke maximum customers MakeMyTrip, Goibibo, Booking.com se aa rahe hain, aur wahan aapko har booking par 15-25% commission dena padta hai. Matlab agar ek room ₹3000 ka hai, to ₹450-750 seedha OTA le jaata hai! Plus, customers aapke hotel ka naam bhi yaad nahi rakhte — wo bas OTA yaad rakhte hain.',
+        tip: 'Commission ka exact number bolein — hotel owner ka attention turant milega.'
+      },
+      {
+        label: '💡 Solution',
+        dialogue: 'Hum aapko ek premium hotel website bana kar denge jisme: Online Room Booking system hoga — customer seedha book karega bina kisi OTA ke. Photo Gallery, Room Types, Pricing sab dikhega. WhatsApp aur Call button hoga — ek click mein customer aapse connect. Google par aapki website rank karegi to direct organic traffic aayega. Aur seasonal offers, packages bhi aap khud update kar sakte ho!',
+        tip: 'Features ginwayein — booking system, gallery, WhatsApp button, Google ranking.'
+      },
+      {
+        label: '🎯 Call to Action',
+        dialogue: 'Sir, isme aapko kuch nahi karna. Main aapko hamare 2-3 hotel clients ki website WhatsApp par bhej raha hoon — aap dekhiye designs kaisi hain. Agar achha lage to hum 15 minute ki call schedule kar lenge pricing discuss karne ke liye. Aapka WhatsApp isi number par hai?',
+        tip: 'Agle step mein WhatsApp par portfolio links bhejein. Kabhi bhi pehli call mein pricing mat bolein!'
+      }
+    ]
+  },
+  {
+    id: 'hotel_followup',
+    category: 'hotels',
+    title: '🏨 Hotel — Follow-up Call Script',
+    subtitle: 'Pehli call ke baad doosri call kaise karein',
+    steps: [
+      {
+        label: '👋 Reminder',
+        dialogue: 'Hello Sir! Main [Naam] bol raha hoon [Company] se. Kal humne baat ki thi aapke hotel website ke baare mein aur maine aapko WhatsApp par kuch designs bheji thi. Kya aapne dekhi?',
+        tip: 'Agar unhone nahi dekhi, to politely bolo — "Koi baat nahi Sir, main abhi dubara bhej deta hoon."'
+      },
+      {
+        label: '🔥 Urgency',
+        dialogue: 'Sir, main isliye call kar raha hoon kyunki humara abhi ek seasonal offer chal raha hai — agar is week mein confirm karte hain to aapko setup charges mein 30% discount mil jayega. Plus, wedding season aa raha hai to agar website ab bana lein to season ka direct business capture kar sakte hain!',
+        tip: 'Urgency create karein — limited time offer ya upcoming season mention karein.'
+      },
+      {
+        label: '🎯 Close',
+        dialogue: 'Sir, ek kaam karein — kal ya parso koi bhi 15-20 minute ka time bata dein, main aapko screen share karke live demo dikhata hoon. Aapko dekhne ke baad hi decide karna hai, koi pressure nahi. Kal subah 11 baje theek rahega ya shaam ko 5 baje?',
+        tip: 'Do time options dein — yes-yes close technique use karein.'
+      }
+    ]
+  },
+  {
+    id: 'restaurant_intro',
+    category: 'restaurants',
+    title: '🍽️ Restaurant / Cafe — Online Presence Pitch',
+    subtitle: 'Zomato/Swiggy commission bachao, menu aur ordering optimize karo',
+    steps: [
+      {
+        label: '👋 Introduction',
+        dialogue: 'Hello Sir/Madam! Mera naam [Naam] hai [Company] se. Humne aapke restaurant ki Zomato/Google listing dekhi — rating bohot achhi hai aur reviews bhi kamal ke hain! Lekin humne ek cheez notice ki — aapki khud ki website nahi hai. Main 2 minute mein samjhata hoon ki website se aapka profit kaise 2x ho sakta hai.',
+        tip: 'Restaurant ka specific naam aur rating mention karein.'
+      },
+      {
+        label: '😰 Problem',
+        dialogue: 'Sir, Zomato aur Swiggy par har order par 20-30% commission jaata hai. Matlab agar aapka order ₹500 ka hai, to ₹100-150 seedha platform le jaata hai. Plus, customer ko aapke restaurant ka naam yaad nahi rehta — bas app yaad rehta hai. Aur menu update karna ho ya special offer daalna ho, to platform ki marzi par depend rehna padta hai.',
+        tip: 'Commission percentage aur actual rupees mein loss batayein.'
+      },
+      {
+        label: '💡 Solution',
+        dialogue: 'Hum aapko ek stunning restaurant website banayenge jisme: Digital Menu with photos — customer browse karega aur seedha order de sakta hai. Table Reservation system — online booking with date/time. WhatsApp Order — ek click mein WhatsApp par order aa jayega. Special Offers aur Events section — festival deals, birthday packages highlight karein. Google Business se link karenge to local searches mein aap top par aayenge!',
+        tip: 'Menu photos aur WhatsApp ordering — yeh do features restaurant owners ko sabse zyada attract karte hain.'
+      },
+      {
+        label: '🎯 Call to Action',
+        dialogue: 'Sir, main aapko 2-3 restaurant websites ka sample WhatsApp par bhej raha hoon. Aap dekh lena ki menu kaise dikhta hai, ordering kaise hoti hai. Agar achha lage to hum aage baat karenge. WhatsApp isi number par hai na?',
+        tip: 'Food industry mein visual samples bohot important hain — real client websites dikhayein.'
+      }
+    ]
+  },
+  {
+    id: 'salon_intro',
+    category: 'salons_gyms',
+    title: '💇 Salon / Spa / Gym — Appointment Booking Pitch',
+    subtitle: 'Walk-in wait khatam karo, online appointments badhao',
+    steps: [
+      {
+        label: '👋 Introduction',
+        dialogue: 'Hello! Mera naam [Naam] hai [Company] se. Humne aapke salon/gym ki Google listing dekhi — bohot achhi rating hai aur customer reviews bhi positive hain! Main aapko ek idea dena chahta hoon jisse aapke customers ka experience aur better ho jayega aur aapki bookings bhi badhengi.',
+        tip: 'Salon owners ko customer experience ki baat karo — wo isse seriously lete hain.'
+      },
+      {
+        label: '😰 Problem',
+        dialogue: 'Sir/Madam, abhi kya hota hai — customer call karta hai appointment ke liye, kabhi phone busy hota hai, kabhi staff attend nahi kar paata. Bohot se customers wait time ki wajah se dusre salon chale jaate hain. Plus, naye customers ko aapke services, pricing, ya timings ka pata nahi chalta — Google par search karte hain to bas ek basic listing dikhi hai.',
+        tip: 'Missed calls = missed customers — yeh formula use karein.'
+      },
+      {
+        label: '💡 Solution',
+        dialogue: 'Hum aapko ek modern salon/gym website banayenge jisme: Online Appointment Booking — customer khud time slot choose karke book karega. Service Menu with Pricing — har service ki details, time duration aur pricing dikhi jayegi. Before-After Gallery — aapke best work showcase honge. Google Maps integration — nearby customers aapko easily find kar payenge. WhatsApp button — instant query resolve!',
+        tip: 'Before-After gallery salon owners ke liye game changer hai — isko emphasize karein.'
+      },
+      {
+        label: '🎯 Call to Action',
+        dialogue: 'Madam/Sir, main aapko 2 salon websites ka sample abhi WhatsApp par bhej raha hoon. Dekhiye ki appointment booking kaise kaam karta hai. 5 minute lagenge dekhne mein. Agar pasand aaye to hum discuss karenge. WhatsApp number same hai?',
+        tip: 'Salon industry mein female owners zyada hain — respectful aur soft approach rakhein.'
+      }
+    ]
+  },
+  {
+    id: 'clinic_intro',
+    category: 'clinics',
+    title: '🏥 Clinic / Doctor — Patient Trust & Appointment Pitch',
+    subtitle: 'Practo ki dependency khatam karo, patient trust badhao',
+    steps: [
+      {
+        label: '👋 Introduction',
+        dialogue: 'Hello Doctor Sahab! Mera naam [Naam] hai [Company] se. Humne aapki Google listing dekhi — aapke patient reviews bohot positive hain! Main aapko ek important baat batana chahta hoon — aaj kal patients doctor se milne se pehle Google par search karte hain, aur agar aapki professional website nahi hai to wo dusre doctor ke paas chale jaate hain.',
+        tip: 'Doctors ko "Doctor Sahab" ya "Dr." ke saath address karein — respect important hai.'
+      },
+      {
+        label: '😰 Problem',
+        dialogue: 'Doctor Sahab, Practo par aapki listing hai lekin wahan bhi competition hai — 10 aur doctors ki list aapke saath dikhi hai. Patient confuse ho jaata hai. Plus, Practo ki consultation fees mein se bhi commission kata jaata hai. Aur naye patients ko aapki specialization, clinic timings, aur experience ka properly pata nahi chalta.',
+        tip: 'Doctors ko competition aur credibility ki baat bohot seriously lete hain.'
+      },
+      {
+        label: '💡 Solution',
+        dialogue: 'Hum aapke liye ek professional medical website banayenge jisme: Doctor Profile — aapki qualifications, experience, specializations sab detail mein. Online Appointment Booking — patient khud convenient time slot choose karega. Clinic Timings & Location — Google Maps ke saath. Patient Testimonials — aapke satisfied patients ke reviews. Health Blog section — aap apne expertise share kar sakte hain jo Google par rank karega!',
+        tip: 'Medical websites mein trust aur credibility sabse important hai.'
+      },
+      {
+        label: '🎯 Call to Action',
+        dialogue: 'Doctor Sahab, main aapko 2 clinic websites ka sample WhatsApp par bhej raha hoon — aap dekhiye kitni professional dikhti hain. Patients ka trust turant badh jaata hai jab wo website dekhte hain. Aapka WhatsApp number same hai?',
+        tip: 'Doctors busy hote hain — short aur to-the-point baat karein, call 3-4 min max rakhein.'
+      }
+    ]
+  },
+  {
+    id: 'retail_intro',
+    category: 'retail',
+    title: '🛍️ Retail Shop / Local Business — Online Catalogue Pitch',
+    subtitle: 'Offline shop ko online le jaao, reach 10x badhao',
+    steps: [
+      {
+        label: '👋 Introduction',
+        dialogue: 'Hello Sir/Madam! Mera naam [Naam] hai [Company] se. Humne aapke shop ki Google listing dekhi — bohot achhi location hai aur reviews bhi positive hain! Main aapko batana chahta hoon ki ek website se aapke shop ki reach sirf local area se poore city tak ho sakti hai.',
+        tip: 'Local shop owners ko "reach badhana" aur "naye customers" ki baat karo.'
+      },
+      {
+        label: '😰 Problem',
+        dialogue: 'Sir, abhi kya hota hai — sirf wahi customers aate hain jo aapke shop ke aas-paas rehte hain ya jinko kisi ne recommend kiya hai. Naye customers Google par search karte hain "best [product] shop near me" — agar aapki website nahi hai to wo competitor ke paas chale jaate hain. Plus, aapke products ka online catalogue nahi hai to customer phone par poochh poochh kar thak jaata hai.',
+        tip: '"Near me" searches ka example do — bahut powerful hai.'
+      },
+      {
+        label: '💡 Solution',
+        dialogue: 'Hum aapke liye ek professional business website banayenge jisme: Product Catalogue with Photos & Prices — customer ghar baithe browse karega. WhatsApp Order Button — "Yeh chahiye" ek click mein message aa jayega. Store Location & Timings — Google Maps ke saath. Special Offers section — festivals, clearance sales highlight karein. Customer Reviews — trust badhayein naye customers ka!',
+        tip: 'WhatsApp ordering button retail shops ke liye sabse bada selling point hai.'
+      },
+      {
+        label: '🎯 Call to Action',
+        dialogue: 'Sir, main aapko 2-3 similar shops ki website WhatsApp par bhej raha hoon — dekhiye catalogue kaise dikhta hai aur WhatsApp ordering kaise kaam karta hai. Agar achha lage to hum price discuss karenge. WhatsApp same number par hai?',
+        tip: 'Retail owners practical results dekhna chahte hain — real examples dikhayein.'
+      }
+    ]
+  },
+  {
+    id: 'obj_no_money',
+    category: 'objections',
+    title: '⚠️ "Abhi budget nahi hai" — Objection Handle',
+    subtitle: 'Jab client bole paisa nahi hai',
+    steps: [
+      {
+        label: '🔄 Acknowledge',
+        dialogue: 'Sir, main samajh sakta hoon — budget ki planning important hai. Lekin ek baat sochiye: aap har mahine OTA/platform ko jo commission de rahe hain, wo ₹5000-15000 hai. Website ek baar ki investment hai jo 2-3 mahine mein apni cost recover kar legi aur phir pure profit degi.',
+        tip: 'Budget nahi hai = priority nahi hai. Unhe ROI samjhao.'
+      },
+      {
+        label: '💡 Reframe',
+        dialogue: 'Aur Sir, humara ek EMI option bhi hai — aap chhote installments mein payment kar sakte hain. Starting packages bhi hain jo bohot affordable hain. Basically aap ek din ka OTA commission invest karke poore saal ka direct business generate kar sakte hain!',
+        tip: 'EMI/installment option mention karo — barrier kam hota hai.'
+      }
+    ]
+  },
+  {
+    id: 'obj_social_media',
+    category: 'objections',
+    title: '⚠️ "Instagram/Facebook se kaam chal jaata hai" — Objection Handle',
+    subtitle: 'Jab client bole social media kaafi hai',
+    steps: [
+      {
+        label: '🔄 Acknowledge',
+        dialogue: 'Sir, bilkul! Social media bohot important hai aur aap achha kaam kar rahe hain wahan. Lekin ek problem hai — Instagram par aapka content sirf aapke followers ko dikhta hai. Jab koi naya customer Google par "best [business type] in [city]" search karta hai, to Instagram page nahi aata — website aati hai!',
+        tip: 'Google search vs social media — yeh comparison powerful hai.'
+      },
+      {
+        label: '💡 Reframe',
+        dialogue: 'Aur doosri baat — Instagram kabhi bhi aapka account restrict ya disable kar sakta hai. Website aapki apni property hai — koi nahi cheen sakta. Plus, website par aap online booking, WhatsApp ordering, customer reviews sab kar sakte ho jo Instagram par possible nahi hai. Social media + Website = Complete Online Presence!',
+        tip: 'Account ban hone ka fear mention karo — yeh real concern hai.'
+      }
+    ]
+  },
+  {
+    id: 'obj_not_needed',
+    category: 'objections',
+    title: '⚠️ "Website ki zaroorat nahi hai" — Objection Handle',
+    subtitle: 'Jab client bole humein website nahi chahiye',
+    steps: [
+      {
+        label: '🔄 Acknowledge',
+        dialogue: 'Sir, main samajh sakta hoon — aapka business abhi achha chal raha hai offline. Lekin ek research batata hoon: 78% customers kisi bhi business se service lene se pehle uski website check karte hain. Agar website nahi milti to wo sochte hain ki business chhota hai ya trustworthy nahi hai, aur competitor ke paas chale jaate hain.',
+        tip: 'Statistics use karo — numbers convince karte hain.'
+      },
+      {
+        label: '💡 Reframe',
+        dialogue: 'Sir, aapke competitor ki website hai ya nahi? Agar hai to wo aapke potential customers le ja raha hai. Agar nahi hai to yeh aapke liye golden opportunity hai — aap pehle bano aur market dominate karo! Website ek digital visiting card hai jo 24/7 kaam karti hai bina salary liye.',
+        tip: 'Competitor comparison use karo — FOMO create hota hai.'
+      }
+    ]
+  },
+  {
+    id: 'obj_later',
+    category: 'objections',
+    title: '⚠️ "Baad mein baat karenge" — Objection Handle',
+    subtitle: 'Jab client bole abhi busy hain, baad mein call karna',
+    steps: [
+      {
+        label: '🔄 Acknowledge',
+        dialogue: 'Sir bilkul, main samajh sakta hoon aap busy hain. Lekin sirf 30 seconds — main aapko WhatsApp par apne kuch clients ki websites bhej deta hoon. Aap jab free hon tab dekh lena. Agar pasand aaye to call kar lena, warna koi baat nahi. Fair enough?',
+        tip: 'Unhe control do — "aap decide karo" wali feeling do.'
+      },
+      {
+        label: '📅 Lock Follow-up',
+        dialogue: 'Sir perfect! Main WhatsApp par bhej raha hoon. Aur ek kaam karun — kal ya parso mein ek chhoti si call karun sirf 5 minute ki, taaki agar koi question ho to main answer kar sakun? Kal subah theek rahega ya shaam ko?',
+        tip: 'Hamesha follow-up ka time lock karo — "baad mein" ka matlab kabhi nahi hota hai.'
+      }
+    ]
+  },
+  {
+    id: 'obj_already_have',
+    category: 'objections',
+    title: '⚠️ "Humare paas already website hai" — Objection Handle',
+    subtitle: 'Jab client bole website already hai',
+    steps: [
+      {
+        label: '🔄 Acknowledge',
+        dialogue: 'Oh achha Sir, great! Kya main ek baar aapki website dekh sakta hoon? [Pause & check] Sir, maine dekhi — honestly design thoda outdated lag rahi hai aur mobile par properly open nahi ho rahi. Aaj kal 80% log phone se browse karte hain, agar website mobile-friendly nahi hai to customers turant back button maar dete hain.',
+        tip: 'Unki existing website check karo aur genuine feedback do — fake compliment mat karo.'
+      },
+      {
+        label: '💡 Reframe',
+        dialogue: 'Sir, hum aapki existing website ko ek modern, fast-loading, mobile-first design mein upgrade kar sakte hain. Plus WhatsApp integration, online booking, aur SEO optimization bhi add karenge. Basically same website — but 10x better performance aur results! Main aapko before-after comparison bhej deta hoon WhatsApp par.',
+        tip: 'Upgrade angle use karo — naya banwao mat bolo, "improve" bolo.'
+      }
+    ]
+  }
+];
 
 const BACKEND_ORIGIN = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 const AUTH_TOKEN_KEY = 'leadpulse_auth_token';
@@ -1752,6 +2026,8 @@ function App() {
   const [loginId, setLoginId] = useState(localStorage.getItem('saved_login_id') || 'admin');
   const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState(localStorage.getItem('activeTab') || 'dashboard');
+  const [activeScriptCat, setActiveScriptCat] = useState('all');
+  const [scriptQuery, setScriptQuery] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const switchTab = (tab) => {
@@ -1792,6 +2068,12 @@ function App() {
   const [stats, setStats] = useState([]);
   const [recipients, setRecipients] = useState([]);
   const [savedLeads, setSavedLeads] = useState([]);
+  const [crmTotalStats, setCrmTotalStats] = useState({ totalCount: 0, totalWithPhone: 0, totalWithEmail: 0 });
+  const [assignTarget, setAssignTarget] = useState(null);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
+  const [assignSaving, setAssignSaving] = useState(false);
+
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [status, setStatus] = useState('');
   const [sending, setSending] = useState(false);
@@ -1813,6 +2095,17 @@ function App() {
     profilePic: ''
   });
   const [teamMembers, setTeamMembers] = useState([]);
+
+  // --- Task Management State ---
+  const [tasks, setTasks] = useState([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [taskForm, setTaskForm] = useState({ title: '', description: '', assignedTo: '', priority: 'medium', dueDate: '' });
+  const [taskSaving, setTaskSaving] = useState(false);
+  const [taskFilter, setTaskFilter] = useState('all');
+  const [taskSearch, setTaskSearch] = useState('');
+  const [taskEditTarget, setTaskEditTarget] = useState(null);
+
   const [teamLoading, setTeamLoading] = useState(false);
   const [teamForm, setTeamForm] = useState({
     fullName: '',
@@ -1909,6 +2202,47 @@ function App() {
     ? { ...teamAccessTarget, access: teamAccessPreviewAccess || getResolvedAccess(teamAccessTarget) }
     : currentUser;
   const getSidebarVisibleTabs = (items) => items.filter(item => canAccessTab(item.id, sidebarUser));
+
+  const renderSidebarSection = (title, itemsList) => {
+    const items = getSidebarVisibleTabs(itemsList);
+    if (items.length === 0) return null;
+    return (
+      <div>
+        {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">{title}</div>}
+        <div className="space-y-1">
+          {items.map(item => {
+            const Icon = item.icon;
+            return (
+              <TooltipProvider key={item.id} delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => {
+                        switchTab(item.id);
+                        setIsMobileMenuOpen(false);
+                        if (item.id === 'email_finder' || item.id === 'mobile_finder' || item.id === 'saved_leads') {
+                          fetchSavedLeads();
+                        }
+                      }}
+                      className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                        activeTab === item.id
+                          ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm'
+                          : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                      }`}
+                    >
+                      <Icon size={18} className={activeTab === item.id ? 'text-primary' : ''} />
+                      {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
+                    </button>
+                  </TooltipTrigger>
+                  {isSidebarCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
+                </Tooltip>
+              </TooltipProvider>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   const fetchWaStatus = async () => {
     try {
@@ -2906,7 +3240,57 @@ function App() {
     }
   };
 
+  // --- Task Management Functions ---
+  const fetchTasks = async () => {
+    setTasksLoading(true);
+    try {
+      const res = await axios.get('/api/tasks');
+      setTasks(Array.isArray(res.data) ? res.data : []);
+    } catch (e) {
+      console.error('Failed to fetch tasks:', e);
+    } finally {
+      setTasksLoading(false);
+    }
+  };
+
+  const handleCreateTask = async () => {
+    if (!taskForm.title || !taskForm.assignedTo) return showToast('Title and team member are required', 'error');
+    setTaskSaving(true);
+    try {
+      const res = await axios.post('/api/tasks', taskForm);
+      setTasks(prev => [res.data, ...prev]);
+      setTaskForm({ title: '', description: '', assignedTo: '', priority: 'medium', dueDate: '' });
+      setTaskDialogOpen(false);
+      showToast('Task assigned successfully!', 'success');
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Failed to create task', 'error');
+    } finally {
+      setTaskSaving(false);
+    }
+  };
+
+  const handleUpdateTask = async (taskId, updates) => {
+    try {
+      const res = await axios.patch(`/api/tasks/${taskId}`, updates);
+      setTasks(prev => prev.map(t => t._id === taskId ? res.data : t));
+      showToast('Task updated!', 'success');
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Failed to update task', 'error');
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    try {
+      await axios.delete(`/api/tasks/${taskId}`);
+      setTasks(prev => prev.filter(t => t._id !== taskId));
+      showToast('Task deleted', 'success');
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Failed to delete task', 'error');
+    }
+  };
+
   const handleCreateTeamMember = async (e) => {
+
     e.preventDefault();
     setTeamSaving(true);
     setTeamMessage('');
@@ -3054,6 +3438,14 @@ function App() {
   }, [activeTab, isLoggedIn, currentUser?.role]);
 
   useEffect(() => {
+    if (isLoggedIn && activeTab === 'tasks') {
+      fetchTasks();
+      if (currentUser?.role === 'admin') fetchTeamMembers();
+    }
+  }, [activeTab, isLoggedIn]);
+
+
+  useEffect(() => {
     if (activeTab !== 'team_access') return;
     if (!teamAccessTarget && teamMembers.length > 0) {
       setTeamAccessTarget(teamMembers[0]);
@@ -3097,11 +3489,48 @@ function App() {
     setIsLoadingSavedLeads(true);
     try {
       const res = await axios.get('/api/saved-leads');
-      if (Array.isArray(res.data)) setSavedLeads(res.data);
+      if (res.data && Array.isArray(res.data.leads)) {
+        setSavedLeads(res.data.leads);
+        setCrmTotalStats({ totalCount: res.data.totalCount || 0, totalWithPhone: res.data.totalWithPhone || 0, totalWithEmail: res.data.totalWithEmail || 0 });
+      } else if (Array.isArray(res.data)) {
+        setSavedLeads(res.data);
+      }
     } catch (e) { } finally {
-      setTimeout(() => setIsLoadingSavedLeads(false), 800); // Small delay for smooth transition
+      setTimeout(() => setIsLoadingSavedLeads(false), 800);
     }
   };
+
+  const handleAssignLeads = async () => {
+    setAssignSaving(true);
+    try {
+      const payload = {
+        assignedTo: selectedAssigneeId || null,
+        ...assignTarget
+      };
+      await axios.post('/api/saved-leads/assign', payload);
+      showToast('Leads assigned successfully!', 'success');
+      setAssignDialogOpen(false);
+      setAssignTarget(null);
+      setSelectedAssigneeId('');
+      setSelectedIds([]);
+      fetchSavedLeads();
+    } catch (e) {
+      showToast(e.response?.data?.error || 'Failed to assign leads', 'error');
+    } finally {
+      setAssignSaving(false);
+    }
+  };
+
+  const handleUpdateLeadStatus = async (leadId, nextStatus) => {
+    try {
+      const res = await axios.put(`/api/saved-leads/${leadId}`, { leadStatus: nextStatus });
+      setSavedLeads(prev => prev.map(l => l._id === leadId ? res.data : l));
+      showToast('Lead status updated!', 'success');
+    } catch (e) {
+      showToast('Failed to update status', 'error');
+    }
+  };
+
 
   const pickMapScreenshotFile = (file) => {
     if (!file) return;
@@ -3334,168 +3763,82 @@ function App() {
         </div>
 
         <div className={`flex-1 overflow-y-auto py-6 ${isSidebarCollapsed ? 'px-2' : 'px-4'} custom-scrollbar space-y-8 overflow-x-hidden`}>
+          {renderSidebarSection('Overview', [
+            { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+            { id: 'tasks', icon: ClipboardList, label: 'Tasks' },
+            { id: 'calling_scripts', icon: PhoneCall, label: 'Call Scripts' },
+            { id: 'campaign', icon: Rocket, label: 'New Campaign' },
+            { id: 'logs', icon: Activity, label: 'Delivery Logs' },
+          ])}
 
-          {/* Main Group */}
-          <div>
-            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">Overview</div>}
-            <div className="space-y-1">
-              {getSidebarVisibleTabs([
-                { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-                { id: 'campaign', icon: Rocket, label: 'New Campaign' },
-                { id: 'logs', icon: Activity, label: 'Delivery Logs' },
-              ]).map(item => (
-                <TooltipProvider key={item.id} delayDuration={0}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => { switchTab(item.id); setIsMobileMenuOpen(false); }}
-                        className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id
-                          ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm'
-                          : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
-                          }`}
-                      >
-                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} />
-                        {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
-                      </button>
-                    </TooltipTrigger>
-                    {isSidebarCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
-            </div>
-          </div>
+          {renderSidebarSection('Lead Generation', [
+            { id: 'scraper', icon: Globe, label: 'Lead Scraper' },
+            { id: 'map_finder', icon: MapPin, label: 'Map Finder' },
+            { id: 'email_finder', icon: Mail, label: 'Email Enricher' },
+            { id: 'mobile_finder', icon: Smartphone, label: 'Mobile Enricher' },
+            { id: 'saved_leads', icon: currentUser?.role === 'admin' ? Database : ClipboardList, label: currentUser?.role === 'admin' ? 'Automation CRM' : 'Tasks' },
+          ])}
 
-
-          {/* Sourcing Group */}
-          <div>
-            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">Lead Generation</div>}
-            <div className="space-y-1">
-              {getSidebarVisibleTabs([
-                { id: 'scraper', icon: Globe, label: 'Lead Scraper' },
-                { id: 'map_finder', icon: MapPin, label: 'Map Finder' },
-                { id: 'email_finder', icon: Mail, label: 'Email Enricher' },
-                { id: 'mobile_finder', icon: Smartphone, label: 'Mobile Enricher' },
-                { id: 'saved_leads', icon: Database, label: 'Automation CRM' },
-              ]).map(item => (
-                <TooltipProvider key={item.id} delayDuration={0}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => { switchTab(item.id); setIsMobileMenuOpen(false); if (item.id === 'email_finder' || item.id === 'mobile_finder' || item.id === 'saved_leads') fetchSavedLeads(); }}
-                        className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
-                          }`}
-                      >
-                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} />
-                        {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
-                      </button>
-                    </TooltipTrigger>
-                    {isSidebarCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
-            </div>
-          </div>
-
-
-          {/* Inbox Group */}
-          <div>
-            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">Inbox & Templates</div>}
-            <div className="space-y-1">
-              {getSidebarVisibleTabs([
-                { id: 'replied_leads', icon: Reply, label: 'Email Replies' },
-                { id: 'whatsapp_inbox', icon: WhatsAppIcon, label: 'WhatsApp Inbox' },
-                { id: 'template', icon: FileText, label: 'Email Templates' },
-                { id: 'custom_templates', icon: Folder, label: 'Custom Folders' },
-                { id: 'variables', icon: Hash, label: 'Variable Manager' },
-              ]).map(item => (
-                <TooltipProvider key={item.id} delayDuration={0}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => { switchTab(item.id); setIsMobileMenuOpen(false); }}
-                        className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
-                          }`}
-                      >
-                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} />
-                        {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
-                      </button>
-                    </TooltipTrigger>
-                    {isSidebarCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
-            </div>
-          </div>
-
+          {renderSidebarSection('Inbox & Templates', [
+            { id: 'replied_leads', icon: Reply, label: 'Email Replies' },
+            { id: 'whatsapp_inbox', icon: WhatsAppIcon, label: 'WhatsApp Inbox' },
+            { id: 'template', icon: FileText, label: 'Email Templates' },
+            { id: 'custom_templates', icon: Folder, label: 'Custom Folders' },
+            { id: 'variables', icon: Hash, label: 'Variable Manager' },
+          ])}
 
           {/* Integrations */}
-          <div>
-            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">Integrations</div>}
-            <div className="space-y-1">
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => { switchTab('whatsapp_settings'); setIsMobileMenuOpen(false); }}
-                      className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'whatsapp_settings' ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
-                        }`}
-                    >
-                      <WhatsAppIcon size={18} className={activeTab === 'whatsapp_settings' ? 'text-primary' : ''} />
-                      {!isSidebarCollapsed && <span className="truncate">WhatsApp Settings</span>}
-                    </button>
-                  </TooltipTrigger>
-                  {isSidebarCollapsed && <TooltipContent side="right">WhatsApp Settings</TooltipContent>}
-                </Tooltip>
-              </TooltipProvider>
+          {(canAccessTab('whatsapp_settings', sidebarUser) || canAccessTab('whatsapp_linker', sidebarUser)) && (
+            <div>
+              {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">Integrations</div>}
+              <div className="space-y-1">
+                {canAccessTab('whatsapp_settings', sidebarUser) && (
+                  <TooltipProvider delayDuration={0}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => { switchTab('whatsapp_settings'); setIsMobileMenuOpen(false); }}
+                          className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'whatsapp_settings' ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                            }`}
+                        >
+                          <WhatsAppIcon size={18} className={activeTab === 'whatsapp_settings' ? 'text-primary' : ''} />
+                          {!isSidebarCollapsed && <span className="truncate">WhatsApp Settings</span>}
+                        </button>
+                      </TooltipTrigger>
+                      {isSidebarCollapsed && <TooltipContent side="right">WhatsApp Settings</TooltipContent>}
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
 
-              <TooltipProvider delayDuration={0}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => { switchTab('whatsapp_linker'); setIsMobileMenuOpen(false); }}
-                      className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'whatsapp_linker' ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
-                        }`}
-                    >
-                      <div className={`flex items-center ${isSidebarCollapsed ? '' : 'gap-3'}`}>
-                        <WhatsAppIcon size={18} className={activeTab === 'whatsapp_linker' ? 'text-primary' : ''} />
-                        {!isSidebarCollapsed && <span className="truncate">WhatsApp Linker</span>}
-                      </div>
-                      {!isSidebarCollapsed && <div className={`w-1.5 h-1.5 rounded-full ${waStatus === 'connected' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : waStatus === 'qr-ready' ? 'bg-amber-500' : 'bg-red-500'}`}></div>}
-                    </button>
-                  </TooltipTrigger>
-                  {isSidebarCollapsed && <TooltipContent side="right">WhatsApp Linker</TooltipContent>}
-                </Tooltip>
-              </TooltipProvider>
+                {canAccessTab('whatsapp_linker', sidebarUser) && (
+                  <TooltipProvider delayDuration={0}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => { switchTab('whatsapp_linker'); setIsMobileMenuOpen(false); }}
+                          className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'whatsapp_linker' ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
+                            }`}
+                        >
+                          <div className={`flex items-center ${isSidebarCollapsed ? '' : 'gap-3'}`}>
+                            <WhatsAppIcon size={18} className={activeTab === 'whatsapp_linker' ? 'text-primary' : ''} />
+                            {!isSidebarCollapsed && <span className="truncate">WhatsApp Linker</span>}
+                          </div>
+                          {!isSidebarCollapsed && <div className={`w-1.5 h-1.5 rounded-full ${waStatus === 'connected' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : waStatus === 'qr-ready' ? 'bg-amber-500' : 'bg-red-500'}`}></div>}
+                        </button>
+                      </TooltipTrigger>
+                      {isSidebarCollapsed && <TooltipContent side="right">WhatsApp Linker</TooltipContent>}
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-
-          <div>
-            {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">System</div>}
-            <div className="space-y-1">
-              {getSidebarVisibleTabs([
-                { id: 'logs', icon: HistoryIcon, label: 'System Logs' },
-                { id: 'archive', icon: ArchiveIcon, label: 'Archive' },
-                ...(sidebarUser?.role === 'admin' ? [{ id: 'team_management', icon: UsersIcon, label: 'Team Management' }] : []),
-              ]).map(item => (
-                <TooltipProvider key={item.id} delayDuration={0}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => { switchTab(item.id); setIsMobileMenuOpen(false); }}
-                        className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
-                          }`}
-                      >
-                        <item.icon size={18} className={activeTab === item.id ? 'text-primary' : ''} />
-                        {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
-                      </button>
-                    </TooltipTrigger>
-                    {isSidebarCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
-                  </Tooltip>
-                </TooltipProvider>
-              ))}
-            </div>
-          </div>
+          {renderSidebarSection('System', [
+            { id: 'logs', icon: HistoryIcon, label: 'System Logs' },
+            { id: 'archive', icon: ArchiveIcon, label: 'Archive' },
+            ...(sidebarUser?.role === 'admin' ? [{ id: 'team_management', icon: UsersIcon, label: 'Team Management' }] : []),
+          ])}
         </div>
 
         {/* Sidebar Footer */}
@@ -3533,7 +3876,7 @@ function App() {
               <span className="text-muted-foreground/40 text-sm font-medium">Pages</span>
               <ChevronLeft size={14} className="rotate-180 text-muted-foreground/40" />
               <h1 className="text-sm font-semibold tracking-tight text-foreground">
-                {PAGE_TITLES[activeTab] || 'Workspace'}
+                {activeTab === 'saved_leads' && currentUser?.role !== 'admin' ? 'Tasks' : (PAGE_TITLES[activeTab] || 'Workspace')}
               </h1>
             </div>
           </div>
@@ -3628,7 +3971,7 @@ function App() {
                 {[
                   {
                     label: 'Total CRM Leads',
-                    value: savedLeads.length,
+                    value: crmTotalStats.totalCount,
                     sub: 'Total CRM leads scraped',
                     icon: Database,
                     color: 'text-primary',
@@ -3637,7 +3980,7 @@ function App() {
                   },
                   {
                     label: 'Email Campaigns',
-                    value: savedLeads.filter(l => l.email && l.emailFound).length,
+                    value: crmTotalStats.totalWithEmail,
                     sub: 'Emails found in CRM',
                     icon: Mail,
                     color: 'text-indigo-500',
@@ -3646,7 +3989,7 @@ function App() {
                   },
                   {
                     label: 'WhatsApp Leads',
-                    value: savedLeads.filter(l => l.phone && l.phone !== 'N/A').length,
+                    value: crmTotalStats.totalWithPhone,
                     sub: 'Valid WA numbers in CRM',
                     icon: MessageSquare,
                     color: 'text-emerald-500',
@@ -4318,6 +4661,270 @@ function App() {
               </Card>
             </div>
           )}
+
+          {activeTab === 'tasks' && (
+            <div className="max-w-6xl mx-auto space-y-6 animate-fade-in pb-10">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Task Center</h2>
+                  <p className="text-muted-foreground text-sm font-medium">
+                    {currentUser?.role === 'admin' ? 'Assign and manage tasks for your team members.' : 'View and update your assigned tasks.'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" className="rounded-xl" onClick={fetchTasks} disabled={tasksLoading}>
+                    <RefreshCw size={16} className={tasksLoading ? 'animate-spin' : ''} />
+                  </Button>
+                  {currentUser?.role === 'admin' && (
+                    <Button className="rounded-xl gap-2 bg-primary hover:bg-primary/90" onClick={() => { setTaskEditTarget(null); setTaskForm({ title: '', description: '', assignedTo: '', priority: 'medium', dueDate: '' }); setTaskDialogOpen(true); }}>
+                      <Plus size={16} /> Assign Task
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Stats Row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[
+                  { label: 'Total', count: tasks.length, color: 'text-blue-400', bg: 'bg-blue-500/10', icon: ClipboardList },
+                  { label: 'Pending', count: tasks.filter(t => t.status === 'pending').length, color: 'text-amber-400', bg: 'bg-amber-500/10', icon: Clock },
+                  { label: 'In Progress', count: tasks.filter(t => t.status === 'in_progress').length, color: 'text-sky-400', bg: 'bg-sky-500/10', icon: Zap },
+                  { label: 'Completed', count: tasks.filter(t => t.status === 'completed').length, color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: CheckCircle },
+                ].map((stat) => (
+                  <Card key={stat.label} className="border-border/40 bg-card/40 backdrop-blur-md rounded-2xl">
+                    <CardContent className="p-4 flex items-center gap-3">
+                      <div className={`w-10 h-10 ${stat.bg} rounded-xl flex items-center justify-center`}>
+                        <stat.icon size={18} className={stat.color} />
+                      </div>
+                      <div>
+                        <p className="text-xl font-extrabold text-foreground">{stat.count}</p>
+                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input placeholder="Search tasks..." value={taskSearch} onChange={e => setTaskSearch(e.target.value)} className="pl-9 rounded-xl bg-card/60 border-border/40" />
+                </div>
+                <div className="flex gap-2">
+                  {['all', 'pending', 'in_progress', 'completed'].map(f => (
+                    <Button key={f} variant={taskFilter === f ? 'default' : 'outline'} className="rounded-xl text-xs capitalize" onClick={() => setTaskFilter(f)}>
+                      {f === 'all' ? 'All' : f === 'in_progress' ? 'In Progress' : f.charAt(0).toUpperCase() + f.slice(1)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Task List */}
+              <div className="space-y-3">
+                {tasksLoading ? (
+                  <Card className="border-border/40 bg-card/40 backdrop-blur-md rounded-2xl">
+                    <CardContent className="p-12 text-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
+                      <p className="text-muted-foreground text-sm">Loading tasks...</p>
+                    </CardContent>
+                  </Card>
+                ) : tasks
+                    .filter(t => taskFilter === 'all' || t.status === taskFilter)
+                    .filter(t => !taskSearch || t.title.toLowerCase().includes(taskSearch.toLowerCase()) || (t.assignedTo?.fullName || '').toLowerCase().includes(taskSearch.toLowerCase()))
+                    .length === 0 ? (
+                  <Card className="border-border/40 bg-card/40 backdrop-blur-md rounded-2xl">
+                    <CardContent className="p-12 text-center flex flex-col items-center">
+                      <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 mb-4">
+                        <ClipboardList className="w-7 h-7 text-primary" />
+                      </div>
+                      <h3 className="text-base font-bold text-foreground mb-1">No Tasks Found</h3>
+                      <p className="text-muted-foreground text-sm">
+                        {currentUser?.role === 'admin' ? 'Click "Assign Task" to create a new task for your team.' : 'No tasks assigned to you yet.'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : tasks
+                    .filter(t => taskFilter === 'all' || t.status === taskFilter)
+                    .filter(t => !taskSearch || t.title.toLowerCase().includes(taskSearch.toLowerCase()) || (t.assignedTo?.fullName || '').toLowerCase().includes(taskSearch.toLowerCase()))
+                    .map(task => (
+                  <Card key={task._id} className={`border-border/40 bg-card/40 backdrop-blur-md rounded-2xl transition-all hover:shadow-lg hover:border-primary/20 ${task.status === 'completed' ? 'opacity-70' : ''}`}>
+                    <CardContent className="p-5">
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                        {/* Left: Status indicator + Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start gap-3">
+                            <button
+                              onClick={() => {
+                                const nextStatus = task.status === 'pending' ? 'in_progress' : task.status === 'in_progress' ? 'completed' : 'pending';
+                                handleUpdateTask(task._id, { status: nextStatus });
+                              }}
+                              className={`mt-0.5 flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                task.status === 'completed' ? 'bg-emerald-500 border-emerald-500 text-white' :
+                                task.status === 'in_progress' ? 'border-sky-400 bg-sky-500/20' :
+                                'border-muted-foreground/40 hover:border-primary'
+                              }`}
+                            >
+                              {task.status === 'completed' && <Check size={14} />}
+                              {task.status === 'in_progress' && <div className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <h3 className={`font-bold text-foreground ${task.status === 'completed' ? 'line-through opacity-60' : ''}`}>{task.title}</h3>
+                              {task.description && <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{task.description}</p>}
+                              <div className="flex flex-wrap items-center gap-2 mt-3">
+                                {/* Assigned To */}
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-muted/30 rounded-lg">
+                                  <Avatar className="w-5 h-5">
+                                    <AvatarFallback className="text-[9px] font-bold bg-primary/20 text-primary">
+                                      {(task.assignedTo?.fullName || '?').charAt(0).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-xs font-semibold text-foreground">{task.assignedTo?.fullName || 'Unknown'}</span>
+                                </div>
+                                {/* Priority */}
+                                <Badge variant="outline" className={`text-[10px] font-bold uppercase tracking-wider ${
+                                  task.priority === 'urgent' ? 'border-red-500/40 text-red-400 bg-red-500/10' :
+                                  task.priority === 'high' ? 'border-orange-500/40 text-orange-400 bg-orange-500/10' :
+                                  task.priority === 'medium' ? 'border-blue-500/40 text-blue-400 bg-blue-500/10' :
+                                  'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
+                                }`}>
+                                  {task.priority}
+                                </Badge>
+                                {/* Status */}
+                                <Badge variant="outline" className={`text-[10px] font-bold uppercase tracking-wider ${
+                                  task.status === 'completed' ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' :
+                                  task.status === 'in_progress' ? 'border-sky-500/40 text-sky-400 bg-sky-500/10' :
+                                  'border-amber-500/40 text-amber-400 bg-amber-500/10'
+                                }`}>
+                                  {task.status === 'in_progress' ? 'In Progress' : task.status}
+                                </Badge>
+                                {/* Due Date */}
+                                {task.dueDate && (
+                                  <div className={`flex items-center gap-1 text-xs font-medium ${
+                                    new Date(task.dueDate) < new Date() && task.status !== 'completed' ? 'text-red-400' : 'text-muted-foreground'
+                                  }`}>
+                                    <Calendar size={12} />
+                                    {new Date(task.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Right: Actions */}
+                        {currentUser?.role === 'admin' && (
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <Button variant="ghost" size="sm" className="rounded-lg h-8 w-8 p-0 hover:bg-primary/10" onClick={() => {
+                              setTaskEditTarget(task);
+                              setTaskForm({
+                                title: task.title,
+                                description: task.description || '',
+                                assignedTo: task.assignedTo?._id || '',
+                                priority: task.priority,
+                                dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ''
+                              });
+                              setTaskDialogOpen(true);
+                            }}>
+                              <Edit size={14} />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="rounded-lg h-8 w-8 p-0 hover:bg-red-500/10 text-red-400" onClick={() => handleDeleteTask(task._id)}>
+                              <Trash2 size={14} />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Create/Edit Task Dialog */}
+              <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
+                <DialogContent className="sm:max-w-lg bg-card border-border/40 rounded-2xl">
+                  <DialogHeader>
+                    <DialogTitle className="text-lg font-extrabold">{taskEditTarget ? 'Edit Task' : 'Assign New Task'}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 pt-2">
+                    <div>
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Task Title *</Label>
+                      <Input placeholder="e.g. Complete client proposal" value={taskForm.title} onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))} className="rounded-xl bg-muted/30 border-border/40" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Description</Label>
+                      <Textarea placeholder="Task details..." value={taskForm.description} onChange={e => setTaskForm(f => ({ ...f, description: e.target.value }))} className="rounded-xl bg-muted/30 border-border/40 min-h-[80px]" />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Assign To *</Label>
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto rounded-xl border border-border/40 bg-muted/20 p-2">
+                        {teamMembers.filter(m => m.role !== 'admin').length === 0 ? (
+                          <p className="text-muted-foreground text-sm text-center py-4">No team members found. Add members first.</p>
+                        ) : teamMembers.filter(m => m.role !== 'admin').map(member => (
+                          <button
+                            key={member._id}
+                            type="button"
+                            onClick={() => setTaskForm(f => ({ ...f, assignedTo: member._id }))}
+                            className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all text-left ${
+                              taskForm.assignedTo === member._id
+                                ? 'bg-primary/15 border border-primary/30 shadow-sm'
+                                : 'hover:bg-muted/40 border border-transparent'
+                            }`}
+                          >
+                            <Avatar className="w-8 h-8">
+                              <AvatarFallback className="text-xs font-bold bg-primary/20 text-primary">
+                                {member.fullName?.charAt(0)?.toUpperCase() || '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-foreground truncate">{member.fullName}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{member.position || member.loginId}</p>
+                            </div>
+                            {taskForm.assignedTo === member._id && (
+                              <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                                <Check size={12} className="text-white" />
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Priority</Label>
+                        <Select value={taskForm.priority} onValueChange={v => setTaskForm(f => ({ ...f, priority: v }))}>
+                          <SelectTrigger className="rounded-xl bg-muted/30 border-border/40">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">🟢 Low</SelectItem>
+                            <SelectItem value="medium">🔵 Medium</SelectItem>
+                            <SelectItem value="high">🟠 High</SelectItem>
+                            <SelectItem value="urgent">🔴 Urgent</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Due Date</Label>
+                        <Input type="date" value={taskForm.dueDate} onChange={e => setTaskForm(f => ({ ...f, dueDate: e.target.value }))} className="rounded-xl bg-muted/30 border-border/40" />
+                      </div>
+                    </div>
+                    <Button className="w-full rounded-xl gap-2 h-11 font-bold" onClick={() => {
+                      if (taskEditTarget) {
+                        handleUpdateTask(taskEditTarget._id, taskForm);
+                        setTaskDialogOpen(false);
+                        setTaskEditTarget(null);
+                      } else {
+                        handleCreateTask();
+                      }
+                    }} disabled={taskSaving}>
+                      {taskSaving ? <Loader2 size={16} className="animate-spin" /> : taskEditTarget ? <><Edit size={16} /> Update Task</> : <><Plus size={16} /> Assign Task</>}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
+
 
           {activeTab === 'campaign' && (
             <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
@@ -6507,6 +7114,145 @@ function App() {
           })()}
 
 
+          {activeTab === 'calling_scripts' && (
+            <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
+              <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
+                <CardHeader className="pb-4 border-b border-border/50">
+                  <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <PhoneCall size={20} className="text-primary" /> Calling Scripts
+                      </CardTitle>
+                      <CardDescription>Apni team ke liye ready-made call scripts — copy karein aur baat shuru karein!</CardDescription>
+                    </div>
+                    <div className="relative w-full md:w-72">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="text"
+                        placeholder="Search scripts..."
+                        value={scriptQuery}
+                        onChange={e => setScriptQuery(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 md:p-6">
+                  {/* Category Filter Chips */}
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {SCRIPT_CATEGORIES.map(cat => (
+                      <button
+                        key={cat.id}
+                        onClick={() => setActiveScriptCat(cat.id)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 border ${
+                          activeScriptCat === cat.id
+                            ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-105'
+                            : 'bg-muted/30 text-muted-foreground border-border hover:bg-muted/60 hover:text-foreground'
+                        }`}
+                      >
+                        {cat.emoji} {cat.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Script Cards */}
+                  <div className="space-y-6">
+                    {CALLING_SCRIPTS
+                      .filter(s => activeScriptCat === 'all' || s.category === activeScriptCat)
+                      .filter(s => {
+                        if (!scriptQuery.trim()) return true;
+                        const q = scriptQuery.toLowerCase();
+                        return s.title.toLowerCase().includes(q) || s.subtitle.toLowerCase().includes(q) || s.steps.some(st => st.dialogue.toLowerCase().includes(q));
+                      })
+                      .map(script => (
+                        <div key={script.id} className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                          {/* Script Header */}
+                          <div className="px-5 py-4 border-b border-border/40 bg-muted/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                              <h3 className="text-base font-bold text-foreground">{script.title}</h3>
+                              <p className="text-xs text-muted-foreground mt-0.5">{script.subtitle}</p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                const fullScript = script.steps.map((s, i) => `--- Step ${i + 1}: ${s.label} ---\n${s.dialogue}\n💡 Tip: ${s.tip}`).join('\n\n');
+                                navigator.clipboard.writeText(fullScript);
+                                showToast('Full script copied! 📋', 'success');
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold border border-primary/20 hover:bg-primary/20 transition-colors shrink-0"
+                            >
+                              <Copy size={12} /> Copy Full Script
+                            </button>
+                          </div>
+
+                          {/* Steps Timeline */}
+                          <div className="p-5 space-y-0">
+                            {script.steps.map((step, idx) => (
+                              <div key={idx} className="flex gap-4">
+                                {/* Timeline Line */}
+                                <div className="flex flex-col items-center">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 shrink-0 ${
+                                    idx === 0 ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600' :
+                                    idx === script.steps.length - 1 ? 'bg-primary/10 border-primary/40 text-primary' :
+                                    'bg-amber-500/10 border-amber-500/40 text-amber-600'
+                                  }`}>
+                                    {idx + 1}
+                                  </div>
+                                  {idx < script.steps.length - 1 && (
+                                    <div className="w-0.5 flex-1 min-h-[24px] bg-border/50"></div>
+                                  )}
+                                </div>
+
+                                {/* Step Content */}
+                                <div className={`flex-1 pb-6 ${idx === script.steps.length - 1 ? 'pb-0' : ''}`}>
+                                  <div className="flex items-center justify-between gap-2 mb-2">
+                                    <span className="text-sm font-bold text-foreground">{step.label}</span>
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(step.dialogue);
+                                        showToast('Step copied! 📋', 'success');
+                                      }}
+                                      className="text-muted-foreground hover:text-primary transition-colors p-1 rounded"
+                                      title="Copy this step"
+                                    >
+                                      <Copy size={12} />
+                                    </button>
+                                  </div>
+                                  <div className="text-sm text-foreground/80 leading-relaxed bg-muted/20 rounded-xl p-4 border border-border/30 italic">
+                                    "{step.dialogue}"
+                                  </div>
+                                  <div className="mt-2 flex items-start gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                                    <Zap size={12} className="mt-0.5 shrink-0" />
+                                    <span>💡 {step.tip}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    }
+
+                    {/* Empty State */}
+                    {CALLING_SCRIPTS
+                      .filter(s => activeScriptCat === 'all' || s.category === activeScriptCat)
+                      .filter(s => {
+                        if (!scriptQuery.trim()) return true;
+                        const q = scriptQuery.toLowerCase();
+                        return s.title.toLowerCase().includes(q) || s.subtitle.toLowerCase().includes(q) || s.steps.some(st => st.dialogue.toLowerCase().includes(q));
+                      }).length === 0 && (
+                      <div className="text-center py-16">
+                        <PhoneCall size={40} className="mx-auto text-muted-foreground/30 mb-4" />
+                        <p className="text-muted-foreground font-medium">Koi script nahi mila</p>
+                        <p className="text-muted-foreground/60 text-sm mt-1">Search ya category change karke try karein</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+
           {activeTab === 'saved_leads' && (
             <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
               <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
@@ -6514,41 +7260,59 @@ function App() {
                   <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                     <div>
                       <CardTitle className="flex items-center gap-2">
-                        <Database size={20} className="text-primary" /> Lead Automation CRM
+                        {currentUser?.role === 'admin' ? (
+                          <>
+                            <Database size={20} className="text-primary" /> Lead Automation CRM
+                          </>
+                        ) : (
+                          <>
+                            <ClipboardList size={20} className="text-primary" /> Tasks
+                          </>
+                        )}
                       </CardTitle>
-                      <CardDescription>Centralized vault for all AI-scraped high-intent leads.</CardDescription>
+                      <CardDescription>
+                        {currentUser?.role === 'admin' 
+                          ? "Centralized vault for all AI-scraped high-intent leads." 
+                          : "List of folders assigned to you. Click on any folder to contact leads and update status."}
+                      </CardDescription>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => {
-                        setInlineEditLeadId('new');
-                        setInlineEditData({ name: '', phone: '', email: '', city: '', address: '', keyword: 'Manual' });
-                      }}>
-                        <Plus size={14} className="mr-2" /> Add Lead
-                      </Button>
-                      <Button variant="secondary" size="sm" onClick={() => setIsMapScreenshotDialogOpen(true)}>
-                        <UploadCloud size={14} className="mr-2" /> Upload Screenshot
-                      </Button>
+                      {currentUser?.role === 'admin' && (
+                        <>
+                          <Button variant="outline" size="sm" onClick={() => {
+                            setInlineEditLeadId('new');
+                            setInlineEditData({ name: '', phone: '', email: '', city: '', address: '', keyword: 'Manual' });
+                          }}>
+                            <Plus size={14} className="mr-2" /> Add Lead
+                          </Button>
+                          <Button variant="secondary" size="sm" onClick={() => setIsMapScreenshotDialogOpen(true)}>
+                            <UploadCloud size={14} className="mr-2" /> Upload Screenshot
+                          </Button>
+                        </>
+                      )}
                       <Button variant="outline" size="sm" onClick={fetchSavedLeads}>
-                        <RefreshCw size={14} className="mr-2" /> Refresh CRM
+                        <RefreshCw size={14} className="mr-2" /> Refresh
                       </Button>
-                      <Button variant="destructive" size="sm" onClick={() => {
-                        setConfirmModal({
-                          open: true,
-                          title: "Delete all leads without phone numbers?",
-                          onConfirm: async () => {
-                            try {
-                              const res = await axios.post('/api/saved-leads/bulk-delete-no-number');
-                              showToast(res.data.message || "Leads without numbers deleted!", "success");
-                              fetchSavedLeads();
-                              fetchStats();
-                            } catch (e) {
-                              showToast("Failed to delete leads", "error");
+                      {currentUser?.role === 'admin' && (
+                        <Button variant="destructive" size="sm" onClick={() => {
+                          setConfirmModal({
+                            open: true,
+                            title: "Delete all leads without phone numbers?",
+                            onConfirm: async () => {
+                              try {
+                                const res = await axios.post('/api/saved-leads/bulk-delete-no-number');
+                                showToast(res.data.message || "Leads without numbers deleted!", "success");
+                                fetchSavedLeads();
+                                fetchStats();
+                              } catch (e) {
+                                showToast("Failed to delete leads", "error");
+                              }
                             }
-                          }
-                        });
-                      }}>
-                        <X size={14} className="mr-2" /> Delete No Number
-                      </Button>
+                          });
+                        }}>
+                          <X size={14} className="mr-2" /> Delete No Number
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
@@ -6692,50 +7456,86 @@ function App() {
                         return acc;
                       }, {})).map(([groupName, leads]) => {
                         const sample = leads[0] || {};
+                        const assignedMembers = Array.from(new Set(leads.map(l => l.assignedTo?._id).filter(Boolean)));
+                        let assignmentText = 'Unassigned';
+                        let assignmentColor = 'text-muted-foreground bg-muted/20 border-border/50';
+                        if (assignedMembers.length === 1) {
+                          const assignedUser = leads.find(l => l.assignedTo?._id === assignedMembers[0])?.assignedTo;
+                          assignmentText = assignedUser?.fullName || assignedUser?.loginId || 'Assigned';
+                          assignmentColor = 'text-purple-400 bg-purple-500/10 border-purple-500/20';
+                        } else if (assignedMembers.length > 1) {
+                          assignmentText = 'Multiple Members';
+                          assignmentColor = 'text-blue-400 bg-blue-500/10 border-blue-500/20';
+                        }
+
                         return (
-                          <div key={groupName} className="group relative bg-card rounded-2xl border border-border shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-300 cursor-pointer overflow-hidden animate-in zoom-in duration-300" onClick={() => setSelectedGroup(groupName)}>
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/60 to-indigo-500/60 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                            <div key={groupName} className="group relative bg-card rounded-2xl border border-border shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-300 cursor-pointer overflow-hidden animate-in zoom-in duration-300" onClick={() => setSelectedGroup(groupName)}>
+                              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/60 to-indigo-500/60 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
 
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              className="absolute top-3 right-3 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm"
-                              onClick={(e) => { e.stopPropagation(); handleDeleteGroup(sample.keyword, sample.city); }}
-                              title="Delete Folder"
-                            >
-                              <X size={14} />
-                            </Button>
+                              {currentUser?.role === 'admin' && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute top-3 left-3 h-7 w-7 rounded-full bg-card/80 border border-border/50 text-muted-foreground hover:text-foreground z-10 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAssignTarget({ keyword: sample.keyword, city: sample.city });
+                                    setSelectedAssigneeId(assignedMembers.length === 1 ? assignedMembers[0] : '');
+                                    setAssignDialogOpen(true);
+                                  }}
+                                  title="Assign Folder"
+                                >
+                                  <Users size={14} />
+                                </Button>
+                              )}
 
-                            <div className="p-6 flex flex-col items-center text-center">
-                              <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                <Folder size={24} />
-                              </div>
-                              <h4 className="font-bold text-foreground text-sm mb-2 line-clamp-2">{groupName}</h4>
+                              <Button
+                                variant="destructive"
+                                size="icon"
+                                className="absolute top-3 right-3 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteGroup(sample.keyword, sample.city); }}
+                                title="Delete Folder"
+                              >
+                                <X size={14} />
+                              </Button>
 
-                              <div className="flex flex-wrap justify-center gap-2 mb-4">
-                                <Badge className="bg-emerald-500/10 text-emerald-600 border-transparent text-[10px]">
-                                  {leads.length} Total
-                                </Badge>
-                                <Badge className="bg-blue-500/10 text-blue-600 border-transparent text-[10px]">
-                                  {leads.filter(l => getLeadWhatsappStatus(l) === 'sent').length} Sent
-                                </Badge>
-                                <Badge className="bg-rose-500/10 text-rose-600 border-transparent text-[10px]">
-                                  {leads.filter(l => getLeadWhatsappStatus(l) === 'failed').length} Failed
-                                </Badge>
-                                <Badge className="bg-amber-500/10 text-amber-600 border-transparent text-[10px]">
-                                  {leads.filter(l => getLeadWhatsappStatus(l) === 'pending').length} Pending
-                                </Badge>
-                              </div>
+                              <div className="p-6 flex flex-col items-center text-center">
+                                <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                  <Folder size={24} />
+                                </div>
+                                <h4 className="font-bold text-foreground text-sm mb-2 line-clamp-2">{groupName}</h4>
 
-                              <div className="w-full bg-muted/40 h-1.5 rounded-full overflow-hidden mt-auto">
-                                <div
-                                  className="h-full bg-emerald-500 transition-all duration-500"
-                                  style={{ width: `${(leads.filter(l => getLeadWhatsappStatus(l) === 'sent').length / leads.length) * 100}%` }}
-                                ></div>
+                                <div className="flex flex-wrap justify-center gap-2 mb-4">
+                                  <Badge className="bg-emerald-500/10 text-emerald-600 border-transparent text-[10px]">
+                                    {leads.length} Total
+                                  </Badge>
+                                  <Badge className="bg-blue-500/10 text-blue-600 border-transparent text-[10px]">
+                                    {leads.filter(l => getLeadWhatsappStatus(l) === 'sent').length} Sent
+                                  </Badge>
+                                  <Badge className="bg-rose-500/10 text-rose-600 border-transparent text-[10px]">
+                                    {leads.filter(l => getLeadWhatsappStatus(l) === 'failed').length} Failed
+                                  </Badge>
+                                  <Badge className="bg-amber-500/10 text-amber-600 border-transparent text-[10px]">
+                                    {leads.filter(l => getLeadWhatsappStatus(l) === 'pending').length} Pending
+                                  </Badge>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 mb-4 justify-center">
+                                  <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Assigned:</span>
+                                  <Badge variant="outline" className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${assignmentColor}`}>
+                                    {assignmentText}
+                                  </Badge>
+                                </div>
+
+                                <div className="w-full bg-muted/40 h-1.5 rounded-full overflow-hidden mt-auto">
+                                  <div
+                                    className="h-full bg-emerald-500 transition-all duration-500"
+                                    style={{ width: `${(leads.filter(l => getLeadWhatsappStatus(l) === 'sent').length / leads.length) * 100}%` }}
+                                  ></div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
+                          );
                       })}
                     </div>
                   ) : (
@@ -6873,6 +7673,18 @@ function App() {
                                   >
                                     {isEnricherSending ? <><Loader2 size={16} className="animate-spin mr-2" /> Starting...</> : <><Rocket size={16} className="mr-2" /> Start Automation</>}
                                   </Button>
+                                  {currentUser?.role === 'admin' && (
+                                    <Button
+                                      className="bg-purple-600 hover:bg-purple-700 text-white font-bold"
+                                      onClick={() => {
+                                        const selectedInGroup = selectedIds.filter(id => groupLeads.some(l => l._id === id));
+                                        setAssignTarget({ leadIds: selectedInGroup });
+                                        setAssignDialogOpen(true);
+                                      }}
+                                    >
+                                      <Users size={14} className="mr-2" /> Assign Selection
+                                    </Button>
+                                  )}
                                   <Button variant="ghost" className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10" onClick={() => setSelectedIds([])}>
                                     Cancel
                                   </Button>
@@ -6927,9 +7739,16 @@ function App() {
                                         ) : (
                                           <div className="flex flex-col gap-1">
                                             <span className="font-bold text-foreground text-sm">{lead.name}</span>
-                                            <Badge variant="outline" className="w-fit text-[10px] uppercase font-semibold text-primary border-primary/20 bg-primary/5 px-1.5 py-0 h-4">
-                                              {lead.keyword || 'Lead'}
-                                            </Badge>
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              <Badge variant="outline" className="w-fit text-[10px] uppercase font-semibold text-primary border-primary/20 bg-primary/5 px-1.5 py-0 h-4">
+                                                {lead.keyword || 'Lead'}
+                                              </Badge>
+                                              {lead.assignedTo && (
+                                                <Badge variant="outline" className="w-fit text-[10px] font-semibold text-purple-400 border-purple-500/20 bg-purple-500/5 px-1.5 py-0 h-4 gap-1">
+                                                  <Users size={8} /> {lead.assignedTo.fullName || lead.assignedTo.loginId}
+                                                </Badge>
+                                              )}
+                                            </div>
                                           </div>
                                         )}
                                       </td>
@@ -6999,7 +7818,7 @@ function App() {
                                               </Badge>
                                             );
                                           })()}
-                                          <Badge
+                                           <Badge
                                             variant="outline"
                                             className={`w-fit cursor-pointer transition-all ${lead.isContacted ? 'bg-blue-500/10 text-blue-600 border-blue-500/20 hover:bg-blue-500/20' : 'bg-slate-500/5 text-slate-400 border-slate-500/10 hover:bg-slate-500/10'}`}
                                             onClick={(e) => { e.stopPropagation(); toggleLeadContacted(lead._id, lead.isContacted); }}
@@ -7008,6 +7827,23 @@ function App() {
                                             {lead.isContacted ? <Check size={12} className="mr-1" /> : <Clock size={12} className="mr-1" />}
                                             {lead.isContacted ? 'Contacted' : 'Not Contacted'}
                                           </Badge>
+
+                                          <Select
+                                            value={lead.leadStatus || 'pending'}
+                                            onValueChange={(newStatus) => handleUpdateLeadStatus(lead._id, newStatus)}
+                                          >
+                                            <SelectTrigger className="w-[130px] h-7 text-xs rounded-lg border-border/40 bg-muted/20 text-foreground font-semibold">
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="pending">⏳ Pending</SelectItem>
+                                              <SelectItem value="contacted">📞 Contacted</SelectItem>
+                                              <SelectItem value="interested">🔥 Interested</SelectItem>
+                                              <SelectItem value="not_interested">❄️ Not Interested</SelectItem>
+                                              <SelectItem value="wrong_number">❌ Wrong Number</SelectItem>
+                                              <SelectItem value="callback">🔄 Call Back</SelectItem>
+                                            </SelectContent>
+                                          </Select>
                                           {lead.phone && lead.phone !== 'N/A' && (
                                             <Button
                                               variant="outline"
@@ -7227,6 +8063,92 @@ function App() {
           </Card>
         </div>
       )}
+
+      {/* Assign Leads Dialog */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-card border-border/40 rounded-2xl" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="text-lg font-extrabold flex items-center gap-2">
+              <Users className="text-primary" size={20} /> Assign Leads to Team
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                {assignTarget?.keyword ? (
+                  <>Assign all leads for <strong>{assignTarget.keyword} in {assignTarget.city}</strong> to a team member.</>
+                ) : (
+                  <>Assign the <strong>{assignTarget?.leadIds?.length || 0} selected leads</strong> to a team member.</>
+                )}
+              </p>
+            </div>
+            <div>
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Select Team Member</Label>
+              <div className="space-y-2 max-h-[220px] overflow-y-auto rounded-xl border border-border/40 bg-muted/20 p-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedAssigneeId('')}
+                  className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all text-left ${
+                    selectedAssigneeId === ''
+                      ? 'bg-primary/15 border border-primary/30 shadow-sm'
+                      : 'hover:bg-muted/40 border border-transparent'
+                  }`}
+                >
+                  <Avatar className="w-8 h-8">
+                    <AvatarFallback className="text-xs font-bold bg-muted/30 text-muted-foreground">
+                      🚫
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-foreground truncate">Unassign / None</p>
+                    <p className="text-[11px] text-muted-foreground truncate">Remove assignment from these leads</p>
+                  </div>
+                  {selectedAssigneeId === '' && (
+                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                      <Check size={12} className="text-white" />
+                    </div>
+                  )}
+                </button>
+
+                {teamMembers.filter(m => m.role !== 'admin').map(member => (
+                  <button
+                    key={member._id}
+                    type="button"
+                    onClick={() => setSelectedAssigneeId(member._id)}
+                    className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all text-left ${
+                      selectedAssigneeId === member._id
+                        ? 'bg-primary/15 border border-primary/30 shadow-sm'
+                        : 'hover:bg-muted/40 border border-transparent'
+                    }`}
+                  >
+                    <Avatar className="w-8 h-8">
+                      <AvatarFallback className="text-xs font-bold bg-primary/20 text-primary">
+                        {member.fullName?.charAt(0)?.toUpperCase() || '?'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground truncate">{member.fullName}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{member.position || member.loginId}</p>
+                    </div>
+                    {selectedAssigneeId === member._id && (
+                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                        <Check size={12} className="text-white" />
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Button
+              className="w-full rounded-xl gap-2 h-11 font-bold"
+              onClick={handleAssignLeads}
+              disabled={assignSaving}
+            >
+              {assignSaving ? <Loader2 size={16} className="animate-spin" /> : 'Confirm Assignment'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {confirmModal.open && (
         <div className="fixed inset-0 z-[110] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">

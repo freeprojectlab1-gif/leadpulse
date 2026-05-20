@@ -81,6 +81,8 @@ const scrapedLeadSchema = new mongoose.Schema({
   longitude: Number,
   source: String,
   radiusKm: Number,
+  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  leadStatus: { type: String, enum: ['pending', 'contacted', 'interested', 'not_interested', 'wrong_number', 'callback'], default: 'pending' },
   createdAt: { type: Date, default: Date.now }
 });
 const ScrapedLead = mongoose.models.ScrapedLead || mongoose.model('ScrapedLead', scrapedLeadSchema);
@@ -158,6 +160,20 @@ const userSchema = new mongoose.Schema({
 }, { collection: 'team_members' });
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 
+const taskSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String, default: '' },
+  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  status: { type: String, enum: ['pending', 'in_progress', 'completed'], default: 'pending' },
+  priority: { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
+  dueDate: { type: Date, default: null },
+  completedAt: { type: Date, default: null },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+const Task = mongoose.models.Task || mongoose.model('Task', taskSchema);
+
 const AUTH_SECRET = process.env.AUTH_SECRET || 'leadpulse-auth-secret';
 const AUTH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const MEMBER_ACCESS_KEYS = [
@@ -177,7 +193,8 @@ const MEMBER_ACCESS_KEYS = [
   'whatsapp_inbox',
   'template',
   'custom_templates',
-  'variables'
+  'variables',
+  'tasks'
 ];
 const REQUIRED_MEMBER_ACCESS = new Set(['dashboard']);
 const MEMBER_DEFAULT_ACCESS = MEMBER_ACCESS_KEYS.reduce((acc, key) => {
@@ -3326,10 +3343,41 @@ app.get('/api/scrape-leads', async (req, res) => {
 // --- SAVED LEADS API ---
 app.get('/api/saved-leads', async (req, res) => {
   try {
-    const leads = await ScrapedLead.find().sort({ createdAt: -1 });
-    res.json(leads);
+    const filter = req.user.role === 'admin' ? {} : { assignedTo: req.user._id };
+    const leads = await ScrapedLead.find(filter).populate('assignedTo', 'fullName loginId position').sort({ createdAt: -1 });
+    const totalCount = await ScrapedLead.countDocuments();
+    const totalWithPhone = await ScrapedLead.countDocuments({ phone: { $exists: true, $ne: null, $ne: 'N/A' } });
+    const totalWithEmail = await ScrapedLead.countDocuments({ email: { $exists: true, $ne: null }, emailFound: true });
+    res.json({ leads, totalCount, totalWithPhone, totalWithEmail });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+app.post('/api/saved-leads/assign', requireAdmin, async (req, res) => {
+  try {
+    const { keyword, city, leadIds, assignedTo } = req.body;
+    const targetUserId = assignedTo || null;
+
+    if (targetUserId) {
+      const userExists = await User.findById(targetUserId);
+      if (!userExists) return res.status(404).json({ error: 'Team member not found' });
+    }
+
+    let query = {};
+    if (leadIds && Array.isArray(leadIds) && leadIds.length > 0) {
+      query = { _id: { $in: leadIds } };
+    } else if (keyword && city) {
+      query = { keyword: new RegExp('^' + keyword.trim() + '$', 'i'), city: new RegExp('^' + city.trim() + '$', 'i') };
+    } else {
+      return res.status(400).json({ error: 'Either leadIds or (keyword and city) are required' });
+    }
+
+    const result = await ScrapedLead.updateMany(query, { assignedTo: targetUserId });
+    res.json({ success: true, message: `Successfully assigned leads!` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 
 app.delete('/api/saved-leads/group', async (req, res) => {
   try {
@@ -4387,6 +4435,98 @@ app.post('/api/whatsapp/restart', async (req, res) => {
     setTimeout(() => initWhatsapp(), 1000);
     res.json({ success: true, message: "WhatsApp restarting..." });
     console.log('[WhatsApp] Manual restart triggered.');
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Task Management API ---
+
+// GET /api/tasks - Admin gets all tasks, Member gets own tasks
+app.get('/api/tasks', async (req, res) => {
+  try {
+    const filter = req.user.role === 'admin' ? {} : { assignedTo: req.user._id };
+    const tasks = await Task.find(filter)
+      .populate('assignedTo', 'fullName loginId position phone')
+      .populate('assignedBy', 'fullName loginId')
+      .sort({ createdAt: -1 });
+    res.json(tasks);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/tasks - Admin creates a task
+app.post('/api/tasks', requireAdmin, async (req, res) => {
+  try {
+    const { title, description, assignedTo, priority, dueDate } = req.body;
+    if (!title || !assignedTo) return res.status(400).json({ error: 'Title and assignedTo are required' });
+
+    const member = await User.findById(assignedTo);
+    if (!member || !member.active) return res.status(404).json({ error: 'Team member not found or inactive' });
+
+    const task = await Task.create({
+      title,
+      description: description || '',
+      assignedTo,
+      assignedBy: req.user._id,
+      priority: priority || 'medium',
+      dueDate: dueDate || null
+    });
+
+    const populated = await Task.findById(task._id)
+      .populate('assignedTo', 'fullName loginId position phone')
+      .populate('assignedBy', 'fullName loginId');
+
+    res.status(201).json(populated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/tasks/:id - Update task (admin can edit all, member can update status only)
+app.patch('/api/tasks/:id', async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+
+    if (req.user.role !== 'admin' && String(task.assignedTo) !== String(req.user._id)) {
+      return res.status(403).json({ error: 'Not authorized to update this task' });
+    }
+
+    if (req.user.role === 'admin') {
+      if (req.body.title) task.title = req.body.title;
+      if (req.body.description !== undefined) task.description = req.body.description;
+      if (req.body.assignedTo) task.assignedTo = req.body.assignedTo;
+      if (req.body.priority) task.priority = req.body.priority;
+      if (req.body.dueDate !== undefined) task.dueDate = req.body.dueDate;
+    }
+
+    if (req.body.status) {
+      task.status = req.body.status;
+      if (req.body.status === 'completed') task.completedAt = new Date();
+      else task.completedAt = null;
+    }
+
+    task.updatedAt = new Date();
+    await task.save();
+
+    const populated = await Task.findById(task._id)
+      .populate('assignedTo', 'fullName loginId position phone')
+      .populate('assignedBy', 'fullName loginId');
+
+    res.json(populated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/tasks/:id - Admin only
+app.delete('/api/tasks/:id', requireAdmin, async (req, res) => {
+  try {
+    const task = await Task.findByIdAndDelete(req.params.id);
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    res.json({ success: true, message: 'Task deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
