@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import LandingPage from './LandingPage';
-import CricketFun from './components/CricketFun';
 import { Button, Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Textarea, Label, Badge, Separator, Progress, Switch, Tabs, TabsList, TabsTrigger, TabsContent, Dialog, DialogContent, DialogHeader, DialogTitle, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, Select, SelectTrigger, SelectValue, SelectContent, SelectItem, Avatar, AvatarFallback, AvatarImage, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, Checkbox } from '@/components/ui';
-import { useToast } from "@/hooks/use-toast";
-import { Toaster } from "@/components/ui/toaster";
 import {
   MapPin,
   Facebook,
@@ -57,7 +54,6 @@ import {
   Camera,
   Database,
   RefreshCw,
-  RefreshCcw,
   ChevronLeft,
   AlertCircle,
   PenTool,
@@ -65,18 +61,13 @@ import {
   Sun,
   Moon,
   Upload,
-  CloudUpload,
   MessageCircle,
   Smartphone,
   Activity,
   Hash,
   Brackets,
   Zap,
-  MousePointer2,
-  Trash2,
-  UserPlus,
-  Edit2,
-  Trophy
+  MousePointer2
 } from 'lucide-react';
 
 // --- ICONS (SVG) ---
@@ -107,15 +98,15 @@ const BusinessIcon = ({ size = 20, ...props }) => <Building2 size={size} {...pro
 const ContactIcon = ({ size = 20, ...props }) => <User size={size} {...props} />;
 const LocationIcon = ({ size = 20, ...props }) => <MapPin size={size} {...props} />;
 const WhatsAppIcon = ({ size = 18, ...props }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="currentColor" 
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
     {...props}
   >
-    <path d="M19.05 4.91A9.816 9.816 0 0 0 12.04 2c-5.46 0-9.91 4.45-9.91 9.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21c5.46 0 9.91-4.45 9.91-9.91c0-2.65-1.03-5.14-2.9-7.01m-7.01 15.24c-1.48 0-2.93-.4-4.2-1.15l-.3-.18l-3.12.82l.83-3.04l-.2-.31a8.264 8.264 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24c2.2 0 4.27.86 5.82 2.42a8.183 8.183 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.22 8.23m4.52-6.16c-.25-.12-1.47-.72-1.69-.81c-.23-.08-.39-.12-.56.12c-.17.25-.64.81-.78.97c-.14.17-.29.19-.54.06c-.25-.12-1.05-.39-1.99-1.23c-.74-.66-1.23-1.47-1.38-1.72c-.14-.25-.02-.38.11-.51c.11-.11.25-.29.37-.43s.17-.25.25-.41c.08-.17.04-.31-.02-.43s-.56-1.34-.76-1.84c-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31c-.22.25-.85.83-.85 2.02c0 1.19.87 2.33.99 2.49c.12.17 1.71 2.62 4.14 3.67c.58.25 1.02.4 1.38.51c.58.18 1.11.16 1.53.1c.46-.07 1.47-.6 1.67-1.17c.21-.58.21-1.07.14-1.17s-.22-.15-.47-.27"/>
+    <path d="M19.05 4.91A9.816 9.816 0 0 0 12.04 2c-5.46 0-9.91 4.45-9.91 9.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21c5.46 0 9.91-4.45 9.91-9.91c0-2.65-1.03-5.14-2.9-7.01m-7.01 15.24c-1.48 0-2.93-.4-4.2-1.15l-.3-.18l-3.12.82l.83-3.04l-.2-.31a8.264 8.264 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24c2.2 0 4.27.86 5.82 2.42a8.183 8.183 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.22 8.23m4.52-6.16c-.25-.12-1.47-.72-1.69-.81c-.23-.08-.39-.12-.56.12c-.17.25-.64.81-.78.97c-.14.17-.29.19-.54.06c-.25-.12-1.05-.39-1.99-1.23c-.74-.66-1.23-1.47-1.38-1.72c-.14-.25-.02-.38.11-.51c.11-.11.25-.29.37-.43s.17-.25.25-.41c.08-.17.04-.31-.02-.43s-.56-1.34-.76-1.84c-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31c-.22.25-.85.83-.85 2.02c0 1.19.87 2.33.99 2.49c.12.17 1.71 2.62 4.14 3.67c.58.25 1.02.4 1.38.51c.58.18 1.11.16 1.53.1c.46-.07 1.47-.6 1.67-1.17c.21-.58.21-1.07.14-1.17s-.22-.15-.47-.27" />
   </svg>
 );
 
@@ -150,12 +141,103 @@ const PAGE_TITLES = {
   archive: 'Archive',
   profile: 'Profile',
   security: 'Security',
-  cricket_fun: 'Cricket Fun',
+  team_management: 'Team Management',
+  team_access: 'Access Control',
 };
 
-// Tab Visibility State managed by Settings
+const ACCESS_SECTIONS = [
+  {
+    label: 'Overview',
+    items: [
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, locked: true },
+      { id: 'campaign', label: 'New Campaign', icon: Rocket },
+      { id: 'logs', label: 'Delivery Logs', icon: Activity },
+    ],
+  },
+  {
+    label: 'Lead Generation',
+    items: [
+      { id: 'scraper', label: 'Lead Scraper', icon: Globe },
+      { id: 'map_finder', label: 'Map Finder', icon: MapPin },
+      { id: 'email_finder', label: 'Email Enricher', icon: Mail },
+      { id: 'mobile_finder', label: 'Mobile Enricher', icon: Smartphone },
+      { id: 'saved_leads', label: 'Automation CRM', icon: Database },
+    ],
+  },
+  {
+    label: 'Inbox & Templates',
+    items: [
+      { id: 'replied_leads', label: 'Email Replies', icon: Reply },
+      { id: 'whatsapp_inbox', label: 'WhatsApp Inbox', icon: WhatsAppIcon },
+      { id: 'template', label: 'Email Templates', icon: FileText },
+      { id: 'custom_templates', label: 'Custom Folders', icon: Folder },
+      { id: 'variables', label: 'Variable Manager', icon: Hash },
+    ],
+  },
+  {
+    label: 'Integrations',
+    items: [
+      { id: 'whatsapp_settings', label: 'WhatsApp Settings', icon: WhatsAppIcon },
+      { id: 'whatsapp_linker', label: 'WhatsApp Linker', icon: WhatsAppIcon },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { id: 'archive', label: 'Archive', icon: ArchiveIcon },
+    ],
+  },
+];
+const ACCESS_TABS = ACCESS_SECTIONS.flatMap(section => section.items);
+const ACCESS_TAB_IDS = ACCESS_TABS.map(item => item.id);
+const MEMBER_DEFAULT_ACCESS = ACCESS_TAB_IDS.reduce((acc, key) => {
+  acc[key] = key === 'dashboard';
+  return acc;
+}, {});
+const FULL_ACCESS = ACCESS_TAB_IDS.reduce((acc, key) => {
+  acc[key] = true;
+  return acc;
+}, {});
 
 const BACKEND_ORIGIN = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const AUTH_TOKEN_KEY = 'leadpulse_auth_token';
+const AUTH_USER_KEY = 'leadpulse_auth_user';
+
+const getStoredAuthUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem(AUTH_USER_KEY) || 'null');
+  } catch (e) {
+    return null;
+  }
+};
+
+const setAxiosAuthToken = (token) => {
+  if (token) {
+    axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+  } else {
+    delete axios.defaults.headers.common.Authorization;
+  }
+};
+
+const normalizeAccess = (access = {}, fallback = {}) => {
+  const raw = access && typeof access.toJSON === 'function' ? access.toJSON() : access;
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const output = {};
+  ACCESS_TAB_IDS.forEach((id) => {
+    if (source[id] !== undefined) {
+      output[id] = !!source[id];
+    } else if (fallback[id] !== undefined) {
+      output[id] = !!fallback[id];
+    }
+  });
+  return output;
+};
+
+const getResolvedAccess = (user) => {
+  if (!user) return {};
+  if (user.role === 'admin') return { ...FULL_ACCESS };
+  return normalizeAccess(user.access, MEMBER_DEFAULT_ACCESS);
+};
 
 const postApiWithFallback = async (url, data, config = {}) => {
   try {
@@ -227,11 +309,8 @@ const WhatsAppInboxTab = ({ waStatus, savedLeads = [], onRefreshSavedLeads }) =>
     setSending(true);
     setSendError('');
     try {
-      const res = await axios.post('/api/whatsapp/send', { phone, message: msgInput.trim() });
+      await axios.post('/api/whatsapp/send', { phone, message: msgInput.trim() });
       setMsgInput('');
-      if (res.data?.deliveryStatus === 'pending') {
-        setSendError('Message sent, but delivery is not confirmed yet.');
-      }
       setTimeout(fetchConversations, 1000);
     } catch (e) { setSendError('Failed to send: ' + (e.response?.data?.error || e.message)); }
     setSending(false);
@@ -913,9 +992,9 @@ const EmailChart = ({ recipients }) => {
   const now = new Date();
   const emailDates = [], waDates = [];
   recipients.forEach(r => {
-    if (r.history) r.history.forEach(h => { if (h.sentAt) { const d = new Date(h.sentAt); if (!isNaN(d)) emailDates.push(d); }});
+    if (r.history) r.history.forEach(h => { if (h.sentAt) { const d = new Date(h.sentAt); if (!isNaN(d)) emailDates.push(d); } });
     if (r.whatsappSentAt) { const d = new Date(r.whatsappSentAt); if (!isNaN(d)) waDates.push(d); }
-    if (r.replies) r.replies.forEach(rep => { if (rep.type === 'whatsapp' && rep.fromMe && rep.receivedAt) { const d = new Date(rep.receivedAt); if (!isNaN(d)) waDates.push(d); }});
+    if (r.replies) r.replies.forEach(rep => { if (rep.type === 'whatsapp' && rep.fromMe && rep.receivedAt) { const d = new Date(rep.receivedAt); if (!isNaN(d)) waDates.push(d); } });
   });
 
   const buildPoints = (dates) => {
@@ -1090,8 +1169,8 @@ const EmailChart = ({ recipients }) => {
                 <stop offset="100%" stopColor="#4278f4" stopOpacity="0.01" />
               </linearGradient>
               <filter id="glow">
-                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+                <feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
             </defs>
             {/* Grid */}
@@ -1126,7 +1205,7 @@ const EmailChart = ({ recipients }) => {
         <div className="flex flex-col sm:flex-row items-center gap-8 p-6 rounded-2xl border border-border/40 bg-gradient-to-br from-muted/10 to-transparent min-h-[240px]">
           <svg width="180" height="180" viewBox="0 0 180 180" className="shrink-0">
             <defs>
-              <filter id="dshadow"><feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#4278f4" floodOpacity="0.3"/></filter>
+              <filter id="dshadow"><feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#4278f4" floodOpacity="0.3" /></filter>
             </defs>
             {donutTotal > 1 ? (
               <>
@@ -1186,7 +1265,7 @@ const EmailChart = ({ recipients }) => {
         <div className="rounded-2xl border border-border/40 bg-gradient-to-b from-muted/10 to-transparent p-6">
           <div className="text-xs text-muted-foreground font-bold mb-4 uppercase tracking-widest">Activity Heatmap — Last 28 Days</div>
           <div className="grid gap-1.5" style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}>
-            {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
               <div key={d} className="text-[9px] text-muted-foreground font-bold text-center uppercase">{d}</div>
             ))}
             {heatDays.map((d, i) => {
@@ -1664,19 +1743,38 @@ const MapBusinessFinder = ({
 
 // ============================================================
 function App() {
-
-  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
+  const storedToken = localStorage.getItem(AUTH_TOKEN_KEY) || '';
+  const storedUser = getStoredAuthUser();
+  const [authToken, setAuthToken] = useState(storedToken);
+  const [currentUser, setCurrentUser] = useState(storedUser);
+  const [isLoggedIn, setIsLoggedIn] = useState(Boolean(storedToken));
   const [showLoginForm, setShowLoginForm] = useState(false);
-  const [passcode, setPasscode] = useState('');
+  const [loginId, setLoginId] = useState(localStorage.getItem('saved_login_id') || 'admin');
+  const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState(localStorage.getItem('activeTab') || 'dashboard');
-  const [showCricketTab, setShowCricketTab] = useState(true);
-  const { toast } = useToast();
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const switchTab = (tab) => {
     setActiveTab(tab);
     localStorage.setItem('activeTab', tab);
     setSelectedIds([]); // Clear selection on tab switch
+  };
+
+  const canAccessTab = (tabId, user = currentUser) => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    if (tabId === 'team_management') return false;
+    const access = getResolvedAccess(user);
+    return access[tabId] !== false;
+  };
+
+  const getVisibleTabs = (items) => items.filter(item => canAccessTab(item.id));
+
+  const getFirstAllowedTab = (user = currentUser) => {
+    if (!user) return 'dashboard';
+    if (user.role === 'admin') return 'dashboard';
+    const first = ACCESS_TABS.find(item => canAccessTab(item.id, user));
+    return first?.id || 'dashboard';
   };
 
   const [file, setFile] = useState(null);
@@ -1708,7 +1806,40 @@ function App() {
   const [editingTemplateId, setEditingTemplateId] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [profile, setProfile] = useState({ userName: 'Muntazir', userRole: 'Admin', publicEmail: '', profilePic: '' });
+  const [profile, setProfile] = useState({
+    userName: storedUser?.fullName || 'Muntazir',
+    userRole: storedUser?.role === 'admin' ? 'Admin' : (storedUser?.position || 'Member'),
+    publicEmail: '',
+    profilePic: ''
+  });
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [teamForm, setTeamForm] = useState({
+    fullName: '',
+    phone: '',
+    position: '',
+    loginId: '',
+    password: ''
+  });
+  const [teamSaving, setTeamSaving] = useState(false);
+  const [teamMessage, setTeamMessage] = useState('');
+  const [teamEditOpen, setTeamEditOpen] = useState(false);
+  const [teamEditTarget, setTeamEditTarget] = useState(null);
+  const [teamEditForm, setTeamEditForm] = useState({
+    fullName: '',
+    phone: '',
+    position: '',
+    loginId: '',
+    password: '',
+    active: true
+  });
+  const [teamEditChangePassword, setTeamEditChangePassword] = useState(false);
+  const [teamEditSaving, setTeamEditSaving] = useState(false);
+  const [teamAccessOpen, setTeamAccessOpen] = useState(false);
+  const [teamAccessTarget, setTeamAccessTarget] = useState(null);
+  const [teamAccessForm, setTeamAccessForm] = useState({});
+  const [teamAccessSaving, setTeamAccessSaving] = useState(false);
+  const [teamAccessDirty, setTeamAccessDirty] = useState(false);
   const [customFields, setCustomFields] = useState([]);
   const [newFieldName, setNewFieldName] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
@@ -1765,16 +1896,25 @@ function App() {
   const [waProvider, setWaProvider] = useState('browser'); // 'browser' or 'interakt'
   const [waDailyStats, setWaDailyStats] = useState({ sent: 0, limit: 80, remaining: 80 });
   const [waQr, setWaQr] = useState('');
-  const [waHighlightedLeadId, setWaHighlightedLeadId] = useState('');
   const lastSavedPublicEmailRef = useRef('');
   const publicEmailSaveTimerRef = useRef(null);
-  const waHighlightTimerRef = useRef(null);
+
+  const teamAccessPreviewAccess = activeTab === 'team_access' && teamAccessTarget
+    ? ACCESS_TABS.reduce((acc, item) => {
+      acc[item.id] = item.locked ? true : !!teamAccessForm[item.id];
+      return acc;
+    }, {})
+    : null;
+  const sidebarUser = activeTab === 'team_access' && teamAccessTarget
+    ? { ...teamAccessTarget, access: teamAccessPreviewAccess || getResolvedAccess(teamAccessTarget) }
+    : currentUser;
+  const getSidebarVisibleTabs = (items) => items.filter(item => canAccessTab(item.id, sidebarUser));
 
   const fetchWaStatus = async () => {
     try {
       const res = await axios.get('/api/whatsapp/status');
       setWaStatus(res.data.status);
-      
+
       // Fetch daily stats
       const statsRes = await axios.get('/api/whatsapp/daily-stats');
       setWaDailyStats(statsRes.data);
@@ -1785,14 +1925,68 @@ function App() {
       } else {
         setWaQr('');
       }
-    } catch (err) { }
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401) {
+        handleLogout(false);
+        return;
+      }
+      if (!status || status >= 500) {
+        return;
+      }
+      setWaStatus('disconnected');
+      setWaQr('');
+      setWaDailyStats({ sent: 0, limit: 80, remaining: 80 });
+    }
   };
 
   useEffect(() => {
+    setAxiosAuthToken(authToken);
+  }, [authToken]);
+
+  useEffect(() => {
+    if (!authToken) return;
     fetchWaStatus();
     const interval = setInterval(fetchWaStatus, 5000);
     return () => clearInterval(interval);
+  }, [authToken]);
+
+  useEffect(() => {
+    if (!authToken) return;
+    const hydrateSession = async () => {
+      try {
+        const res = await axios.get('/api/auth/me');
+        const user = res.data.user;
+        if (!user) throw new Error('Session invalid');
+        setCurrentUser(user);
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+        setIsLoggedIn(true);
+        setShowLoginForm(true);
+        setProfile({
+          userName: user.fullName || 'User',
+          userRole: user.role === 'admin' ? 'Admin' : (user.position || 'Member'),
+          publicEmail: '',
+          profilePic: ''
+        });
+        const nextTab = getFirstAllowedTab(user);
+        setActiveTab(nextTab);
+        localStorage.setItem('activeTab', nextTab);
+      } catch (e) {
+        handleLogout(false);
+      }
+    };
+    hydrateSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn || !currentUser) return;
+    if (canAccessTab(activeTab, currentUser)) return;
+    const nextTab = getFirstAllowedTab(currentUser);
+    if (nextTab !== activeTab) {
+      switchTab(nextTab);
+    }
+  }, [isLoggedIn, currentUser, activeTab]);
 
   const getLeadPhoneKey = (lead) => String(lead?.phone || lead?.data?.Phone || lead?.data?.phone || '').replace(/\D/g, '');
   const getLeadWhatsappStatus = (lead) => {
@@ -1823,31 +2017,6 @@ function App() {
     setWaStatuses(prev => ({ ...prev, [cleanPhone]: status }));
   };
 
-  const getLeadPhoneValue = (lead) => String(lead?.phone || lead?.data?.Phone || lead?.data?.phone || lead?.email?.replace('@whatsapp.com', '') || '').trim();
-  const hasLeadPhoneNumber = (lead) => {
-    const raw = getLeadPhoneValue(lead);
-    if (!raw || raw === 'N/A' || raw === '—') return false;
-    return raw.replace(/\D/g, '').length > 0;
-  };
-  const getSavedLeadSortRank = (lead) => {
-    if (!hasLeadPhoneNumber(lead)) return 3;
-    const stat = getLeadWhatsappStatus(lead);
-    if (stat === 'pending') return 0;
-    if (stat === 'sent') return 1;
-    if (stat === 'failed') return 2;
-    return 2;
-  };
-  const compareSavedLeads = (a, b) => {
-    const rankDiff = getSavedLeadSortRank(a) - getSavedLeadSortRank(b);
-    if (rankDiff !== 0) return rankDiff;
-
-    const aTime = new Date(a?.whatsappUpdatedAt || a?.updatedAt || a?.createdAt || 0).getTime();
-    const bTime = new Date(b?.whatsappUpdatedAt || b?.updatedAt || b?.createdAt || 0).getTime();
-    if (aTime !== bTime) return bTime - aTime;
-
-    return String(a?.name || a?.email || '').localeCompare(String(b?.name || b?.email || ''));
-  };
-
   // WhatsApp Templates State
   const [whatsappTemplates, setWhatsappTemplates] = useState([]);
   const defaultWaTemplate = {
@@ -1863,7 +2032,7 @@ function App() {
     } else {
       document.documentElement.classList.remove('dark');
     }
-    
+
     // Sync body classes
     document.body.className = currentTheme;
     localStorage.setItem('pro_theme', currentTheme);
@@ -1952,8 +2121,8 @@ function App() {
   const sendBrowserNotification = (title, body) => {
     if ("Notification" in window) {
       if (Notification.permission === "granted") {
-        new Notification(title, { 
-          body, 
+        new Notification(title, {
+          body,
           icon: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png'
         });
       } else if (Notification.permission !== "denied") {
@@ -2048,30 +2217,16 @@ function App() {
     return digits.slice(-10);
   };
 
-  const getWhatsAppDialDigits = (value) => {
-    const digits = String(value || '').replace(/\D/g, '');
-    if (!digits) return '';
-    if (digits.length === 10) return `91${digits}`;
-    if (digits.length === 11 && digits.startsWith('0')) return `91${digits.slice(1)}`;
-    if (digits.length >= 12) return digits.slice(-12);
-    return digits;
-  };
-
   const openWhatsappComposer = (lead) => {
     const activeTpl = whatsappTemplates.find(t => t.isActive);
-    const cleanPhone = getWhatsAppDialDigits(lead?.phone || lead?.data?.Phone || lead?.data?.phone || lead?.email?.replace('@whatsapp.com', ''));
+    const cleanPhone = getWhatsAppDigits(lead?.phone || lead?.data?.Phone || lead?.data?.phone || lead?.email?.replace('@whatsapp.com', ''));
     if (!cleanPhone) {
       showToast('No phone number found for this lead.', 'error');
       return;
     }
 
     const msg = activeTpl ? renderTemplateMessage(activeTpl.message, lead) : '';
-    setWaModal({
-      open: true,
-      phone: cleanPhone,
-      message: msg,
-      leadId: lead?._id || '',
-    });
+    setWaModal({ open: true, phone: cleanPhone, message: msg, leadId: lead?._id || '' });
   };
 
   const handleWhatsappReply = (leadEmail) => {
@@ -2089,17 +2244,12 @@ function App() {
       return;
     }
 
-    const cleanPhone = getWhatsAppDialDigits(phone);
+    const cleanPhone = phone.replace(/\D/g, '');
 
     const finalMsg = renderTemplateMessage(activeTpl.message, lead);
 
     // Show modal with message so user can copy and open WhatsApp
-    setWaModal({
-      open: true,
-      phone: cleanPhone,
-      message: finalMsg,
-      leadId: lead?._id || '',
-    });
+    setWaModal({ open: true, phone: cleanPhone, message: finalMsg, leadId: lead?._id || '' });
   };
 
   const copyWaMessage = () => {
@@ -2119,7 +2269,7 @@ function App() {
   };
 
   const copyWaNumber = () => {
-    const cleanPhone = getWhatsAppDialDigits(waModal.phone);
+    const cleanPhone = getWhatsAppDigits(waModal.phone);
     if (!cleanPhone) {
       showToast('No phone number available to copy.', 'error');
       return;
@@ -2153,63 +2303,17 @@ function App() {
           whatsappStatus: status,
           whatsappUpdatedAt: new Date().toISOString()
         });
-        setWaHighlightedLeadId(waModal.leadId);
-        clearTimeout(waHighlightTimerRef.current);
-        waHighlightTimerRef.current = setTimeout(() => setWaHighlightedLeadId(''), 2500);
       }
       syncLeadWhatsappStatus(cleanPhone, status);
+      fetchSavedLeads();
       showToast(`WhatsApp status marked as ${status}.`, 'success');
       setWaModal({ open: false, phone: '', message: '', leadId: '' });
-      fetchSavedLeads();
     } catch (err) {
       showToast(`Failed to update WhatsApp status: ${err.response?.data?.error || err.message}`, 'error');
     }
   };
 
-  const sendWhatsappFromModal = async () => {
-    const phone = getWhatsAppDialDigits(waModal.phone);
-    const message = (waModal.message || '').trim();
-
-    if (!phone || !message) {
-      showToast('Phone number or message is missing.', 'error');
-      return;
-    }
-
-    if (waProvider === 'browser' && waStatus !== 'connected') {
-      showToast('WhatsApp is not connected!', 'error');
-      return;
-    }
-
-    try {
-      const res = await axios.post('/api/whatsapp/send', { phone, message });
-      const deliveryStatus = res.data?.deliveryStatus || 'sent';
-      const nextStatus = deliveryStatus === 'pending' ? 'pending' : 'sent';
-
-      if (waModal.leadId) {
-        await axios.put(`/api/saved-leads/${waModal.leadId}`, {
-          whatsappStatus: nextStatus,
-          whatsappUpdatedAt: new Date().toISOString()
-        });
-        setWaHighlightedLeadId(waModal.leadId);
-        clearTimeout(waHighlightTimerRef.current);
-        waHighlightTimerRef.current = setTimeout(() => setWaHighlightedLeadId(''), 2500);
-      }
-
-      syncLeadWhatsappStatus(phone, nextStatus);
-      showToast(
-        deliveryStatus === 'pending'
-          ? 'Message accepted, but delivery is not confirmed yet.'
-          : 'WhatsApp sent successfully!',
-        deliveryStatus === 'pending' ? 'info' : 'success'
-      );
-      setWaModal({ open: false, phone: '', message: '', leadId: '' });
-      fetchSavedLeads();
-    } catch (err) {
-      showToast(`WhatsApp send failed: ${err.response?.data?.error || err.message}`, 'error');
-    }
-  };
-
-  const fetchSettings = async () => {
+  const fetchSettings = async (userContext = currentUser) => {
     try {
       const res = await axios.get('/api/settings');
       if (res.data) {
@@ -2221,13 +2325,11 @@ function App() {
           setMapCategories(res.data.mapBusinessCategories);
         }
         lastSavedPublicEmailRef.current = res.data.publicEmail || '';
-        if (res.data.isCricketEnabled !== undefined) setShowCricketTab(res.data.isCricketEnabled);
         setProfile({
-          userName: res.data.userName || 'Muntazir',
-          userRole: res.data.userRole || 'Admin',
+          userName: userContext?.fullName || res.data.userName || 'User',
+          userRole: userContext?.role === 'admin' ? 'Admin' : (userContext?.position || res.data.userRole || 'Member'),
           publicEmail: res.data.publicEmail || '',
-          profilePic: res.data.profilePic || '',
-          isCricketEnabled: res.data.isCricketEnabled !== undefined ? res.data.isCricketEnabled : true
+          profilePic: res.data.profilePic || ''
         });
       }
     } catch (e) { console.error("Error fetching settings:", e); }
@@ -2602,24 +2704,6 @@ function App() {
     } catch (err) { showToast("Failed to update status", "error"); }
   };
 
-  const handleDeleteLead = (id) => {
-    const lead = savedLeads.find(l => l._id === id);
-    if (!lead) return;
-    setConfirmModal({
-      open: true,
-      title: `Delete ${lead.name}?`,
-      onConfirm: async () => {
-        try {
-          await axios.delete(`/api/saved-leads/${id}`);
-          showToast("Lead Deleted!", "success");
-          fetchSavedLeads();
-        } catch (e) {
-          showToast("Delete failed", "error");
-        }
-      }
-    });
-  };
-
   const handleDeleteTemplate = async (id) => {
     setConfirmModal({
       open: true,
@@ -2761,14 +2845,225 @@ function App() {
     }
   }, [recipients, isLoggedIn]);
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (passcode === 'muntazir_pro') {
-      setIsLoggedIn(true);
-      localStorage.setItem('isLoggedIn', 'true');
-      showToast("Welcome Back, Admin!", "success");
-    } else showToast("Invalid Passcode!", "error");
+  const handleLogout = (reload = true) => {
+    setAuthToken('');
+    setCurrentUser(null);
+    setIsLoggedIn(false);
+    setShowLoginForm(false);
+    setProfile({ userName: 'Muntazir', userRole: 'Admin', publicEmail: '', profilePic: '' });
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_USER_KEY);
+    delete axios.defaults.headers.common.Authorization;
+    if (reload) window.location.reload();
   };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.post('/api/auth/login', {
+        loginId,
+        password
+      });
+      const user = res.data.user;
+      const token = res.data.token;
+      setAuthToken(token);
+      setCurrentUser(user);
+      setIsLoggedIn(true);
+      setShowLoginForm(true);
+      localStorage.setItem(AUTH_TOKEN_KEY, token);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+      localStorage.setItem('saved_login_id', loginId);
+      setAxiosAuthToken(token);
+      setProfile({
+        userName: user.fullName || 'User',
+        userRole: user.role === 'admin' ? 'Admin' : (user.position || 'Member'),
+        publicEmail: '',
+        profilePic: ''
+      });
+      setPassword('');
+      const nextTab = getFirstAllowedTab(user);
+      setActiveTab(nextTab);
+      localStorage.setItem('activeTab', nextTab);
+      showToast(`Welcome, ${user.fullName || user.loginId}!`, "success");
+      fetchSettings(user);
+    } catch (err) {
+      showToast(err.response?.data?.error || "Invalid credentials!", "error");
+    }
+  };
+
+  const fetchTeamMembers = async () => {
+    if (currentUser?.role !== 'admin') return;
+    setTeamLoading(true);
+    try {
+      const res = await axios.get('/api/users');
+      setTeamMembers(Array.isArray(res.data) ? res.data : []);
+      setTeamMessage('');
+    } catch (e) {
+      setTeamMembers([]);
+      setTeamMessage(e.response?.data?.error || e.message);
+    } finally {
+      setTeamLoading(false);
+    }
+  };
+
+  const handleCreateTeamMember = async (e) => {
+    e.preventDefault();
+    setTeamSaving(true);
+    setTeamMessage('');
+    try {
+      const res = await axios.post('/api/users', teamForm);
+      setTeamMembers(prev => [res.data.user, ...prev]);
+      setTeamForm({ fullName: '', phone: '', position: '', loginId: '', password: '' });
+      setTeamMessage('Team member created successfully');
+      showToast('Team member added', 'success');
+    } catch (err) {
+      setTeamMessage(err.response?.data?.error || err.message);
+      showToast(err.response?.data?.error || err.message, 'error');
+    } finally {
+      setTeamSaving(false);
+    }
+  };
+
+  const handleDeactivateTeamMember = async (id) => {
+    try {
+      await axios.delete(`/api/users/${id}`);
+      setTeamMembers(prev => prev.map(user => user._id === id ? { ...user, active: false } : user));
+      showToast('Team member deactivated', 'success');
+    } catch (err) {
+      showToast(err.response?.data?.error || err.message, 'error');
+    }
+  };
+
+  const openTeamAccess = (member) => {
+    setTeamAccessTarget(member);
+    const resolved = getResolvedAccess(member);
+    setTeamAccessForm(ACCESS_TABS.reduce((acc, item) => {
+      acc[item.id] = item.locked ? true : (resolved[item.id] ?? false);
+      return acc;
+    }, {}));
+    setTeamAccessDirty(false);
+    setActiveTab('team_access');
+    localStorage.setItem('activeTab', 'team_access');
+  };
+
+  const saveTeamAccessSnapshot = async (accessSnapshot) => {
+    if (!teamAccessTarget?._id) return;
+    setTeamAccessSaving(true);
+    try {
+      const res = await axios.patch(`/api/users/${teamAccessTarget._id}`, { access: accessSnapshot });
+      setTeamMembers(prev => prev.map(user => user._id === teamAccessTarget._id ? res.data.user : user));
+      setTeamAccessTarget(prev => prev ? { ...prev, access: res.data.user.access } : prev);
+      setTeamMessage('Access permissions saved successfully');
+      showToast('Access updated', 'success');
+      setTeamAccessDirty(false);
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message;
+      setTeamMessage(msg);
+      showToast(msg, 'error');
+      throw err;
+    } finally {
+      setTeamAccessSaving(false);
+    }
+  };
+
+  const toggleTeamAccess = async (tabId) => {
+    if (teamAccessSaving) return;
+    const nextAccess = {
+      ...teamAccessForm,
+      [tabId]: !teamAccessForm[tabId]
+    };
+    setTeamAccessForm(nextAccess);
+    setTeamAccessDirty(true);
+    try {
+      await saveTeamAccessSnapshot(nextAccess);
+    } catch (e) {
+      setTeamAccessForm(prev => ({ ...prev, [tabId]: !nextAccess[tabId] }));
+    }
+  };
+
+  const handleSaveTeamAccess = async (e) => {
+    e.preventDefault();
+    if (!teamAccessTarget?._id) return;
+    setTeamMessage('');
+    const access = ACCESS_TABS.reduce((acc, item) => {
+      acc[item.id] = item.locked ? true : !!teamAccessForm[item.id];
+      return acc;
+    }, {});
+    try {
+      await saveTeamAccessSnapshot(access);
+      setActiveTab('team_management');
+      localStorage.setItem('activeTab', 'team_management');
+    } catch (err) { }
+  };
+
+  const openTeamEdit = (member) => {
+    setTeamEditTarget(member);
+    setTeamEditForm({
+      fullName: member.fullName || '',
+      phone: member.phone || '',
+      position: member.position || '',
+      loginId: member.loginId || '',
+      password: '',
+      active: member.active !== false
+    });
+    setTeamEditChangePassword(false);
+    setTeamEditOpen(true);
+  };
+
+  const handleUpdateTeamMember = async (e) => {
+    e.preventDefault();
+    if (!teamEditTarget?._id) return;
+    setTeamEditSaving(true);
+    setTeamMessage('');
+    try {
+      const payload = {
+        fullName: teamEditForm.fullName,
+        phone: teamEditForm.phone,
+        position: teamEditForm.position,
+        loginId: teamEditForm.loginId,
+        active: teamEditForm.active
+      };
+      if (teamEditChangePassword || teamEditForm.password.trim()) {
+        if (!teamEditForm.password.trim()) {
+          showToast('Please enter a new password or turn off password change.', 'error');
+          setTeamEditSaving(false);
+          return;
+        }
+        payload.password = teamEditForm.password;
+      }
+      const res = await axios.patch(`/api/users/${teamEditTarget._id}`, payload);
+      setTeamMembers(prev => prev.map(user => user._id === teamEditTarget._id ? res.data.user : user));
+      setTeamMessage('Team member updated successfully');
+      showToast('Team member updated', 'success');
+      setTeamEditOpen(false);
+      setTeamEditTarget(null);
+      setTeamEditChangePassword(false);
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message;
+      setTeamMessage(msg);
+      showToast(msg, 'error');
+    } finally {
+      setTeamEditSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoggedIn && currentUser?.role === 'admin' && (activeTab === 'team_management' || activeTab === 'team_access')) {
+      fetchTeamMembers();
+    }
+  }, [activeTab, isLoggedIn, currentUser?.role]);
+
+  useEffect(() => {
+    if (activeTab !== 'team_access') return;
+    if (!teamAccessTarget && teamMembers.length > 0) {
+      setTeamAccessTarget(teamMembers[0]);
+      const resolved = getResolvedAccess(teamMembers[0]);
+      setTeamAccessForm(ACCESS_TABS.reduce((acc, item) => {
+        acc[item.id] = item.locked ? true : (resolved[item.id] ?? false);
+        return acc;
+      }, {}));
+    }
+  }, [activeTab, teamAccessTarget, teamMembers]);
 
   const handleSaveTemplates = () => {
     localStorage.setItem('saved_subject', subject);
@@ -2946,7 +3241,7 @@ function App() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-500 to-primary bg-[length:200%_auto] animate-shimmer">Infrastructure.</span>
             </h1>
             <p className="text-muted-foreground text-sm max-w-[340px] mx-auto leading-relaxed font-medium">
-              Deploy your cold outreach engine. <br/> Secure administrative access required.
+              Deploy your cold outreach engine. <br /> Secure administrative access required.
             </p>
           </div>
 
@@ -2955,15 +3250,28 @@ function App() {
             <CardContent className="p-12 relative z-10">
               <form onSubmit={handleLogin} className="space-y-10">
                 <div className="space-y-4 text-left">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 ml-1">Master Access Key</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 ml-1">Login ID</Label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary opacity-50" />
+                    <Input
+                      type="text"
+                      placeholder="admin or phone number"
+                      value={loginId}
+                      onChange={e => setLoginId(e.target.value)}
+                      className="bg-background/40 border-border/40 pl-14 h-16 text-center font-mono text-xl tracking-[0.15em] focus:ring-primary/20 focus:border-primary/40 rounded-2xl"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-4 text-left">
+                  <Label className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 ml-1">Password</Label>
                   <div className="relative">
                     <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary opacity-50" />
                     <Input
                       type="password"
-                      placeholder="••••••••"
-                      value={passcode}
-                      onChange={e => setPasscode(e.target.value)}
-                      className="bg-background/40 border-border/40 pl-14 h-16 text-center font-mono text-2xl tracking-[0.6em] focus:ring-primary/20 focus:border-primary/40 rounded-2xl"
+                      placeholder="Enter password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      className="bg-background/40 border-border/40 pl-14 h-16 text-center font-mono text-xl tracking-[0.35em] focus:ring-primary/20 focus:border-primary/40 rounded-2xl"
                     />
                   </div>
                 </div>
@@ -3031,11 +3339,11 @@ function App() {
           <div>
             {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">Overview</div>}
             <div className="space-y-1">
-              {[
+              {getSidebarVisibleTabs([
                 { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
                 { id: 'campaign', icon: Rocket, label: 'New Campaign' },
                 { id: 'logs', icon: Activity, label: 'Delivery Logs' },
-              ].map(item => (
+              ]).map(item => (
                 <TooltipProvider key={item.id} delayDuration={0}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -3062,13 +3370,13 @@ function App() {
           <div>
             {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">Lead Generation</div>}
             <div className="space-y-1">
-              {[
+              {getSidebarVisibleTabs([
                 { id: 'scraper', icon: Globe, label: 'Lead Scraper' },
                 { id: 'map_finder', icon: MapPin, label: 'Map Finder' },
                 { id: 'email_finder', icon: Mail, label: 'Email Enricher' },
                 { id: 'mobile_finder', icon: Smartphone, label: 'Mobile Enricher' },
                 { id: 'saved_leads', icon: Database, label: 'Automation CRM' },
-              ].map(item => (
+              ]).map(item => (
                 <TooltipProvider key={item.id} delayDuration={0}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -3093,13 +3401,13 @@ function App() {
           <div>
             {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">Inbox & Templates</div>}
             <div className="space-y-1">
-              {[
+              {getSidebarVisibleTabs([
                 { id: 'replied_leads', icon: Reply, label: 'Email Replies' },
                 { id: 'whatsapp_inbox', icon: WhatsAppIcon, label: 'WhatsApp Inbox' },
                 { id: 'template', icon: FileText, label: 'Email Templates' },
                 { id: 'custom_templates', icon: Folder, label: 'Custom Folders' },
                 { id: 'variables', icon: Hash, label: 'Variable Manager' },
-              ].map(item => (
+              ]).map(item => (
                 <TooltipProvider key={item.id} delayDuration={0}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -3165,11 +3473,11 @@ function App() {
           <div>
             {!isSidebarCollapsed && <div className="px-2 text-[10px] font-bold text-sidebar-foreground/40 tracking-[0.1em] mb-3 truncate">System</div>}
             <div className="space-y-1">
-              {[
+              {getSidebarVisibleTabs([
                 { id: 'logs', icon: HistoryIcon, label: 'System Logs' },
                 { id: 'archive', icon: ArchiveIcon, label: 'Archive' },
-                ...(showCricketTab ? [{ id: 'cricket_fun', icon: Trophy, label: 'Cricket Fun' }] : []),
-              ].map(item => (
+                ...(sidebarUser?.role === 'admin' ? [{ id: 'team_management', icon: UsersIcon, label: 'Team Management' }] : []),
+              ]).map(item => (
                 <TooltipProvider key={item.id} delayDuration={0}>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -3235,29 +3543,26 @@ function App() {
               <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">System Live</span>
             </div>
 
-            <Badge 
-              variant="outline" 
-              className={`hidden md:flex gap-1.5 px-3 py-1 border-none rounded-lg text-[11px] font-bold tracking-tight ${
-                waStatus === 'connected' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'
-              }`}
+            <Badge
+              variant="outline"
+              className={`hidden md:flex gap-1.5 px-3 py-1 border-none rounded-lg text-[11px] font-bold tracking-tight ${waStatus === 'connected' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'
+                }`}
             >
               <div className={`w-1 h-1 rounded-full ${waStatus === 'connected' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
               {waStatus.toUpperCase()}
             </Badge>
 
-            <Badge 
-              variant="outline" 
-              className={`hidden md:flex gap-1.5 px-3 py-1 border-none rounded-lg text-[11px] font-bold tracking-tight ${
-                waDailyStats.sent >= waDailyStats.limit ? 'bg-red-500/10 text-red-600' : 
-                waDailyStats.sent >= waDailyStats.limit * 0.8 ? 'bg-amber-500/10 text-amber-600' : 
-                'bg-emerald-500/10 text-emerald-600'
-              }`}
+            <Badge
+              variant="outline"
+              className={`hidden md:flex gap-1.5 px-3 py-1 border-none rounded-lg text-[11px] font-bold tracking-tight ${waDailyStats.sent >= waDailyStats.limit ? 'bg-red-500/10 text-red-600' :
+                  waDailyStats.sent >= waDailyStats.limit * 0.8 ? 'bg-amber-500/10 text-amber-600' :
+                    'bg-emerald-500/10 text-emerald-600'
+                }`}
             >
-              <div className={`w-1 h-1 rounded-full ${
-                waDailyStats.sent >= waDailyStats.limit ? 'bg-red-500' : 
-                waDailyStats.sent >= waDailyStats.limit * 0.8 ? 'bg-amber-500' : 
-                'bg-emerald-500'
-              }`}></div>
+              <div className={`w-1 h-1 rounded-full ${waDailyStats.sent >= waDailyStats.limit ? 'bg-red-500' :
+                  waDailyStats.sent >= waDailyStats.limit * 0.8 ? 'bg-amber-500' :
+                    'bg-emerald-500'
+                }`}></div>
               WA: {waDailyStats.sent}/{waDailyStats.limit} Sent
             </Badge>
 
@@ -3299,11 +3604,8 @@ function App() {
                 <DropdownMenuItem onSelect={() => switchTab('security')} className="text-xs py-2 cursor-pointer rounded-lg mx-1">
                   <ShieldCheck size={14} className="mr-2 opacity-60" /> Security
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => switchTab('cricket_settings')} className="text-xs py-2 cursor-pointer rounded-lg mx-1">
-                  <Trophy size={14} className="mr-2 opacity-60 text-primary" /> Configuration
-                </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => { localStorage.clear(); window.location.reload(); }} className="text-xs py-2 text-destructive focus:bg-destructive/10 cursor-pointer rounded-lg mx-1">
+                <DropdownMenuItem onClick={() => handleLogout()} className="text-xs py-2 text-destructive focus:bg-destructive/10 cursor-pointer rounded-lg mx-1">
                   <X size={14} className="mr-2" /> Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -3316,7 +3618,7 @@ function App() {
             <div className="space-y-10 animate-fade-in pb-10">
               {/* HERO WELCOME */}
               <div className="flex flex-col gap-1">
-                <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Welcome back, Muntazir</h2>
+                <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Welcome back, {profile.userName}</h2>
                 <p className="text-muted-foreground text-sm font-medium">Here's what's happening across your outreach channels today.</p>
               </div>
 
@@ -4701,64 +5003,402 @@ function App() {
             </div>
           )}
 
-          {showCricketTab && activeTab === 'cricket_fun' && <CricketFun />}
-
-          {activeTab === 'cricket_settings' && (
-            <div className="max-w-4xl mx-auto space-y-8 animate-fade-in pb-10">
-              <div className="flex flex-col gap-1 mb-8">
-                <h2 className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-xl text-primary">
-                    <Trophy size={24} />
-                  </div>
-                  Cricket Configuration
-                </h2>
-                <p className="text-muted-foreground text-sm font-medium">Control the visibility of the Cricket Fun feature for all users.</p>
+          {activeTab === 'team_management' && (
+            <div className="max-w-6xl mx-auto space-y-8 animate-fade-in pb-10">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Team Management</h2>
+                  <p className="text-muted-foreground text-sm font-medium">Create logins for your team and control who can access the workspace.</p>
+                </div>
+                <Button variant="outline" className="rounded-xl" onClick={fetchTeamMembers} disabled={teamLoading}>
+                  {teamLoading ? <Loader2 size={16} className="mr-2 animate-spin" /> : <RefreshCw size={16} className="mr-2" />}
+                  Refresh Team
+                </Button>
               </div>
 
-              <Card className="premium-card overflow-hidden border-border/40 shadow-xl">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg">General Settings</CardTitle>
-                  <CardDescription>Main toggle for the cricket module</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/30">
-                    <div className="flex flex-col gap-1">
-                      <span className="font-bold">Show Cricket Tab</span>
-                      <span className="text-xs text-muted-foreground">If disabled, the Cricket Fun tab will be hidden from the sidebar and unreachable.</span>
-                    </div>
-                    <Switch 
-                      checked={showCricketTab} 
-                      onCheckedChange={async (val) => {
-                        setShowCricketTab(val);
-                        try {
-                          await axios.post('/api/settings', { isCricketEnabled: val });
-                          toast({ title: "Success", description: `Cricket tab ${val ? 'enabled' : 'disabled'}` });
-                        } catch (e) {
-                          console.error(e);
-                          toast({ title: "Error", description: "Failed to update settings", variant: "destructive" });
-                        }
-                      }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+              {teamMessage && (
+                <div className="p-4 rounded-xl border border-border/40 bg-card/60 text-sm text-foreground">
+                  {teamMessage}
+                </div>
+              )}
 
-              <Card className="premium-card overflow-hidden border-border/40 shadow-xl opacity-50 pointer-events-none">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg">Automation Settings (Coming Soon)</CardTitle>
-                  <CardDescription>Configure auto-updates and notifications</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/10 border border-border/20">
-                    <span className="text-sm font-medium">Auto-verify from SS</span>
-                    <Switch checked={false} disabled />
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <Card className="xl:col-span-1 border-border/40 bg-card/40 backdrop-blur-sm shadow-sm">
+                  <CardHeader className="border-b border-border/40 bg-muted/20">
+                    <CardTitle className="text-sm font-bold">Add Team Member</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                    <form className="space-y-4" onSubmit={handleCreateTeamMember}>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Name</Label>
+                        <Input
+                          value={teamForm.fullName}
+                          onChange={(e) => setTeamForm(prev => ({ ...prev, fullName: e.target.value }))}
+                          placeholder="Aman Sharma"
+                          className="bg-background/50 border-border/40"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Number</Label>
+                        <Input
+                          value={teamForm.phone}
+                          onChange={(e) => setTeamForm(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="+91 9876543210"
+                          className="bg-background/50 border-border/40"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Position</Label>
+                        <Input
+                          value={teamForm.position}
+                          onChange={(e) => setTeamForm(prev => ({ ...prev, position: e.target.value }))}
+                          placeholder="Sales Executive"
+                          className="bg-background/50 border-border/40"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Login ID</Label>
+                        <Input
+                          value={teamForm.loginId}
+                          onChange={(e) => setTeamForm(prev => ({ ...prev, loginId: e.target.value }))}
+                          placeholder="Optional. Defaults to phone"
+                          className="bg-background/50 border-border/40"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Password</Label>
+                        <Input
+                          type="password"
+                          value={teamForm.password}
+                          onChange={(e) => setTeamForm(prev => ({ ...prev, password: e.target.value }))}
+                          placeholder="Set team password"
+                          className="bg-background/50 border-border/40"
+                        />
+                      </div>
+                      <Button type="submit" className="w-full rounded-xl shadow-glow-primary" disabled={teamSaving}>
+                        {teamSaving ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Plus size={16} className="mr-2" />}
+                        Create Member
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+
+                <Card className="xl:col-span-2 border-border/40 bg-card/40 backdrop-blur-sm shadow-sm overflow-hidden">
+                  <CardHeader className="border-b border-border/40 bg-muted/20">
+                    <CardTitle className="text-sm font-bold flex items-center justify-between">
+                      Team Members
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">{teamMembers.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted/20 text-xs uppercase tracking-wider text-muted-foreground">
+                          <tr>
+                            <th className="text-left p-4">Name</th>
+                            <th className="text-left p-4">Phone</th>
+                            <th className="text-left p-4">Position</th>
+                            <th className="text-left p-4">Login ID</th>
+                            <th className="text-left p-4">Status</th>
+                            <th className="text-right p-4">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {teamMembers.length === 0 ? (
+                            <tr>
+                              <td colSpan="6" className="p-10 text-center text-sm text-muted-foreground">
+                                {teamLoading ? 'Loading team members...' : 'No team members added yet.'}
+                              </td>
+                            </tr>
+                          ) : teamMembers.map((member) => (
+                            <tr key={member._id} className="border-t border-border/40">
+                              <td className="p-4 font-semibold text-foreground">
+                                <button
+                                  type="button"
+                                  onClick={() => openTeamAccess(member)}
+                                  className="text-left hover:text-primary transition-colors"
+                                >
+                                  {member.fullName}
+                                </button>
+                              </td>
+                              <td className="p-4 text-sm text-muted-foreground">{member.phone || '-'}</td>
+                              <td className="p-4 text-sm text-muted-foreground">{member.position || '-'}</td>
+                              <td className="p-4 text-sm font-mono text-foreground">{member.loginId}</td>
+                              <td className="p-4">
+                                <Badge variant="outline" className={member.active ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'bg-destructive/10 text-destructive border-destructive/20'}>
+                                  {member.active ? 'Active' : 'Disabled'}
+                                </Badge>
+                              </td>
+                              <td className="p-4 text-right">
+                                {member.role === 'admin' ? (
+                                  <span className="text-xs text-muted-foreground font-semibold">Admin</span>
+                                ) : (
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="rounded-lg"
+                                      onClick={() => openTeamAccess(member)}
+                                    >
+                                      <Shield size={14} className="mr-2" />
+                                      Access
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="rounded-lg"
+                                      onClick={() => openTeamEdit(member)}
+                                    >
+                                      <Edit size={14} className="mr-2" />
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="rounded-lg"
+                                      disabled={!member.active}
+                                      onClick={() => handleDeactivateTeamMember(member._id)}
+                                    >
+                                      Deactivate
+                                    </Button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Dialog open={teamEditOpen} onOpenChange={(open) => {
+                setTeamEditOpen(open);
+                if (!open) setTeamEditTarget(null);
+              }}>
+                <DialogContent className="max-w-xl">
+                  <DialogHeader>
+                    <DialogTitle>Edit Team Member</DialogTitle>
+                  </DialogHeader>
+                  <form className="space-y-4" onSubmit={handleUpdateTeamMember}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Name</Label>
+                        <Input
+                          value={teamEditForm.fullName}
+                          onChange={(e) => setTeamEditForm(prev => ({ ...prev, fullName: e.target.value }))}
+                          className="bg-background/50 border-border/40"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Number</Label>
+                        <Input
+                          value={teamEditForm.phone}
+                          onChange={(e) => setTeamEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                          className="bg-background/50 border-border/40"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Position</Label>
+                        <Input
+                          value={teamEditForm.position}
+                          onChange={(e) => setTeamEditForm(prev => ({ ...prev, position: e.target.value }))}
+                          className="bg-background/50 border-border/40"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Login ID</Label>
+                        <Input
+                          value={teamEditForm.loginId}
+                          onChange={(e) => setTeamEditForm(prev => ({ ...prev, loginId: e.target.value }))}
+                          className="bg-background/50 border-border/40"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider opacity-60">Password</Label>
+                      <Input
+                        type="password"
+                        value={teamEditForm.password}
+                        onChange={(e) => setTeamEditForm(prev => ({ ...prev, password: e.target.value }))}
+                        placeholder="Leave blank to keep current password"
+                        className="bg-background/50 border-border/40"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl border border-border/40 bg-muted/20 px-4 py-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-foreground">Account Status</p>
+                        <p className="text-xs text-muted-foreground">Disable or re-enable the selected member.</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant={teamEditForm.active ? 'outline' : 'secondary'}
+                        className="rounded-lg"
+                        onClick={() => setTeamEditForm(prev => ({ ...prev, active: !prev.active }))}
+                      >
+                        {teamEditForm.active ? 'Active' : 'Disabled'}
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                      <Button type="button" variant="outline" className="rounded-xl" onClick={() => setTeamEditOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" className="rounded-xl shadow-glow-primary" disabled={teamEditSaving}>
+                        {teamEditSaving ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Save size={16} className="mr-2" />}
+                        Save Changes
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
+
+          {activeTab === 'team_access' && currentUser?.role === 'admin' && (
+            <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-10">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Access Control</h2>
+                  <p className="text-muted-foreground text-sm font-medium">Choose which tabs this member can see after login.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                    {teamAccessTarget ? teamAccessTarget.fullName : 'No member selected'}
+                  </Badge>
+                  <Button
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={() => {
+                      setActiveTab('team_management');
+                      localStorage.setItem('activeTab', 'team_management');
+                    }}
+                  >
+                    Back to Team
+                  </Button>
+                </div>
+              </div>
+
+              {!teamAccessTarget ? (
+                <Card className="border-border/40 bg-card/50 backdrop-blur-sm shadow-sm">
+                  <CardContent className="p-10 text-center">
+                    <Users size={36} className="mx-auto text-primary mb-4" />
+                    <h3 className="text-lg font-bold text-foreground mb-2">Select a team member</h3>
+                    <p className="text-sm text-muted-foreground">Open Team Management and click a member to manage tab access.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                  <Card className="xl:col-span-1 border-border/40 bg-card/50 backdrop-blur-sm shadow-sm h-fit sticky top-24">
+                    <div className="h-24 bg-gradient-to-br from-primary/20 to-primary/5 border-b border-border/40"></div>
+                    <CardContent className="p-6 -mt-12">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-20 w-20 border-4 border-background shadow-2xl">
+                          <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xl">
+                            {teamAccessTarget.fullName?.substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <h3 className="text-xl font-extrabold text-foreground truncate">{teamAccessTarget.fullName}</h3>
+                          <p className="text-sm text-muted-foreground truncate">{teamAccessTarget.loginId}</p>
+                          <div className="mt-2 flex gap-2 flex-wrap">
+                            <Badge variant="outline" className={teamAccessTarget.active ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}>
+                              {teamAccessTarget.active ? 'Active' : 'Disabled'}
+                            </Badge>
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 capitalize">
+                              {teamAccessTarget.role || 'member'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 space-y-3 text-sm">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Phone</span>
+                          <span className="text-foreground font-semibold">{teamAccessTarget.phone || '-'}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Position</span>
+                          <span className="text-foreground font-semibold">{teamAccessTarget.position || '-'}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Enabled tabs</span>
+                          <span className="text-foreground font-semibold">{Object.values(teamAccessForm || {}).filter(Boolean).length}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="xl:col-span-2 space-y-6">
+                    {ACCESS_SECTIONS.map(section => (
+                      <Card key={section.label} className="border-border/40 bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
+                        <CardHeader className="border-b border-border/40 bg-muted/20">
+                          <CardTitle className="text-sm font-bold flex items-center justify-between">
+                            {section.label}
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                              {section.items.filter(item => teamAccessForm[item.id]).length}/{section.items.length}
+                            </Badge>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                          {section.items.map(item => {
+                            const Icon = item.icon;
+                            const locked = !!item.locked;
+                            return (
+                              <div key={item.id} className="flex items-center justify-between gap-4 px-5 py-4 border-b border-border/30 last:border-b-0">
+                                <div className="flex items-center gap-4 min-w-0">
+                                  <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                    <Icon size={18} />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-sm font-semibold text-foreground">{item.label}</span>
+                                      {locked && (
+                                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider bg-amber-500/10 text-amber-500 border-amber-500/20">
+                                          Required
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                      Controls whether this tab appears for the member after login.
+                                    </p>
+                                  </div>
+                                </div>
+                                <Switch
+                                  checked={locked ? true : !!teamAccessForm[item.id]}
+                                  onCheckedChange={() => !locked && toggleTeamAccess(item.id)}
+                                  disabled={locked || teamAccessSaving}
+                                />
+                              </div>
+                            );
+                          })}
+                        </CardContent>
+                      </Card>
+                    ))}
+
+                    <div className="flex items-center justify-end gap-3">
+                      <Button
+                        variant="outline"
+                        className="rounded-xl"
+                        onClick={() => {
+                          setActiveTab('team_management');
+                          localStorage.setItem('activeTab', 'team_management');
+                        }}
+                      >
+                        Close
+                      </Button>
+                      <Button
+                        className="rounded-xl shadow-glow-primary"
+                        onClick={handleSaveTeamAccess}
+                        disabled={teamAccessSaving}
+                      >
+                        {teamAccessSaving ? <Loader2 size={16} className="mr-2 animate-spin" /> : <ShieldCheck size={16} className="mr-2" />}
+                        Save Access
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/10 border border-border/20">
-                    <span className="text-sm font-medium">WhatsApp Notifications</span>
-                    <Switch checked={false} disabled />
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              )}
             </div>
           )}
 
@@ -5062,7 +5702,7 @@ function App() {
                       </div>
                       <h3 className="text-xl font-bold text-foreground">Official API (Interakt)</h3>
                     </div>
-                    
+
                     <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-500/5 to-primary/5 border border-indigo-500/10">
                       <div className="flex justify-between items-center mb-4">
                         <div>
@@ -5520,7 +6160,7 @@ function App() {
               if (!l.phone || l.phone === 'N/A') return;
               const cleanP = l.phone.replace(/\D/g, '');
               if (!cleanP) return;
-              
+
               const existing = leadsByPhone[cleanP];
               if (!existing) {
                 leadsByPhone[cleanP] = l;
@@ -5530,15 +6170,21 @@ function App() {
                 if (!hasStatus(existing) && hasStatus(l)) {
                   leadsByPhone[cleanP] = l;
                 } else if (hasStatus(existing) === hasStatus(l)) {
-                   if (new Date(l.whatsappUpdatedAt || l.createdAt) > new Date(existing.whatsappUpdatedAt || existing.createdAt)) {
-                     leadsByPhone[cleanP] = l;
-                   }
+                  if (new Date(l.whatsappUpdatedAt || l.createdAt) > new Date(existing.whatsappUpdatedAt || existing.createdAt)) {
+                    leadsByPhone[cleanP] = l;
+                  }
                 }
               }
             });
-            const uniqueMobileLeads = Object.values(leadsByPhone).sort((a, b) => 
-              new Date(b.whatsappUpdatedAt || b.createdAt) - new Date(a.whatsappUpdatedAt || a.createdAt)
-            );
+            const uniqueMobileLeads = Object.values(leadsByPhone).sort((a, b) => {
+              const statusA = getLeadWhatsappStatus(a);
+              const statusB = getLeadWhatsappStatus(b);
+              const rank = { 'pending': 1, 'failed': 2, 'sending': 3, 'sent': 4 };
+              const rankA = rank[statusA] || 5;
+              const rankB = rank[statusB] || 5;
+              if (rankA !== rankB) return rankA - rankB;
+              return new Date(b.whatsappUpdatedAt || b.createdAt) - new Date(a.whatsappUpdatedAt || a.createdAt);
+            });
 
             return (
               <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
@@ -5571,7 +6217,7 @@ function App() {
                               const phones = uniqueMobileLeads.map(l => l.phone.replace(/\D/g, ''));
                               const activeWaTpl = whatsappTemplates.find(t => t.isActive);
                               if (!activeWaTpl) return showToast("Please activate a WhatsApp template in WhatsApp Settings first!", 'error');
-                                      if (waProvider === 'browser' && waStatus !== 'connected') return showToast("WhatsApp is not connected!", 'error');
+                              if (waProvider === 'browser' && waStatus !== 'connected') return showToast("WhatsApp is not connected!", 'error');
 
                               setConfirmModal({
                                 open: true,
@@ -5583,16 +6229,16 @@ function App() {
                                     for (let i = 0; i < uniqueMobileLeads.length; i++) {
                                       const lead = uniqueMobileLeads[i];
                                       const cleanP = lead.phone.replace(/\D/g, '');
-                                      
+
                                       // Local state update for "Sending"
                                       setWaStatuses(prev => ({ ...prev, [cleanP]: 'sending' }));
 
                                       try {
-                                        const res = await axios.post('/api/whatsapp/send', {
+                                        await axios.post('/api/whatsapp/send', {
                                           phone: cleanP,
                                           message: renderTemplateMessage(activeWaTpl.message, lead)
                                         });
-                                        syncLeadWhatsappStatus(cleanP, res.data?.deliveryStatus === 'pending' ? 'pending' : 'sent');
+                                        syncLeadWhatsappStatus(cleanP, 'sent');
                                       } catch (err) {
                                         syncLeadWhatsappStatus(cleanP, 'failed');
                                       }
@@ -5607,8 +6253,8 @@ function App() {
                                     fetchStats();
                                   } catch (err) {
                                     showToast('WA Broadcast failed: ' + err.message, 'error');
-                                  } finally { 
-                                    setIsScraperBroadcasting(false); 
+                                  } finally {
+                                    setIsScraperBroadcasting(false);
                                   }
                                 }
                               });
@@ -5646,7 +6292,7 @@ function App() {
                             const ids = selectedIds.filter(id => uniqueMobileLeads.some(l => l._id === id));
                             const selectedLeads = uniqueMobileLeads.filter(l => ids.includes(l._id));
                             const phones = selectedLeads.map(l => l.phone.replace(/\D/g, ''));
-                            
+
                             const activeWaTpl = whatsappTemplates.find(t => t.isActive);
                             if (!activeWaTpl) return showToast("Please activate a WhatsApp template in WhatsApp Settings first!", 'error');
                             if (waStatus !== 'connected') return showToast("WhatsApp is not connected!", 'error');
@@ -5659,22 +6305,22 @@ function App() {
                                 try {
                                   const activeWaTpl = whatsappTemplates.find(t => t.isActive);
                                   const selectedLeads = uniqueMobileLeads.filter(l => ids.includes(l._id));
-                                  
+
                                   for (let i = 0; i < selectedLeads.length; i++) {
                                     const lead = selectedLeads[i];
                                     const cleanP = lead.phone.replace(/\D/g, '');
-                                    
+
                                     setWaStatuses(prev => ({ ...prev, [cleanP]: 'sending' }));
 
-                                      try {
-                                        const res = await axios.post('/api/whatsapp/send', {
-                                          phone: cleanP,
-                                          message: renderTemplateMessage(activeWaTpl.message, lead)
-                                        });
-                                        syncLeadWhatsappStatus(cleanP, res.data?.deliveryStatus === 'pending' ? 'pending' : 'sent');
-                                      } catch (err) {
-                                        syncLeadWhatsappStatus(cleanP, 'failed');
-                                      }
+                                    try {
+                                      await axios.post('/api/whatsapp/send', {
+                                        phone: cleanP,
+                                        message: renderTemplateMessage(activeWaTpl.message, lead)
+                                      });
+                                      syncLeadWhatsappStatus(cleanP, 'sent');
+                                    } catch (err) {
+                                      syncLeadWhatsappStatus(cleanP, 'failed');
+                                    }
 
                                     if (i < selectedLeads.length - 1) {
                                       await new Promise(r => setTimeout(r, (scraperWaDelay * 1000 || 3000) + Math.random() * 500));
@@ -5687,8 +6333,8 @@ function App() {
                                   fetchStats();
                                 } catch (err) {
                                   showToast('Bulk Send failed: ' + err.message, 'error');
-                                } finally { 
-                                  setIsScraperBroadcasting(false); 
+                                } finally {
+                                  setIsScraperBroadcasting(false);
                                 }
                               }
                             });
@@ -5770,12 +6416,10 @@ function App() {
                               const waStatusClass = stat === 'failed' ? 'bg-destructive/10 text-destructive' : stat === 'sent' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-muted text-muted-foreground';
 
                               return (
-                                  <tr
+                                <tr
                                   key={lead._id}
-                                  data-lead-id={lead._id}
                                   className={`transition-colors hover:bg-muted/30 
-                                    ${enricherEditMode && selectedIds.includes(lead._id) ? 'bg-primary/5' : ''}
-                                    ${waHighlightedLeadId === lead._id ? 'bg-primary/10 ring-2 ring-primary/50 ring-offset-2 ring-offset-background shadow-[0_0_0_1px_rgba(59,130,246,0.18)]' : ''}`
+                                    ${enricherEditMode && selectedIds.includes(lead._id) ? 'bg-primary/5' : ''}`
                                   }
                                 >
                                   {enricherEditMode && (
@@ -5795,12 +6439,11 @@ function App() {
                                       {stat !== 'pending' && (
                                         <Badge
                                           variant="outline"
-                                          className={`text-[9px] uppercase font-black px-1.5 py-0.5 h-4.5 border transition-all duration-300 ${
-                                            stat === 'sent' ? 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.1)]' :
-                                            stat === 'failed' ? 'bg-rose-500/15 text-rose-600 border-rose-500/30 shadow-[0_0_8px_rgba(244,63,94,0.1)]' :
-                                            stat === 'sending' ? 'bg-blue-500/15 text-blue-600 border-blue-500/30 animate-pulse' :
-                                            'bg-slate-500/10 text-slate-500 border-slate-500/20'
-                                          }`}
+                                          className={`text-[9px] uppercase font-black px-1.5 py-0.5 h-4.5 border transition-all duration-300 ${stat === 'sent' ? 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.1)]' :
+                                              stat === 'failed' ? 'bg-rose-500/15 text-rose-600 border-rose-500/30 shadow-[0_0_8px_rgba(244,63,94,0.1)]' :
+                                                stat === 'sending' ? 'bg-blue-500/15 text-blue-600 border-blue-500/30 animate-pulse' :
+                                                  'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                                            }`}
                                         >
                                           {stat}
                                         </Badge>
@@ -5875,33 +6518,36 @@ function App() {
                       </CardTitle>
                       <CardDescription>Centralized vault for all AI-scraped high-intent leads.</CardDescription>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="bg-primary/5 border-primary/20 hover:bg-primary/10 text-primary font-bold shadow-sm transition-all hover:scale-105 active:scale-95"
-                        onClick={() => {
-                          setInlineEditLeadId('new');
-                          setInlineEditData({ name: '', phone: '', email: '', city: '', address: '', keyword: 'Manual' });
-                        }}
-                      >
-                        <UserPlus size={14} className="mr-2" /> Add Lead
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => {
+                        setInlineEditLeadId('new');
+                        setInlineEditData({ name: '', phone: '', email: '', city: '', address: '', keyword: 'Manual' });
+                      }}>
+                        <Plus size={14} className="mr-2" /> Add Lead
                       </Button>
-                      <Button 
-                        variant="secondary" 
-                        size="sm" 
-                        className="bg-indigo-500/10 text-indigo-600 border-indigo-500/20 hover:bg-indigo-500/20 font-bold shadow-sm transition-all hover:scale-105 active:scale-95"
-                        onClick={() => setIsMapScreenshotDialogOpen(true)}
-                      >
-                        <CloudUpload size={14} className="mr-2" /> Upload Screenshot
+                      <Button variant="secondary" size="sm" onClick={() => setIsMapScreenshotDialogOpen(true)}>
+                        <UploadCloud size={14} className="mr-2" /> Upload Screenshot
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-muted-foreground hover:text-foreground hover:bg-muted font-medium transition-all"
-                        onClick={fetchSavedLeads}
-                      >
-                        <RefreshCcw size={14} className={`mr-2 ${isLoadingSavedLeads ? 'animate-spin' : ''}`} /> Refresh CRM
+                      <Button variant="outline" size="sm" onClick={fetchSavedLeads}>
+                        <RefreshCw size={14} className="mr-2" /> Refresh CRM
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => {
+                        setConfirmModal({
+                          open: true,
+                          title: "Delete all leads without phone numbers?",
+                          onConfirm: async () => {
+                            try {
+                              const res = await axios.post('/api/saved-leads/bulk-delete-no-number');
+                              showToast(res.data.message || "Leads without numbers deleted!", "success");
+                              fetchSavedLeads();
+                              fetchStats();
+                            } catch (e) {
+                              showToast("Failed to delete leads", "error");
+                            }
+                          }
+                        });
+                      }}>
+                        <X size={14} className="mr-2" /> Delete No Number
                       </Button>
                     </div>
                   </div>
@@ -5922,11 +6568,10 @@ function App() {
 
                     <div className="space-y-4">
                       <div
-                        className={`rounded-2xl border border-dashed p-6 text-center transition-all outline-none ${
-                          isMapScreenshotDragging
+                        className={`rounded-2xl border border-dashed p-6 text-center transition-all outline-none ${isMapScreenshotDragging
                             ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
                             : 'border-border bg-muted/20'
-                        }`}
+                          }`}
                         onDragOver={(e) => {
                           e.preventDefault();
                           setIsMapScreenshotDragging(true);
@@ -6021,23 +6666,23 @@ function App() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                       {inlineEditLeadId === 'new' && (
                         <div className="bg-card rounded-2xl border-2 border-dashed border-primary/40 p-6 flex flex-col items-center justify-center text-center animate-in zoom-in duration-300">
-                           <h4 className="font-bold text-primary mb-4">Add New Lead</h4>
-                           <div className="space-y-3 w-full">
-                             <Input placeholder="Business Name" value={inlineEditData.name} onChange={e => setInlineEditData({...inlineEditData, name: e.target.value})} className="h-8 text-xs" />
-                             <Input placeholder="Phone Number" value={inlineEditData.phone} onChange={e => setInlineEditData({...inlineEditData, phone: e.target.value})} className="h-8 text-xs" />
-                             <Input placeholder="City" value={inlineEditData.city} onChange={e => setInlineEditData({...inlineEditData, city: e.target.value})} className="h-8 text-xs" />
-                             <div className="flex gap-2">
-                               <Button size="sm" className="flex-1 h-8 text-xs" onClick={async () => {
-                                 try {
-                                   await axios.post('/api/saved-leads', inlineEditData);
-                                   showToast("Lead Added!", "success");
-                                   setInlineEditLeadId(null);
-                                   fetchSavedLeads();
-                                 } catch(e) { showToast("Add failed", "error"); }
-                               }}>Save</Button>
-                               <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs" onClick={() => setInlineEditLeadId(null)}>Cancel</Button>
-                             </div>
-                           </div>
+                          <h4 className="font-bold text-primary mb-4">Add New Lead</h4>
+                          <div className="space-y-3 w-full">
+                            <Input placeholder="Business Name" value={inlineEditData.name} onChange={e => setInlineEditData({ ...inlineEditData, name: e.target.value })} className="h-8 text-xs" />
+                            <Input placeholder="Phone Number" value={inlineEditData.phone} onChange={e => setInlineEditData({ ...inlineEditData, phone: e.target.value })} className="h-8 text-xs" />
+                            <Input placeholder="City" value={inlineEditData.city} onChange={e => setInlineEditData({ ...inlineEditData, city: e.target.value })} className="h-8 text-xs" />
+                            <div className="flex gap-2">
+                              <Button size="sm" className="flex-1 h-8 text-xs" onClick={async () => {
+                                try {
+                                  await axios.post('/api/saved-leads', inlineEditData);
+                                  showToast("Lead Added!", "success");
+                                  setInlineEditLeadId(null);
+                                  fetchSavedLeads();
+                                } catch (e) { showToast("Add failed", "error"); }
+                              }}>Save</Button>
+                              <Button variant="ghost" size="sm" className="flex-1 h-8 text-xs" onClick={() => setInlineEditLeadId(null)}>Cancel</Button>
+                            </div>
+                          </div>
                         </div>
                       )}
                       {Object.entries(savedLeads.reduce((acc, lead) => {
@@ -6066,7 +6711,7 @@ function App() {
                                 <Folder size={24} />
                               </div>
                               <h4 className="font-bold text-foreground text-sm mb-2 line-clamp-2">{groupName}</h4>
-                              
+
                               <div className="flex flex-wrap justify-center gap-2 mb-4">
                                 <Badge className="bg-emerald-500/10 text-emerald-600 border-transparent text-[10px]">
                                   {leads.length} Total
@@ -6083,8 +6728,8 @@ function App() {
                               </div>
 
                               <div className="w-full bg-muted/40 h-1.5 rounded-full overflow-hidden mt-auto">
-                                <div 
-                                  className="h-full bg-emerald-500 transition-all duration-500" 
+                                <div
+                                  className="h-full bg-emerald-500 transition-all duration-500"
                                   style={{ width: `${(leads.filter(l => getLeadWhatsappStatus(l) === 'sent').length / leads.length) * 100}%` }}
                                 ></div>
                               </div>
@@ -6108,68 +6753,29 @@ function App() {
                       {(() => {
                         const groupLeads = savedLeads
                           .filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup)
-                          .sort(compareSavedLeads);
-                        const leadsWithNumber = groupLeads.filter(hasLeadPhoneNumber);
-                        const leadsWithoutNumber = groupLeads.filter(lead => !hasLeadPhoneNumber(lead));
+                          .sort((a, b) => {
+                            const statusA = getLeadWhatsappStatus(a);
+                            const statusB = getLeadWhatsappStatus(b);
+                            const rank = { 'pending': 1, 'failed': 2, 'sending': 3, 'sent': 4 };
+                            const rankA = rank[statusA] || 5;
+                            const rankB = rank[statusB] || 5;
+                            if (rankA !== rankB) return rankA - rankB;
+                            return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+                          });
                         const allSelected = groupLeads.length > 0 && groupLeads.every(l => selectedIds.includes(l._id));
                         const someSelected = groupLeads.some(l => selectedIds.includes(l._id));
 
                         return (
                           <>
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl border border-border/50 bg-muted/20">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 px-3 py-1.5">
-                                  {leadsWithNumber.length} With Number
-                                </Badge>
-                                <Badge className="bg-slate-500/10 text-slate-400 border-slate-500/20 px-3 py-1.5">
-                                  {leadsWithoutNumber.length} Without Number
-                                </Badge>
-                                <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20 px-3 py-1.5">
-                                  {groupLeads.length} Total
-                                </Badge>
-                              </div>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="bg-rose-500/10 text-rose-600 border-rose-500/20 hover:bg-rose-500 hover:text-white font-bold transition-all"
-                                disabled={leadsWithoutNumber.length === 0}
-                                onClick={() => {
-                                  setConfirmModal({
-                                    open: true,
-                                    title: `Delete ${leadsWithoutNumber.length} leads without number?`,
-                                    onConfirm: async () => {
-                                      try {
-                                        await axios.post('/api/saved-leads/bulk-delete', {
-                                          leadIds: leadsWithoutNumber.map(lead => lead._id)
-                                        });
-                                        showToast(`${leadsWithoutNumber.length} no-number leads deleted!`, 'success');
-                                        setSelectedIds(prev => prev.filter(id => !leadsWithoutNumber.some(lead => lead._id === id)));
-                                        fetchSavedLeads();
-                                      } catch (e) {
-                                        showToast('Delete failed', 'error');
-                                      }
-                                    }
-                                  });
-                                }}
-                              >
-                                <Trash2 size={14} className="mr-2" /> Delete No Number
-                              </Button>
-                            </div>
-
                             {someSelected && (
-                              <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl border border-white/10 animate-in slide-in-from-top-4 duration-500">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md">
-                                    <CheckCircle size={20} className="text-white" />
-                                  </div>
-                                  <div>
-                                    <div className="font-bold text-lg leading-none">{selectedIds.filter(id => groupLeads.some(l => l._id === id)).length} Selected</div>
-                                    <div className="text-blue-100 text-[10px] uppercase tracking-widest font-black opacity-80">Ready for outreach</div>
-                                  </div>
+                              <div className="p-4 rounded-xl bg-primary text-primary-foreground flex flex-col sm:flex-row justify-between items-center gap-4 shadow-lg animate-in slide-in-from-top-2">
+                                <div className="flex items-center gap-2 font-semibold">
+                                  <Info size={18} />
+                                  <span>{selectedIds.filter(id => groupLeads.some(l => l._id === id)).length} leads selected</span>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                                   <Button
-                                    className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg border-transparent font-black uppercase text-xs tracking-wider h-10 px-6 transition-all hover:scale-105 active:scale-95"
+                                    className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm border-transparent font-bold"
                                     disabled={isScraperBroadcasting}
                                     onClick={() => {
                                       // Robust lead filtering
@@ -6188,7 +6794,7 @@ function App() {
 
                                       const activeWaTpl = whatsappTemplates.find(t => t.isActive);
                                       if (!activeWaTpl) return showToast("Please activate a WhatsApp template in WhatsApp Settings first!", 'error');
-                                              if (waProvider === 'browser' && waStatus !== 'connected') return showToast("WhatsApp is not connected!", 'error');
+                                      if (waProvider === 'browser' && waStatus !== 'connected') return showToast("WhatsApp is not connected!", 'error');
 
                                       setConfirmModal({
                                         open: true,
@@ -6225,19 +6831,19 @@ function App() {
                                       });
                                     }}
                                   >
-                                    {isScraperBroadcasting ? <><Loader2 size={16} className="animate-spin mr-2" /> Sending...</> : <><MessageCircle size={16} className="mr-2" /> Send WhatsApp</>}
+                                    {isScraperBroadcasting ? <><Loader2 size={16} className="animate-spin mr-2" /> Sending...</> : <><Phone size={16} className="mr-2" /> Send WA Msg</>}
                                   </Button>
-                                  <select 
-                                    className="h-10 rounded-xl border border-white/20 bg-white/10 backdrop-blur-md text-white px-4 py-1 text-xs font-bold shadow-inner focus:outline-none focus:ring-2 focus:ring-white/30 transition-all"
+                                  <select
+                                    className="h-9 rounded-md border border-input bg-background px-3 py-1 text-xs font-bold shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
                                     value={waProvider}
                                     onChange={(e) => setWaProvider(e.target.value)}
                                   >
-                                    <option value="browser" className="bg-slate-900 text-white">🌐 Browser Engine</option>
-                                    <option value="interakt" className="bg-slate-900 text-white">⚡ Cloud API</option>
+                                    <option value="browser">🌐 Browser</option>
+                                    <option value="interakt">⚡ Interakt</option>
                                   </select>
                                   <Button
                                     variant="secondary"
-                                    className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md font-black uppercase text-xs tracking-wider h-10 px-6 transition-all hover:scale-105 active:scale-95"
+                                    className="font-bold text-primary"
                                     onClick={() => {
                                       const ids = selectedIds.filter(id => groupLeads.some(l => l._id === id && l.email && l.emailFound));
                                       if (ids.length === 0) return showToast('No leads with emails selected!', 'error');
@@ -6265,9 +6871,9 @@ function App() {
                                       });
                                     }}
                                   >
-                                    {isEnricherSending ? <><Loader2 size={16} className="animate-spin mr-2" /> Starting...</> : <><Zap size={16} className="mr-2" /> Start Campaign</>}
+                                    {isEnricherSending ? <><Loader2 size={16} className="animate-spin mr-2" /> Starting...</> : <><Rocket size={16} className="mr-2" /> Start Automation</>}
                                   </Button>
-                                  <Button variant="ghost" className="text-white/60 hover:text-white hover:bg-white/10 text-xs font-bold" onClick={() => setSelectedIds([])}>
+                                  <Button variant="ghost" className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10" onClick={() => setSelectedIds([])}>
                                     Cancel
                                   </Button>
                                 </div>
@@ -6303,8 +6909,8 @@ function App() {
                                 </thead>
                                 <tbody className="divide-y divide-border/50">
                                   {groupLeads.map((lead) => (
-                                  <tr key={lead._id} data-lead-id={lead._id} className={`transition-colors hover:bg-muted/30 ${selectedIds.includes(lead._id) ? 'bg-primary/5' : ''} ${waHighlightedLeadId === lead._id ? 'bg-primary/10 ring-2 ring-primary/50 ring-offset-2 ring-offset-background shadow-[0_0_0_1px_rgba(59,130,246,0.18)]' : ''}`}>
-                                    <td className="px-4 py-3 text-center border-r border-border/50">
+                                    <tr key={lead._id} className={`transition-colors hover:bg-muted/30 ${selectedIds.includes(lead._id) ? 'bg-primary/5' : ''}`}>
+                                      <td className="px-4 py-3 text-center border-r border-border/50">
                                         <input
                                           type="checkbox"
                                           className="rounded border-border text-primary focus:ring-primary h-4 w-4"
@@ -6335,11 +6941,11 @@ function App() {
                                           </div>
                                         ) : (
                                           <div className="flex flex-col gap-2">
-                                          {lead.phone && lead.phone !== 'N/A' ? (
-                                            <div className="flex items-center gap-2">
-                                              {(() => {
-                                                const cleanP = lead.phone.replace(/\D/g, '');
-                                                const stat = getLeadWhatsappStatus(lead);
+                                            {lead.phone && lead.phone !== 'N/A' ? (
+                                              <div className="flex items-center gap-2">
+                                                {(() => {
+                                                  const cleanP = lead.phone.replace(/\D/g, '');
+                                                  const stat = getLeadWhatsappStatus(lead);
                                                   const waStatusClass = stat === 'failed' ? 'text-destructive' : stat === 'sent' ? 'text-emerald-600' : 'text-amber-500';
                                                   return (
                                                     <span className={`font-semibold text-sm ${waStatusClass}`}>{lead.phone}</span>
@@ -6383,8 +6989,8 @@ function App() {
                                                 : 'bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20';
                                             const Icon = stat === 'sent' ? CheckCheck : stat === 'failed' ? AlertTriangle : Clock;
                                             return (
-                                              <Badge 
-                                                variant="outline" 
+                                              <Badge
+                                                variant="outline"
                                                 className={`w-fit cursor-pointer transition-all ${badgeClass}`}
                                                 onClick={(e) => { e.stopPropagation(); cycleWhatsappStatus(lead._id, stat); }}
                                                 title="Click to cycle status"
@@ -6393,13 +6999,13 @@ function App() {
                                               </Badge>
                                             );
                                           })()}
-                                          <Badge 
-                                            variant="outline" 
+                                          <Badge
+                                            variant="outline"
                                             className={`w-fit cursor-pointer transition-all ${lead.isContacted ? 'bg-blue-500/10 text-blue-600 border-blue-500/20 hover:bg-blue-500/20' : 'bg-slate-500/5 text-slate-400 border-slate-500/10 hover:bg-slate-500/10'}`}
                                             onClick={(e) => { e.stopPropagation(); toggleLeadContacted(lead._id, lead.isContacted); }}
                                             title="Click to toggle contact status"
                                           >
-                                            {lead.isContacted ? <Check size={12} className="mr-1" /> : <Clock size={12} className="mr-1" />} 
+                                            {lead.isContacted ? <Check size={12} className="mr-1" /> : <Clock size={12} className="mr-1" />}
                                             {lead.isContacted ? 'Contacted' : 'Not Contacted'}
                                           </Badge>
                                           {lead.phone && lead.phone !== 'N/A' && (
@@ -6426,43 +7032,38 @@ function App() {
                                             </>
                                           ) : (
                                             <>
-                                              <Button 
-                                                variant="outline" 
-                                                size="sm" 
-                                                className="h-7 px-2.5 text-[10px] border-primary/30 text-primary hover:bg-primary/10 font-bold uppercase tracking-wider transition-all" 
-                                                onClick={() => { setInlineEditLeadId(lead._id); setInlineEditData({ name: lead.name, phone: lead.phone, email: lead.email, address: lead.address, city: lead.city }); }}
-                                              >
-                                                <Edit2 size={10} className="mr-1" /> Edit
-                                              </Button>
+                                              <Button variant="outline" size="sm" className="h-7 px-2 text-xs border-primary/30 text-primary hover:bg-primary/10" onClick={() => { setInlineEditLeadId(lead._id); setInlineEditData({ name: lead.name, phone: lead.phone, email: lead.email, address: lead.address, city: lead.city }); }}>Edit</Button>
                                               {lead.phone && lead.phone !== 'N/A' && (
                                                 <Button
                                                   variant="outline"
                                                   size="sm"
-                                                  className="h-7 px-2.5 text-[10px] border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 font-bold uppercase tracking-wider transition-all"
+                                                  className="h-7 px-2 text-xs border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10"
                                                   onClick={() => openWhatsappComposer(lead)}
                                                 >
-                                                  <MessageCircle size={10} className="mr-1" /> WhatsApp
+                                                  <MessageSquare size={14} className="mr-1" /> WhatsApp
                                                 </Button>
                                               )}
                                               {lead.mapsLink && (
-                                                <Button 
-                                                  variant="outline" 
-                                                  size="sm" 
-                                                  className="h-7 px-2.5 text-[10px] border-amber-500/30 text-amber-600 hover:bg-amber-500/10 font-bold uppercase tracking-wider transition-all" 
-                                                  asChild
-                                                >
-                                                  <a href={lead.mapsLink} target="_blank" rel="noreferrer">
-                                                    <MapPin size={10} className="mr-1" /> Map
-                                                  </a>
+                                                <Button variant="outline" size="sm" className="h-7 px-2 text-xs border-amber-500/30 text-amber-600 hover:bg-amber-500/10" asChild>
+                                                  <a href={lead.mapsLink} target="_blank" rel="noreferrer">Map</a>
                                                 </Button>
                                               )}
-                                              <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-7 w-7 text-destructive hover:bg-destructive/10 transition-all rounded-full" 
-                                                onClick={() => handleDeleteLead(lead._id)}
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                                onClick={() => {
+                                                  setConfirmModal({
+                                                    open: true,
+                                                    title: `Delete ${lead.name}?`,
+                                                    onConfirm: async () => {
+                                                      await axios.delete(`/api/saved-leads/${lead._id}`);
+                                                      fetchSavedLeads();
+                                                    }
+                                                  });
+                                                }}
                                               >
-                                                <Trash2 size={12} />
+                                                <X size={14} />
                                               </Button>
                                             </>
                                           )}
@@ -6593,31 +7194,24 @@ function App() {
                   <Copy size={18} className="mr-2" /> Copy Message
                 </Button>
                 <Button
-                  className="h-12 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold border-none"
-                  onClick={sendWhatsappFromModal}
-                >
-                  <MessageCircle size={18} className="mr-2" /> Send via Browser
-                </Button>
-                <Button
                   variant="secondary"
                   className="h-12 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 hover:text-blue-700 font-bold border border-blue-500/20"
                   onClick={() => markWhatsappStatusFromModal('sent')}
                 >
-                  <CheckCircle size={18} className="mr-2" /> Mark Sent Manually
+                  <CheckCircle size={18} className="mr-2" /> Mark Sent
                 </Button>
                 <Button
                   variant="secondary"
                   className="h-12 bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 hover:text-rose-700 font-bold border border-rose-500/20"
                   onClick={() => markWhatsappStatusFromModal('failed')}
                 >
-                  <X size={18} className="mr-2" /> Mark Failed Manually
+                  <X size={18} className="mr-2" /> Mark Failed
                 </Button>
                 <Button
-                  variant="secondary"
-                  className="h-12 bg-slate-500/10 text-slate-300 hover:bg-slate-500/20 hover:text-white font-bold border border-slate-500/20"
+                  className="h-12 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold border-none"
                   onClick={() => {
                     const encodedMsg = encodeURIComponent(waModal.message || '');
-                    const cleanPhone = getWhatsAppDialDigits(waModal.phone);
+                    const cleanPhone = getWhatsAppDigits(waModal.phone);
                     const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMsg}`;
                     window.open(waUrl, '_blank', 'noopener,noreferrer');
                   }}
@@ -6627,7 +7221,7 @@ function App() {
               </div>
 
               <p className="text-center text-muted-foreground text-xs mt-4">
-                Tip: Use <strong className="text-foreground">Send via Browser</strong> for automation. Use <strong className="text-foreground">Open WhatsApp</strong> only for manual fallback.
+                Tip: Copy the number/message if needed, then use <strong className="text-foreground">Mark Sent</strong> after sending.
               </p>
             </div>
           </Card>
@@ -6643,8 +7237,8 @@ function App() {
               </div>
               <h3 className="text-lg font-bold text-foreground mb-6">{confirmModal.title}</h3>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button variant="secondary" className="w-full sm:w-auto font-medium" onClick={() => setConfirmModal(prev => ({ ...prev, open: false }))}>Cancel</Button>
-                <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white font-bold shadow-glow-primary" onClick={async () => { if (confirmModal.onConfirm) await confirmModal.onConfirm(); setConfirmModal(prev => ({ ...prev, open: false })); }}>Yes, Proceed</Button>
+                <Button variant="secondary" className="w-full sm:w-auto font-medium" onClick={() => setConfirmModal({ open: false })}>Cancel</Button>
+                <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white font-bold shadow-glow-primary" onClick={() => { confirmModal.onConfirm(); setConfirmModal({ open: false }); }}>Yes, Proceed</Button>
               </div>
             </div>
           </Card>
@@ -6831,7 +7425,6 @@ function App() {
           </Card>
         </div>
       )}
-      <Toaster />
     </div>
   );
 }

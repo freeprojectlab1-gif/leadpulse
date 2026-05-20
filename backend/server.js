@@ -14,6 +14,7 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const puppeteer = require('puppeteer');
 const { executablePath } = require('puppeteer');
 const { createWorker, PSM } = require('tesseract.js');
+const crypto = require('crypto');
 const BROWSER_SESSION_DIR = path.join(__dirname, 'browser_session');
 
 const app = express();
@@ -23,8 +24,6 @@ const uploadsDir = path.join(__dirname, 'uploads');
 fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-const cricketRouter = require('./cricket_router');
-app.use('/api/cricket', cricketRouter);
 // Cloudinary Configuration
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -95,8 +94,7 @@ const settingsSchema = new mongoose.Schema({
   publicEmail: { type: String, default: '' },
   userName: { type: String, default: 'Muntazir' },
   userRole: { type: String, default: 'Admin' },
-  mapBusinessCategories: { type: [String], default: [] },
-  isCricketEnabled: { type: Boolean, default: true }
+  mapBusinessCategories: { type: [String], default: [] }
 });
 const Settings = mongoose.models.Settings || mongoose.model('Settings', settingsSchema);
 
@@ -143,6 +141,233 @@ const customFieldSchema = new mongoose.Schema({
 });
 const CustomField = mongoose.models.CustomField || mongoose.model('CustomField', customFieldSchema);
 
+const userSchema = new mongoose.Schema({
+  loginId: { type: String, required: true, unique: true, index: true },
+  fullName: { type: String, required: true },
+  phone: { type: String, default: '' },
+  position: { type: String, default: '' },
+  role: { type: String, enum: ['admin', 'member'], default: 'member' },
+  passwordHash: { type: String, required: true },
+  passwordSalt: { type: String, required: true },
+  active: { type: Boolean, default: true },
+  access: { type: Map, of: Boolean, default: {} },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  lastLoginAt: { type: Date, default: null },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+}, { collection: 'team_members' });
+const User = mongoose.models.User || mongoose.model('User', userSchema);
+
+const AUTH_SECRET = process.env.AUTH_SECRET || 'leadpulse-auth-secret';
+const AUTH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const MEMBER_ACCESS_KEYS = [
+  'dashboard',
+  'campaign',
+  'logs',
+  'scraper',
+  'map_finder',
+  'email_finder',
+  'mobile_finder',
+  'saved_leads',
+  'archive',
+  'profile',
+  'whatsapp_settings',
+  'whatsapp_linker',
+  'replied_leads',
+  'whatsapp_inbox',
+  'template',
+  'custom_templates',
+  'variables'
+];
+const REQUIRED_MEMBER_ACCESS = new Set(['dashboard']);
+const MEMBER_DEFAULT_ACCESS = MEMBER_ACCESS_KEYS.reduce((acc, key) => {
+  acc[key] = REQUIRED_MEMBER_ACCESS.has(key);
+  return acc;
+}, {});
+const FULL_ACCESS = MEMBER_ACCESS_KEYS.reduce((acc, key) => {
+  acc[key] = true;
+  return acc;
+}, {});
+
+const normalizeLoginId = (value) => String(value || '').trim().toLowerCase();
+const normalizePhoneNumber = (value) => String(value || '').replace(/\D/g, '');
+const mapToObject = (value) => {
+  if (!value) return {};
+  if (value instanceof Map) return Object.fromEntries(value.entries());
+  if (typeof value.toJSON === 'function') return value.toJSON();
+  return typeof value === 'object' ? { ...value } : {};
+};
+const normalizeAccess = (value = {}, fallback = {}) => {
+  const raw = mapToObject(value);
+  const output = {};
+  MEMBER_ACCESS_KEYS.forEach((key) => {
+    if (raw[key] !== undefined) {
+      output[key] = !!raw[key];
+    } else if (fallback[key] !== undefined) {
+      output[key] = !!fallback[key];
+    }
+  });
+  return output;
+};
+const sanitizeUser = (user) => {
+  if (!user) return null;
+  return {
+    _id: user._id,
+    loginId: user.loginId,
+    fullName: user.fullName,
+    phone: user.phone || '',
+    position: user.position || '',
+    role: user.role || 'member',
+    active: !!user.active,
+    access: user.role === 'admin' ? FULL_ACCESS : normalizeAccess(user.access, MEMBER_DEFAULT_ACCESS),
+    lastLoginAt: user.lastLoginAt || null,
+    createdAt: user.createdAt || null,
+    updatedAt: user.updatedAt || null
+  };
+};
+
+const hashPassword = (password, salt = crypto.randomBytes(16).toString('hex')) => {
+  const hash = crypto.pbkdf2Sync(String(password), salt, 120000, 64, 'sha512').toString('hex');
+  return { salt, hash };
+};
+
+const verifyPassword = (password, salt, expectedHash) => {
+  const { hash } = hashPassword(password, salt);
+  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(expectedHash, 'hex'));
+};
+
+const signAuthToken = (payload) => {
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha256', AUTH_SECRET).update(body).digest('base64url');
+  return `${body}.${sig}`;
+};
+
+const verifyAuthToken = (token) => {
+  const value = String(token || '');
+  const [body, sig] = value.split('.');
+  if (!body || !sig) return null;
+  const expectedSig = crypto.createHmac('sha256', AUTH_SECRET).update(body).digest('base64url');
+  if (sig !== expectedSig) return null;
+
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+  } catch (e) {
+    return null;
+  }
+  if (!payload?.exp || Date.now() > payload.exp) return null;
+  return payload;
+};
+
+const issueAuthToken = (user) => signAuthToken({
+  userId: String(user._id),
+  role: user.role,
+  loginId: user.loginId,
+  exp: Date.now() + AUTH_TOKEN_TTL_MS
+});
+
+const getAuthTokenFromReq = (req) => {
+  const header = req.headers.authorization || '';
+  if (header.startsWith('Bearer ')) return header.slice(7).trim();
+  return req.headers['x-auth-token'] || '';
+};
+
+const requireAuth = async (req, res, next) => {
+  if (req.path.startsWith('/auth/login') || req.path.startsWith('/auth/me')) return next();
+  const token = getAuthTokenFromReq(req);
+  if (!token) return res.status(401).json({ error: 'Authentication required' });
+
+  const payload = verifyAuthToken(token);
+  if (!payload) return res.status(401).json({ error: 'Session expired or invalid' });
+
+  try {
+    const user = await User.findById(payload.userId);
+    if (!user || !user.active) return res.status(401).json({ error: 'User account inactive or missing' });
+    req.user = sanitizeUser(user);
+    next();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const requireAdmin = (req, res, next) => {
+  if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+  next();
+};
+
+const seedDefaultAdmin = async () => {
+  const defaultLoginId = normalizeLoginId(process.env.ADMIN_LOGIN_ID || 'admin');
+  const defaultPassword = String(process.env.ADMIN_PASSWORD || 'muntazir_pro');
+  const defaultName = String(process.env.ADMIN_NAME || 'Muntazir');
+  const defaultPhone = normalizePhoneNumber(process.env.ADMIN_PHONE || '');
+  const defaultPosition = String(process.env.ADMIN_POSITION || 'Owner');
+
+  let admin = await User.findOne({ loginId: defaultLoginId });
+  if (!admin) {
+    const { salt, hash } = hashPassword(defaultPassword);
+    admin = await User.create({
+      loginId: defaultLoginId,
+      fullName: defaultName,
+      phone: defaultPhone,
+      position: defaultPosition,
+      role: 'admin',
+      passwordSalt: salt,
+      passwordHash: hash,
+      access: FULL_ACCESS,
+      active: true
+    });
+    console.log(`[Auth] Seeded default admin account: ${defaultLoginId}`);
+  }
+  return admin;
+};
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const loginId = normalizeLoginId(req.body.loginId || req.body.phone || req.body.username);
+    const password = String(req.body.password || '');
+    if (!loginId || !password) return res.status(400).json({ error: 'loginId and password are required' });
+
+    console.log(`[Auth] Login attempt for: ${loginId}`);
+    const lookupClauses = [{ loginId }];
+    const loginPhone = normalizePhoneNumber(loginId);
+    const bodyPhone = normalizePhoneNumber(req.body.phone);
+    if (loginPhone) lookupClauses.push({ phone: loginPhone });
+    if (bodyPhone && bodyPhone !== loginPhone) lookupClauses.push({ phone: bodyPhone });
+
+    let user = await User.findOne({ $or: lookupClauses });
+
+    if (!user && loginId === 'admin') {
+      user = await User.findOne({ role: 'admin' });
+    }
+
+    console.log(`[Auth] Login lookup result: ${user ? `${user.loginId} (${user.role})` : 'none'}`);
+    if (!user || !user.active) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!verifyPassword(password, user.passwordSalt, user.passwordHash)) {
+      console.log('[Auth] Password mismatch.');
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    user.lastLoginAt = new Date();
+    await user.save();
+    const token = issueAuthToken(user);
+    res.json({ token, user: sanitizeUser(user) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/auth/me', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user || !user.active) return res.status(401).json({ error: 'Session invalid' });
+    res.json({ user: sanitizeUser(user) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.use('/api', requireAuth);
+
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
   .then(async () => {
@@ -173,6 +398,8 @@ mongoose.connect(process.env.MONGO_URI)
       if (!exists) await CustomField.create({ name: v, active: true });
     }
 
+    await seedDefaultAdmin();
+
     console.log("Credentials Synced & Core Variables Initialized!");
   })
   .catch(err => {
@@ -189,16 +416,6 @@ let waStatus = "disconnected";
 const WA_DAILY_LIMIT = 45;
 let waDailySent = 0;
 let waDailyDate = new Date().toDateString();
-
-const normalizeWhatsAppPhone = (value) => {
-  let digits = String(value || '').replace(/\D/g, '');
-  if (!digits) return '';
-  if (digits.startsWith('0') && digits.length >= 10) digits = digits.slice(1);
-  if (digits.length === 10) return '91' + digits;
-  if (digits.length === 12 && digits.startsWith('91')) return digits;
-  if (digits.length > 12 && digits.startsWith('91')) return digits.slice(-12);
-  return digits;
-};
 
 const syncWaDailyCounter = async () => {
   try {
@@ -223,53 +440,6 @@ const resetDailyCounterIfNeeded = async () => {
   }
 };
 
-const waitForMessageAck = async (messageId, timeoutMs = 12000) => {
-  if (!waClient || !messageId) return null;
-
-  return await new Promise((resolve) => {
-    let settled = false;
-
-    const cleanup = () => {
-      settled = true;
-      clearTimeout(timer);
-      try { waClient.off('message_ack', onAck); } catch (e) { }
-    };
-
-    const onAck = (msg, ack) => {
-      const msgId = msg?.id?._serialized || msg?.id?.id || msg?.id;
-      if (msgId !== messageId) return;
-      cleanup();
-      resolve(typeof ack === 'number' ? ack : null);
-    };
-
-    waClient.on('message_ack', onAck);
-
-    const timer = setTimeout(() => {
-      if (!settled) cleanup();
-      resolve(null);
-    }, timeoutMs);
-  });
-};
-
-const verifyOutgoingMessage = async (chatId, expectedBody, timeoutMs = 8000) => {
-  if (!waClient || !chatId || !expectedBody) return false;
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < timeoutMs) {
-    try {
-      const chat = await waClient.getChatById(chatId);
-      const msgs = await chat.fetchMessages({ limit: 5 }).catch(() => []);
-      const match = msgs.some((msg) => {
-        if (!msg?.fromMe) return false;
-        const body = String(msg.body || '').trim();
-        return body === String(expectedBody).trim();
-      });
-      if (match) return true;
-    } catch (e) { }
-    await new Promise(r => setTimeout(r, 1500));
-  }
-  return false;
-};
-
 // Initial sync
 setTimeout(syncWaDailyCounter, 5000); // Wait for DB connection
 
@@ -277,28 +447,28 @@ setTimeout(syncWaDailyCounter, 5000); // Wait for DB connection
 // --- WhatsApp Client Logic ---
 
 const { execSync } = require('child_process');
+const WA_SESSION_DIR = path.join(__dirname, 'wa_session');
+
+const resetWhatsappSession = () => {
+  try {
+    fs.rmSync(WA_SESSION_DIR, { recursive: true, force: true });
+  } catch (e) { }
+  try {
+    fs.rmSync(BROWSER_SESSION_DIR, { recursive: true, force: true });
+  } catch (e) { }
+};
+
 const initWhatsapp = async () => {
   // Kill any existing Chrome processes and clear locks
-  try { execSync('pkill -9 -f google-chrome 2>/dev/null', { stdio: 'ignore' }); } catch (e) { }
-  try { execSync('pkill -9 -f chromium 2>/dev/null', { stdio: 'ignore' }); } catch (e) { }
-  try { execSync('rm -rf ' + path.join(__dirname, 'wa_session/session/Singleton*'), { stdio: 'ignore' }); } catch (e) { }
+  try { execSync('pkill -9 -f chrome-linux64 2>/dev/null', { stdio: 'ignore' }); } catch (e) { }
+  try { execSync('rm -f ' + path.join(__dirname, 'wa_session/session/Singleton*'), { stdio: 'ignore' }); } catch (e) { }
   await new Promise(r => setTimeout(r, 2000)); // Wait for Chrome to fully die
 
+  const chromePath = '/usr/bin/google-chrome-stable';
+  console.log('[WhatsApp] Initializing client...');
   waClient = new Client({
     authStrategy: new LocalAuth({ dataPath: path.join(__dirname, 'wa_session') }),
-    puppeteer: { 
-      headless: true, 
-      executablePath: process.env.CHROME_PATH || puppeteer.executablePath(),
-      args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox', 
-        '--disable-dev-shm-usage', 
-        '--disable-gpu',
-        '--disable-extensions',
-        '--remote-debugging-port=9222'
-      ],
-      timeout: 180000 
-    },
+    puppeteer: { headless: true, executablePath: chromePath, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas', '--disable-gpu'] },
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'
   });
   waClient.on('qr', (qr) => { waQr = qr; waStatus = 'qr-ready'; console.log('[WhatsApp] QR Ready.'); });
@@ -429,6 +599,16 @@ const initWhatsapp = async () => {
   waClient.on('message_create', async (msg) => { if (!msg.fromMe && (msg.from.includes('@c.us') || msg.from.includes('@lid'))) await processMessage(msg, msg.from.split('@')[0]); });
 
   waClient.initialize().catch(err => { console.error('[WhatsApp] Init Error:', err.message); waStatus = 'disconnected'; waQr = ''; });
+
+  setTimeout(async () => {
+    if (waStatus === 'disconnected' && !waQr) {
+      console.log('[WhatsApp] Startup timeout. Resetting session and retrying...');
+      resetWhatsappSession();
+      try { await waClient.destroy(); } catch (e) { }
+      waClient = null;
+      setTimeout(() => initWhatsapp(), 2000);
+    }
+  }, 30000);
 
   let polls = 0, openings = 0, chatPollStarted = false;
   let lastChecked = Date.now() - 604800000; // Check last 7 days on startup
@@ -1247,15 +1427,50 @@ app.post('/api/send-custom/:leadId/:templateId', async (req, res) => {
 });
 
 const distPath = path.join(__dirname, '../frontend/dist');
-app.use(express.static(distPath, { setHeaders: (res, path) => { if (path.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache'); } }));
-app.use((req, res, next) => {
-  if (!req.path.startsWith('/api')) {
+const distIndexPath = path.join(distPath, 'index.html');
+const hasFrontendBuild = fs.existsSync(distIndexPath);
+
+if (hasFrontendBuild) {
+  app.use(express.static(distPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+    }
+  }));
+  app.use((req, res, next) => {
+    if (!req.path.startsWith('/api')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.sendFile(distIndexPath);
+    } else {
+      next();
+    }
+  });
+} else {
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.sendFile(path.join(distPath, 'index.html'));
-  } else {
-    next();
-  }
-});
+    res.status(200).send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Frontend not built</title>
+    <meta http-equiv="refresh" content="0; url=http://localhost:5173" />
+    <style>
+      body { font-family: Arial, sans-serif; padding: 32px; line-height: 1.5; }
+      code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; }
+      a { color: #0f62fe; }
+    </style>
+  </head>
+  <body>
+    <h1>Frontend build not found</h1>
+    <p>The backend is running on <code>5001</code>, but <code>frontend/dist/index.html</code> is missing.</p>
+    <p>Run <code>npm run build</code> from the project root, or use <code>npm run hard-start</code> to start backend and frontend together.</p>
+    <p>Redirecting to <a href="http://localhost:5173">http://localhost:5173</a> now.</p>
+  </body>
+</html>`);
+  });
+}
 
 cron.schedule('*/1 * * * *', async () => {
   const pending = await Recipient.find({
@@ -3133,14 +3348,26 @@ app.delete('/api/saved-leads/group', async (req, res) => {
 app.post('/api/saved-leads/bulk-delete', async (req, res) => {
   try {
     const { leadIds } = req.body;
-    console.log(`[API] Bulk delete requested for ${leadIds?.length} leads:`, leadIds);
     if (!Array.isArray(leadIds) || leadIds.length === 0) return res.status(400).json({ error: 'leadIds required' });
-    const result = await ScrapedLead.deleteMany({ _id: { $in: leadIds } });
-    console.log(`[API] Bulk delete result:`, result);
-    res.json({ message: `${result.deletedCount} leads deleted successfully!` });
-  } catch (e) { 
-    console.error(`[API] Bulk delete error:`, e);
-    res.status(500).json({ error: e.message }); 
+    await ScrapedLead.deleteMany({ _id: { $in: leadIds } });
+    res.json({ message: `${leadIds.length} leads deleted successfully!` });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/saved-leads/bulk-delete-no-number', async (req, res) => {
+  try {
+    const result = await ScrapedLead.deleteMany({
+      $or: [
+        { phone: { $exists: false } },
+        { phone: null },
+        { phone: "" },
+        { phone: "N/A" },
+        { phone: "n/a" }
+      ]
+    });
+    res.json({ message: `${result.deletedCount} leads without numbers deleted successfully!` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
@@ -3229,10 +3456,173 @@ app.post('/api/settings', async (req, res) => {
     if (req.body.mapBusinessCategories !== undefined) {
       settings.mapBusinessCategories = dedupeCategories(parseCategoryInput(req.body.mapBusinessCategories));
     }
-    if (req.body.isCricketEnabled !== undefined) settings.isCricketEnabled = req.body.isCricketEnabled;
     await settings.save();
     res.json(settings);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/users', requireAdmin, async (req, res) => {
+  try {
+    const users = await User.find().sort({ createdAt: -1 });
+    res.json(users.map(sanitizeUser));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/users', requireAdmin, async (req, res) => {
+  try {
+    const fullName = String(req.body.fullName || req.body.name || '').trim();
+    const phone = normalizePhoneNumber(req.body.phone);
+    const position = String(req.body.position || '').trim();
+    const password = String(req.body.password || '').trim();
+    const loginId = normalizeLoginId(req.body.loginId || phone || fullName);
+
+    if (!fullName || !phone || !position || !password) {
+      return res.status(400).json({ error: 'fullName, phone, position, and password are required' });
+    }
+
+    const existingMatches = await User.find({ $or: [{ loginId }, { phone }] }).sort({ active: 1, updatedAt: -1 }).lean();
+    const inactiveExisting = existingMatches.find(user => !user.active);
+    const activeExisting = existingMatches.find(user => user.active);
+    console.log('[Team] Create request ->', existingMatches.map(user => ({
+      id: String(user._id),
+      loginId: user.loginId,
+      phone: user.phone,
+      active: user.active,
+      updatedAt: user.updatedAt
+    })));
+
+    if (activeExisting) {
+        return res.status(409).json({
+          error: 'User with this login or phone already exists',
+          conflict: {
+            id: activeExisting._id,
+            loginId: activeExisting.loginId,
+            phone: activeExisting.phone,
+            active: activeExisting.active
+          }
+        });
+    }
+
+    if (inactiveExisting) {
+      const { salt, hash } = hashPassword(password);
+      const updatedUser = await User.findByIdAndUpdate(
+        inactiveExisting._id,
+        {
+          loginId,
+          fullName,
+          phone,
+          position,
+          role: 'member',
+          passwordSalt: salt,
+          passwordHash: hash,
+          createdBy: req.user._id,
+          active: true,
+          updatedAt: new Date()
+        },
+        { returnDocument: 'after' }
+      );
+
+      return res.status(200).json({
+        message: 'Team member reactivated successfully',
+        user: sanitizeUser(updatedUser)
+      });
+    }
+
+    const { salt, hash } = hashPassword(password);
+    const access = normalizeAccess(req.body.access, MEMBER_DEFAULT_ACCESS);
+    const user = await User.create({
+      loginId,
+      fullName,
+      phone,
+      position,
+      role: 'member',
+      passwordSalt: salt,
+      passwordHash: hash,
+      access,
+      createdBy: req.user._id,
+      active: true
+    });
+
+    res.status(201).json({
+      message: 'Team member created successfully',
+      user: sanitizeUser(user)
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.patch('/api/users/:id', requireAdmin, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const nextFullName = req.body.fullName !== undefined ? String(req.body.fullName).trim() : user.fullName;
+    const nextPhone = req.body.phone !== undefined ? normalizePhoneNumber(req.body.phone) : user.phone;
+    const nextPosition = req.body.position !== undefined ? String(req.body.position).trim() : user.position;
+    const nextLoginId = req.body.loginId !== undefined ? normalizeLoginId(req.body.loginId) : user.loginId;
+    const nextActive = req.body.active !== undefined ? !!req.body.active : user.active;
+
+    if (!nextFullName || !nextPhone || !nextPosition || !nextLoginId) {
+      return res.status(400).json({ error: 'fullName, phone, position, and loginId are required' });
+    }
+
+    const nextAccess = req.body.access !== undefined ? normalizeAccess(req.body.access, user.role === 'admin' ? FULL_ACCESS : MEMBER_DEFAULT_ACCESS) : null;
+    const duplicate = await User.findOne({
+      _id: { $ne: user._id },
+      $or: [{ loginId: nextLoginId }, { phone: nextPhone }]
+    });
+    if (duplicate) {
+      return res.status(409).json({
+        error: 'Another user already uses this login or phone',
+        conflict: {
+          id: duplicate._id,
+          loginId: duplicate.loginId,
+          phone: duplicate.phone,
+          active: duplicate.active
+        }
+      });
+    }
+
+    user.fullName = nextFullName;
+    user.phone = nextPhone;
+    user.position = nextPosition;
+    user.loginId = nextLoginId;
+    user.active = nextActive;
+    if (nextAccess) {
+      user.access = nextAccess;
+    }
+    if (req.body.password !== undefined && String(req.body.password).trim()) {
+      const { salt, hash } = hashPassword(String(req.body.password).trim());
+      user.passwordSalt = salt;
+      user.passwordHash = hash;
+    }
+    user.updatedAt = new Date();
+    await user.save();
+    res.json({ message: 'User updated', user: sanitizeUser(user) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/users/:id', requireAdmin, async (req, res) => {
+  try {
+    if (String(req.user._id) === String(req.params.id)) {
+      return res.status(400).json({ error: 'You cannot deactivate your own account' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    user.active = false;
+    user.updatedAt = new Date();
+    await user.save();
+    res.json({ message: 'User deactivated', user: sanitizeUser(user) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.get('/api/map-categories', async (req, res) => {
@@ -3694,12 +4084,7 @@ app.get('/api/bulk-find-emails', async (req, res) => {
 const PORT = process.env.PORT || 5001;
 app.get('/api/whatsapp/status', (req, res) => {
   console.log(`[API] Status requested: ${waStatus}, hasQr: ${!!waQr}`);
-  res.json({
-    status: waStatus,
-    hasQr: !!waQr,
-    account: waClient?.info?.wid?._serialized || null,
-    pushname: waClient?.info?.pushname || waClient?.info?.name || null
-  });
+  res.json({ status: waStatus, hasQr: !!waQr });
 });
 
 // WhatsApp Daily Limit Stats
@@ -3740,72 +4125,60 @@ app.get('/api/whatsapp/qr', (req, res) => {
 
 app.post('/api/whatsapp/send', async (req, res) => {
   const { phone, message } = req.body;
+  console.log(`[WhatsApp] Send requested -> phone: ${phone || 'N/A'}, chars: ${message ? String(message).length : 0}, status: ${waStatus}, daily: ${waDailySent}/${WA_DAILY_LIMIT}`);
   if (!phone || !message) return res.status(400).json({ error: 'phone and message required' });
   if (!waClient || waStatus !== 'connected') return res.status(503).json({ error: 'WhatsApp not connected' });
   try {
     const cleanPhone = phone.replace(/\D/g, '');
-    const normalizedPhone = normalizeWhatsAppPhone(phone);
+    console.log(`[WhatsApp] Sending direct message to cleaned phone: +${cleanPhone}`);
 
-    // Resolve the WA id first so we only mark success for reachable numbers.
-    let resolvedId = null;
-    try {
-      resolvedId = await waClient.getNumberId(normalizedPhone);
-    } catch (lookupErr) {
-      console.warn(`[WhatsApp] getNumberId failed for +${normalizedPhone}: ${lookupErr.message}`);
+    // Find the actual chat by scanning all chats for matching phone number
+    // This handles both @c.us and @lid formats used in newer WhatsApp
+    let targetChat = null;
+    const chats = await waClient.getChats();
+    for (const chat of chats) {
+      if (chat.isGroup) continue;
+      const chatPhone = chat.id.user || chat.id._serialized.split('@')[0];
+      if (chatPhone === cleanPhone || chatPhone.endsWith(cleanPhone) || cleanPhone.endsWith(chatPhone)) {
+        targetChat = chat;
+        break;
+      }
     }
 
-    if (!resolvedId) {
-      await updateScrapedLeadWhatsappStatus({
-        phone: normalizedPhone || cleanPhone,
-        status: 'failed',
-        error: 'Not on WhatsApp'
-      });
-      return res.status(404).json({ error: 'Not on WhatsApp', phone: normalizedPhone || cleanPhone });
+    if (targetChat) {
+      // Use existing chat (works with @lid format)
+      console.log(`[WhatsApp] Using existing chat id: ${targetChat.id?._serialized || 'unknown'}`);
+      await targetChat.sendMessage(message);
+    } else {
+      // Fallback: try @c.us directly
+      const chatId = cleanPhone + '@c.us';
+      console.log(`[WhatsApp] Fallback send via chat id: ${chatId}`);
+      await waClient.sendMessage(chatId, message);
     }
 
-    const sentMsg = await waClient.sendMessage(resolvedId._serialized, message);
-    const sentMsgId = sentMsg?.id?._serialized || sentMsg?.id?.id || sentMsg?.id || null;
-    const deliveryAck = await waitForMessageAck(sentMsgId);
-    const deliveryStatus = deliveryAck === 2 ? 'delivered' : deliveryAck === 1 ? 'sent' : 'pending';
-    const verified = await verifyOutgoingMessage(resolvedId._serialized, message);
-
-    if (!verified) {
-      throw new Error('Message was not confirmed in WhatsApp chat history');
-    }
-
-    console.log(`[WhatsApp] ✉️ Sent to +${normalizedPhone || cleanPhone}: "${message.substring(0, 40)}"`);
+    console.log(`[WhatsApp] ✉️ Sent to +${cleanPhone}: "${message.substring(0, 40)}"`);
 
     // Save sent message to lead replies and scraped lead status
     const lead = await Recipient.findOne({
       $or: [
-        { 'data.Phone': { $regex: `${cleanPhone}$` } },
-        { 'data.Phone': { $regex: `${normalizedPhone.slice(-10)}$` } },
-        { email: `${cleanPhone}@whatsapp.com` },
-        { email: `${normalizedPhone.slice(-10)}@whatsapp.com` }
+        { 'data.Phone': { $regex: cleanPhone + '$' } },
+        { email: cleanPhone + '@whatsapp.com' }
       ]
     });
     if (lead) {
       lead.replies.push({ receivedAt: new Date(), subject: 'WhatsApp Sent', body: message, type: 'whatsapp', fromMe: true });
       await lead.save();
     }
-    await updateScrapedLeadWhatsappStatus({ phone: normalizedPhone || cleanPhone, status: deliveryStatus === 'pending' ? 'pending' : 'sent', message });
+    await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'sent', message });
 
     // Increment daily counter for manual sends too
     await resetDailyCounterIfNeeded();
     waDailySent++;
 
-    res.json({
-      success: true,
-      dailySent: waDailySent,
-      phone: normalizedPhone || cleanPhone,
-      messageId: sentMsgId,
-      ack: deliveryAck,
-      deliveryStatus,
-      verified: true
-    });
+    res.json({ success: true, dailySent: waDailySent });
   } catch (e) {
     console.error('[WhatsApp] Send error:', e.message);
-    await updateScrapedLeadWhatsappStatus({ phone: normalizeWhatsAppPhone(phone) || phone, status: 'failed', error: e.message });
+    await updateScrapedLeadWhatsappStatus({ phone, status: 'failed', error: e.message });
     res.status(500).json({ error: e.message });
   }
 });
@@ -3847,6 +4220,7 @@ const sendWhatsappInterakt = async (phone, message) => {
 
 app.post('/api/whatsapp/broadcast', async (req, res) => {
   const { phones, message, messages, delay = 3000, provider = 'browser' } = req.body;
+  console.log(`[WA Broadcast] Request received -> phones: ${Array.isArray(phones) ? phones.length : 0}, provider: ${provider}, daily: ${waDailySent}/${WA_DAILY_LIMIT}, status: ${waStatus}`);
   if (!phones || !Array.isArray(phones) || phones.length === 0) return res.status(400).json({ error: 'phones array required' });
   if (!message && (!Array.isArray(messages) || messages.length === 0)) return res.status(400).json({ error: 'message required' });
 
@@ -3869,22 +4243,31 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
 
   for (const [index, phone] of phones.entries()) {
     const cleanPhone = String(phone).replace(/\D/g, '');
-    const normalizedPhone = normalizeWhatsAppPhone(cleanPhone);
     const outgoingMessage = Array.isArray(messages) && messages[index] ? String(messages[index]) : message;
 
     try {
       if (provider === 'interakt') {
         console.log(`[Interakt Broadcast] Sending to: ${phone}`);
-        await sendWhatsappInterakt(normalizedPhone || cleanPhone, outgoingMessage);
+        await sendWhatsappInterakt(cleanPhone, outgoingMessage);
         results.sent++;
-        await updateScrapedLeadWhatsappStatus({ phone: normalizedPhone || cleanPhone, status: 'sent', message: outgoingMessage });
-        results.details.push({ phone: normalizedPhone || cleanPhone, status: 'sent', provider: 'interakt' });
+        await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'sent', message: outgoingMessage });
+        results.details.push({ phone: cleanPhone, status: 'sent', provider: 'interakt' });
         // Minimal delay for API calls to avoid rate limits
         if (index < phones.length - 1) await new Promise(r => setTimeout(r, 200));
         continue;
       }
 
       // ── Step 1: Normalize phone to full international format ───────────
+      let normalizedPhone = cleanPhone;
+      // Strip leading 0 (local format: 07xxx or 09xxx → 7xxx/9xxx)
+      if (normalizedPhone.startsWith('0') && normalizedPhone.length >= 10) {
+        normalizedPhone = normalizedPhone.slice(1);
+      }
+      // If 10 digits starting with 6-9 (Indian mobile, no country code) → add 91
+      if (normalizedPhone.length === 10 && /^[6-9]/.test(normalizedPhone)) {
+        normalizedPhone = '91' + normalizedPhone;
+      }
+
       console.log(`[WA Broadcast] Processing: ${phone} -> Normalized: ${normalizedPhone}`);
 
       // ── Step 2: Resolve WA ID using getNumberId ────────────────────────
@@ -3904,9 +4287,9 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
 
       if (!resolvedId) {
         const errMsg = 'Not on WhatsApp';
-        await updateScrapedLeadWhatsappStatus({ phone: normalizedPhone || cleanPhone, status: 'failed', message: outgoingMessage, error: errMsg });
+        await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'failed', message: outgoingMessage, error: errMsg });
         results.failed++;
-        results.details.push({ phone: normalizedPhone || cleanPhone, status: 'failed', error: errMsg });
+        results.details.push({ phone: cleanPhone, status: 'failed', error: errMsg });
         console.warn(`[WA Broadcast] ⚠️ Not on WhatsApp: +${normalizedPhone}`);
         if (index < phones.length - 1) await new Promise(r => setTimeout(r, Math.min(delay, 1500)));
         continue;
@@ -3930,15 +4313,12 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
         results.details.push({ phone: cleanPhone, status: 'warn_overlimit', sentCount: waDailySent });
       }
 
-      // Prefer the resolved ID because newer accounts may use @lid.
-      const targetChatId = resolvedId?._serialized || `${normalizedPhone}@c.us`;
-      const sentMsg = await waClient.sendMessage(targetChatId, outgoingMessage);
-      const sentMsgId = sentMsg?.id?._serialized || sentMsg?.id?.id || sentMsg?.id || null;
-      const deliveryAck = await waitForMessageAck(sentMsgId);
-      const verified = await verifyOutgoingMessage(targetChatId, outgoingMessage);
-
-      if (!verified) {
-        throw new Error('Message was not confirmed in WhatsApp chat history');
+      if (targetChat) {
+        console.log(`[WA Broadcast] Using existing chat for +${cleanPhone}: ${targetChat.id?._serialized || 'unknown'}`);
+        await targetChat.sendMessage(outgoingMessage);
+      } else {
+        console.log(`[WA Broadcast] Fallback send for +${cleanPhone} via ${resolvedId._serialized}`);
+        await waClient.sendMessage(resolvedId._serialized, outgoingMessage);
       }
 
       waDailySent++;
@@ -3955,17 +4335,11 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
         lead.replies.push({ receivedAt: new Date(), subject: 'WhatsApp Broadcast', body: outgoingMessage, type: 'whatsapp', fromMe: true });
         await lead.save();
       }
-      await updateScrapedLeadWhatsappStatus({ phone: normalizedPhone || cleanPhone, status: 'sent', message: outgoingMessage });
+      await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'sent', message: outgoingMessage });
 
       results.sent++;
-      results.details.push({
-        phone: normalizedPhone || cleanPhone,
-        status: 'sent',
-        dailySent: waDailySent,
-        ack: deliveryAck,
-        verified: true
-      });
-      console.log(`[WA Broadcast] ✅ Sent to +${normalizedPhone || cleanPhone}`);
+      results.details.push({ phone: cleanPhone, status: 'sent', dailySent: waDailySent });
+      console.log(`[WA Broadcast] ✅ Sent to +${cleanPhone}`);
 
       // ── 15s Fixed Delay (anti-ban) ────────────────────────────────────
       if (index < phones.length - 1) {
@@ -3974,10 +4348,10 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
         await new Promise(r => setTimeout(r, safeDelay));
       }
     } catch (e) {
-      await updateScrapedLeadWhatsappStatus({ phone: normalizedPhone || cleanPhone, status: 'failed', message: outgoingMessage, error: e.message });
+      await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'failed', message: outgoingMessage, error: e.message });
       results.failed++;
-      results.details.push({ phone: normalizedPhone || cleanPhone, status: 'failed', error: e.message });
-      console.error(`[WA Broadcast] ❌ Failed +${normalizedPhone || cleanPhone}: ${e.message}`);
+      results.details.push({ phone: cleanPhone, status: 'failed', error: e.message });
+      console.error(`[WA Broadcast] ❌ Failed +${cleanPhone}: ${e.message}`);
     }
   }
 
@@ -4005,9 +4379,11 @@ app.post('/api/whatsapp/restart', async (req, res) => {
   try {
     waStatus = "disconnected";
     waQr = "";
+    resetWhatsappSession();
     if (waClient) {
       try { await waClient.destroy(); } catch (e) { }
     }
+    waClient = null;
     setTimeout(() => initWhatsapp(), 1000);
     res.json({ success: true, message: "WhatsApp restarting..." });
     console.log('[WhatsApp] Manual restart triggered.');
