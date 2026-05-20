@@ -34,7 +34,7 @@
 - **Panipat:** Textile and Handloom industries.
 
 ### 3. South Zone (Tamil Nadu, Karnataka, AP)
-- **Sriperumbudur (Chennai):** Electronics and Auto hub (Hyundai, Samsung).
+- **Sriperumbudur (Chennai):** Electronics and Auto hub (Hyugitdai, Samsung).
 - **Coimbatore:** Known as the "Manchester of South India" for Pumps & Motors.
 - **Peenya (Bengaluru):** One of Asia's largest industrial estates (SME focus).
 - **Hosur:** Auto and Manufacturing (TVS, Ashok Leyland).

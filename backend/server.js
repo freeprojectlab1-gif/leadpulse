@@ -190,6 +190,16 @@ const WA_DAILY_LIMIT = 45;
 let waDailySent = 0;
 let waDailyDate = new Date().toDateString();
 
+const normalizeWhatsAppPhone = (value) => {
+  let digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('0') && digits.length >= 10) digits = digits.slice(1);
+  if (digits.length === 10) return '91' + digits;
+  if (digits.length === 12 && digits.startsWith('91')) return digits;
+  if (digits.length > 12 && digits.startsWith('91')) return digits.slice(-12);
+  return digits;
+};
+
 const syncWaDailyCounter = async () => {
   try {
     const today = new Date();
@@ -211,6 +221,53 @@ const resetDailyCounterIfNeeded = async () => {
     await syncWaDailyCounter();
     console.log('[WhatsApp] 🔄 Daily counter reset/synced for new day.');
   }
+};
+
+const waitForMessageAck = async (messageId, timeoutMs = 12000) => {
+  if (!waClient || !messageId) return null;
+
+  return await new Promise((resolve) => {
+    let settled = false;
+
+    const cleanup = () => {
+      settled = true;
+      clearTimeout(timer);
+      try { waClient.off('message_ack', onAck); } catch (e) { }
+    };
+
+    const onAck = (msg, ack) => {
+      const msgId = msg?.id?._serialized || msg?.id?.id || msg?.id;
+      if (msgId !== messageId) return;
+      cleanup();
+      resolve(typeof ack === 'number' ? ack : null);
+    };
+
+    waClient.on('message_ack', onAck);
+
+    const timer = setTimeout(() => {
+      if (!settled) cleanup();
+      resolve(null);
+    }, timeoutMs);
+  });
+};
+
+const verifyOutgoingMessage = async (chatId, expectedBody, timeoutMs = 8000) => {
+  if (!waClient || !chatId || !expectedBody) return false;
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const chat = await waClient.getChatById(chatId);
+      const msgs = await chat.fetchMessages({ limit: 5 }).catch(() => []);
+      const match = msgs.some((msg) => {
+        if (!msg?.fromMe) return false;
+        const body = String(msg.body || '').trim();
+        return body === String(expectedBody).trim();
+      });
+      if (match) return true;
+    } catch (e) { }
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  return false;
 };
 
 // Initial sync
@@ -3637,7 +3694,12 @@ app.get('/api/bulk-find-emails', async (req, res) => {
 const PORT = process.env.PORT || 5001;
 app.get('/api/whatsapp/status', (req, res) => {
   console.log(`[API] Status requested: ${waStatus}, hasQr: ${!!waQr}`);
-  res.json({ status: waStatus, hasQr: !!waQr });
+  res.json({
+    status: waStatus,
+    hasQr: !!waQr,
+    account: waClient?.info?.wid?._serialized || null,
+    pushname: waClient?.info?.pushname || waClient?.info?.name || null
+  });
 });
 
 // WhatsApp Daily Limit Stats
@@ -3682,52 +3744,68 @@ app.post('/api/whatsapp/send', async (req, res) => {
   if (!waClient || waStatus !== 'connected') return res.status(503).json({ error: 'WhatsApp not connected' });
   try {
     const cleanPhone = phone.replace(/\D/g, '');
+    const normalizedPhone = normalizeWhatsAppPhone(phone);
 
-    // Find the actual chat by scanning all chats for matching phone number
-    // This handles both @c.us and @lid formats used in newer WhatsApp
-    let targetChat = null;
-    const chats = await waClient.getChats();
-    for (const chat of chats) {
-      if (chat.isGroup) continue;
-      const chatPhone = chat.id.user || chat.id._serialized.split('@')[0];
-      if (chatPhone === cleanPhone || chatPhone.endsWith(cleanPhone) || cleanPhone.endsWith(chatPhone)) {
-        targetChat = chat;
-        break;
-      }
+    // Resolve the WA id first so we only mark success for reachable numbers.
+    let resolvedId = null;
+    try {
+      resolvedId = await waClient.getNumberId(normalizedPhone);
+    } catch (lookupErr) {
+      console.warn(`[WhatsApp] getNumberId failed for +${normalizedPhone}: ${lookupErr.message}`);
     }
 
-    if (targetChat) {
-      // Use existing chat (works with @lid format)
-      await targetChat.sendMessage(message);
-    } else {
-      // Fallback: try @c.us directly
-      const chatId = cleanPhone + '@c.us';
-      await waClient.sendMessage(chatId, message);
+    if (!resolvedId) {
+      await updateScrapedLeadWhatsappStatus({
+        phone: normalizedPhone || cleanPhone,
+        status: 'failed',
+        error: 'Not on WhatsApp'
+      });
+      return res.status(404).json({ error: 'Not on WhatsApp', phone: normalizedPhone || cleanPhone });
     }
 
-    console.log(`[WhatsApp] ✉️ Sent to +${cleanPhone}: "${message.substring(0, 40)}"`);
+    const sentMsg = await waClient.sendMessage(resolvedId._serialized, message);
+    const sentMsgId = sentMsg?.id?._serialized || sentMsg?.id?.id || sentMsg?.id || null;
+    const deliveryAck = await waitForMessageAck(sentMsgId);
+    const deliveryStatus = deliveryAck === 2 ? 'delivered' : deliveryAck === 1 ? 'sent' : 'pending';
+    const verified = await verifyOutgoingMessage(resolvedId._serialized, message);
+
+    if (!verified) {
+      throw new Error('Message was not confirmed in WhatsApp chat history');
+    }
+
+    console.log(`[WhatsApp] ✉️ Sent to +${normalizedPhone || cleanPhone}: "${message.substring(0, 40)}"`);
 
     // Save sent message to lead replies and scraped lead status
     const lead = await Recipient.findOne({
       $or: [
-        { 'data.Phone': { $regex: cleanPhone + '$' } },
-        { email: cleanPhone + '@whatsapp.com' }
+        { 'data.Phone': { $regex: `${cleanPhone}$` } },
+        { 'data.Phone': { $regex: `${normalizedPhone.slice(-10)}$` } },
+        { email: `${cleanPhone}@whatsapp.com` },
+        { email: `${normalizedPhone.slice(-10)}@whatsapp.com` }
       ]
     });
     if (lead) {
       lead.replies.push({ receivedAt: new Date(), subject: 'WhatsApp Sent', body: message, type: 'whatsapp', fromMe: true });
       await lead.save();
     }
-    await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'sent', message });
+    await updateScrapedLeadWhatsappStatus({ phone: normalizedPhone || cleanPhone, status: deliveryStatus === 'pending' ? 'pending' : 'sent', message });
 
     // Increment daily counter for manual sends too
     await resetDailyCounterIfNeeded();
     waDailySent++;
 
-    res.json({ success: true, dailySent: waDailySent });
+    res.json({
+      success: true,
+      dailySent: waDailySent,
+      phone: normalizedPhone || cleanPhone,
+      messageId: sentMsgId,
+      ack: deliveryAck,
+      deliveryStatus,
+      verified: true
+    });
   } catch (e) {
     console.error('[WhatsApp] Send error:', e.message);
-    await updateScrapedLeadWhatsappStatus({ phone, status: 'failed', error: e.message });
+    await updateScrapedLeadWhatsappStatus({ phone: normalizeWhatsAppPhone(phone) || phone, status: 'failed', error: e.message });
     res.status(500).json({ error: e.message });
   }
 });
@@ -3791,31 +3869,22 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
 
   for (const [index, phone] of phones.entries()) {
     const cleanPhone = String(phone).replace(/\D/g, '');
+    const normalizedPhone = normalizeWhatsAppPhone(cleanPhone);
     const outgoingMessage = Array.isArray(messages) && messages[index] ? String(messages[index]) : message;
 
     try {
       if (provider === 'interakt') {
         console.log(`[Interakt Broadcast] Sending to: ${phone}`);
-        await sendWhatsappInterakt(cleanPhone, outgoingMessage);
+        await sendWhatsappInterakt(normalizedPhone || cleanPhone, outgoingMessage);
         results.sent++;
-        await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'sent', message: outgoingMessage });
-        results.details.push({ phone: cleanPhone, status: 'sent', provider: 'interakt' });
+        await updateScrapedLeadWhatsappStatus({ phone: normalizedPhone || cleanPhone, status: 'sent', message: outgoingMessage });
+        results.details.push({ phone: normalizedPhone || cleanPhone, status: 'sent', provider: 'interakt' });
         // Minimal delay for API calls to avoid rate limits
         if (index < phones.length - 1) await new Promise(r => setTimeout(r, 200));
         continue;
       }
 
       // ── Step 1: Normalize phone to full international format ───────────
-      let normalizedPhone = cleanPhone;
-      // Strip leading 0 (local format: 07xxx or 09xxx → 7xxx/9xxx)
-      if (normalizedPhone.startsWith('0') && normalizedPhone.length >= 10) {
-        normalizedPhone = normalizedPhone.slice(1);
-      }
-      // If 10 digits starting with 6-9 (Indian mobile, no country code) → add 91
-      if (normalizedPhone.length === 10 && /^[6-9]/.test(normalizedPhone)) {
-        normalizedPhone = '91' + normalizedPhone;
-      }
-
       console.log(`[WA Broadcast] Processing: ${phone} -> Normalized: ${normalizedPhone}`);
 
       // ── Step 2: Resolve WA ID using getNumberId ────────────────────────
@@ -3835,9 +3904,9 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
 
       if (!resolvedId) {
         const errMsg = 'Not on WhatsApp';
-        await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'failed', message: outgoingMessage, error: errMsg });
+        await updateScrapedLeadWhatsappStatus({ phone: normalizedPhone || cleanPhone, status: 'failed', message: outgoingMessage, error: errMsg });
         results.failed++;
-        results.details.push({ phone: cleanPhone, status: 'failed', error: errMsg });
+        results.details.push({ phone: normalizedPhone || cleanPhone, status: 'failed', error: errMsg });
         console.warn(`[WA Broadcast] ⚠️ Not on WhatsApp: +${normalizedPhone}`);
         if (index < phones.length - 1) await new Promise(r => setTimeout(r, Math.min(delay, 1500)));
         continue;
@@ -3861,10 +3930,15 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
         results.details.push({ phone: cleanPhone, status: 'warn_overlimit', sentCount: waDailySent });
       }
 
-      if (targetChat) {
-        await targetChat.sendMessage(outgoingMessage);
-      } else {
-        await waClient.sendMessage(resolvedId._serialized, outgoingMessage);
+      // Prefer the resolved ID because newer accounts may use @lid.
+      const targetChatId = resolvedId?._serialized || `${normalizedPhone}@c.us`;
+      const sentMsg = await waClient.sendMessage(targetChatId, outgoingMessage);
+      const sentMsgId = sentMsg?.id?._serialized || sentMsg?.id?.id || sentMsg?.id || null;
+      const deliveryAck = await waitForMessageAck(sentMsgId);
+      const verified = await verifyOutgoingMessage(targetChatId, outgoingMessage);
+
+      if (!verified) {
+        throw new Error('Message was not confirmed in WhatsApp chat history');
       }
 
       waDailySent++;
@@ -3881,11 +3955,17 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
         lead.replies.push({ receivedAt: new Date(), subject: 'WhatsApp Broadcast', body: outgoingMessage, type: 'whatsapp', fromMe: true });
         await lead.save();
       }
-      await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'sent', message: outgoingMessage });
+      await updateScrapedLeadWhatsappStatus({ phone: normalizedPhone || cleanPhone, status: 'sent', message: outgoingMessage });
 
       results.sent++;
-      results.details.push({ phone: cleanPhone, status: 'sent', dailySent: waDailySent });
-      console.log(`[WA Broadcast] ✅ Sent to +${cleanPhone}`);
+      results.details.push({
+        phone: normalizedPhone || cleanPhone,
+        status: 'sent',
+        dailySent: waDailySent,
+        ack: deliveryAck,
+        verified: true
+      });
+      console.log(`[WA Broadcast] ✅ Sent to +${normalizedPhone || cleanPhone}`);
 
       // ── 15s Fixed Delay (anti-ban) ────────────────────────────────────
       if (index < phones.length - 1) {
@@ -3894,10 +3974,10 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
         await new Promise(r => setTimeout(r, safeDelay));
       }
     } catch (e) {
-      await updateScrapedLeadWhatsappStatus({ phone: cleanPhone, status: 'failed', message: outgoingMessage, error: e.message });
+      await updateScrapedLeadWhatsappStatus({ phone: normalizedPhone || cleanPhone, status: 'failed', message: outgoingMessage, error: e.message });
       results.failed++;
-      results.details.push({ phone: cleanPhone, status: 'failed', error: e.message });
-      console.error(`[WA Broadcast] ❌ Failed +${cleanPhone}: ${e.message}`);
+      results.details.push({ phone: normalizedPhone || cleanPhone, status: 'failed', error: e.message });
+      console.error(`[WA Broadcast] ❌ Failed +${normalizedPhone || cleanPhone}: ${e.message}`);
     }
   }
 

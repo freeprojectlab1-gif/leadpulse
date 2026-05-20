@@ -227,8 +227,11 @@ const WhatsAppInboxTab = ({ waStatus, savedLeads = [], onRefreshSavedLeads }) =>
     setSending(true);
     setSendError('');
     try {
-      await axios.post('/api/whatsapp/send', { phone, message: msgInput.trim() });
+      const res = await axios.post('/api/whatsapp/send', { phone, message: msgInput.trim() });
       setMsgInput('');
+      if (res.data?.deliveryStatus === 'pending') {
+        setSendError('Message sent, but delivery is not confirmed yet.');
+      }
       setTimeout(fetchConversations, 1000);
     } catch (e) { setSendError('Failed to send: ' + (e.response?.data?.error || e.message)); }
     setSending(false);
@@ -2045,9 +2048,18 @@ function App() {
     return digits.slice(-10);
   };
 
+  const getWhatsAppDialDigits = (value) => {
+    const digits = String(value || '').replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.length === 10) return `91${digits}`;
+    if (digits.length === 11 && digits.startsWith('0')) return `91${digits.slice(1)}`;
+    if (digits.length >= 12) return digits.slice(-12);
+    return digits;
+  };
+
   const openWhatsappComposer = (lead) => {
     const activeTpl = whatsappTemplates.find(t => t.isActive);
-    const cleanPhone = getWhatsAppDigits(lead?.phone || lead?.data?.Phone || lead?.data?.phone || lead?.email?.replace('@whatsapp.com', ''));
+    const cleanPhone = getWhatsAppDialDigits(lead?.phone || lead?.data?.Phone || lead?.data?.phone || lead?.email?.replace('@whatsapp.com', ''));
     if (!cleanPhone) {
       showToast('No phone number found for this lead.', 'error');
       return;
@@ -2077,7 +2089,7 @@ function App() {
       return;
     }
 
-    const cleanPhone = phone.replace(/\D/g, '');
+    const cleanPhone = getWhatsAppDialDigits(phone);
 
     const finalMsg = renderTemplateMessage(activeTpl.message, lead);
 
@@ -2107,7 +2119,7 @@ function App() {
   };
 
   const copyWaNumber = () => {
-    const cleanPhone = getWhatsAppDigits(waModal.phone);
+    const cleanPhone = getWhatsAppDialDigits(waModal.phone);
     if (!cleanPhone) {
       showToast('No phone number available to copy.', 'error');
       return;
@@ -2151,6 +2163,49 @@ function App() {
       fetchSavedLeads();
     } catch (err) {
       showToast(`Failed to update WhatsApp status: ${err.response?.data?.error || err.message}`, 'error');
+    }
+  };
+
+  const sendWhatsappFromModal = async () => {
+    const phone = getWhatsAppDialDigits(waModal.phone);
+    const message = (waModal.message || '').trim();
+
+    if (!phone || !message) {
+      showToast('Phone number or message is missing.', 'error');
+      return;
+    }
+
+    if (waProvider === 'browser' && waStatus !== 'connected') {
+      showToast('WhatsApp is not connected!', 'error');
+      return;
+    }
+
+    try {
+      const res = await axios.post('/api/whatsapp/send', { phone, message });
+      const deliveryStatus = res.data?.deliveryStatus || 'sent';
+      const nextStatus = deliveryStatus === 'pending' ? 'pending' : 'sent';
+
+      if (waModal.leadId) {
+        await axios.put(`/api/saved-leads/${waModal.leadId}`, {
+          whatsappStatus: nextStatus,
+          whatsappUpdatedAt: new Date().toISOString()
+        });
+        setWaHighlightedLeadId(waModal.leadId);
+        clearTimeout(waHighlightTimerRef.current);
+        waHighlightTimerRef.current = setTimeout(() => setWaHighlightedLeadId(''), 2500);
+      }
+
+      syncLeadWhatsappStatus(phone, nextStatus);
+      showToast(
+        deliveryStatus === 'pending'
+          ? 'Message accepted, but delivery is not confirmed yet.'
+          : 'WhatsApp sent successfully!',
+        deliveryStatus === 'pending' ? 'info' : 'success'
+      );
+      setWaModal({ open: false, phone: '', message: '', leadId: '' });
+      fetchSavedLeads();
+    } catch (err) {
+      showToast(`WhatsApp send failed: ${err.response?.data?.error || err.message}`, 'error');
     }
   };
 
@@ -5533,11 +5588,11 @@ function App() {
                                       setWaStatuses(prev => ({ ...prev, [cleanP]: 'sending' }));
 
                                       try {
-                                        await axios.post('/api/whatsapp/send', {
+                                        const res = await axios.post('/api/whatsapp/send', {
                                           phone: cleanP,
                                           message: renderTemplateMessage(activeWaTpl.message, lead)
                                         });
-                                        syncLeadWhatsappStatus(cleanP, 'sent');
+                                        syncLeadWhatsappStatus(cleanP, res.data?.deliveryStatus === 'pending' ? 'pending' : 'sent');
                                       } catch (err) {
                                         syncLeadWhatsappStatus(cleanP, 'failed');
                                       }
@@ -5612,11 +5667,11 @@ function App() {
                                     setWaStatuses(prev => ({ ...prev, [cleanP]: 'sending' }));
 
                                       try {
-                                        await axios.post('/api/whatsapp/send', {
+                                        const res = await axios.post('/api/whatsapp/send', {
                                           phone: cleanP,
                                           message: renderTemplateMessage(activeWaTpl.message, lead)
                                         });
-                                        syncLeadWhatsappStatus(cleanP, 'sent');
+                                        syncLeadWhatsappStatus(cleanP, res.data?.deliveryStatus === 'pending' ? 'pending' : 'sent');
                                       } catch (err) {
                                         syncLeadWhatsappStatus(cleanP, 'failed');
                                       }
@@ -6538,24 +6593,31 @@ function App() {
                   <Copy size={18} className="mr-2" /> Copy Message
                 </Button>
                 <Button
+                  className="h-12 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold border-none"
+                  onClick={sendWhatsappFromModal}
+                >
+                  <MessageCircle size={18} className="mr-2" /> Send via Browser
+                </Button>
+                <Button
                   variant="secondary"
                   className="h-12 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 hover:text-blue-700 font-bold border border-blue-500/20"
                   onClick={() => markWhatsappStatusFromModal('sent')}
                 >
-                  <CheckCircle size={18} className="mr-2" /> Mark Sent
+                  <CheckCircle size={18} className="mr-2" /> Mark Sent Manually
                 </Button>
                 <Button
                   variant="secondary"
                   className="h-12 bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 hover:text-rose-700 font-bold border border-rose-500/20"
                   onClick={() => markWhatsappStatusFromModal('failed')}
                 >
-                  <X size={18} className="mr-2" /> Mark Failed
+                  <X size={18} className="mr-2" /> Mark Failed Manually
                 </Button>
                 <Button
-                  className="h-12 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold border-none"
+                  variant="secondary"
+                  className="h-12 bg-slate-500/10 text-slate-300 hover:bg-slate-500/20 hover:text-white font-bold border border-slate-500/20"
                   onClick={() => {
                     const encodedMsg = encodeURIComponent(waModal.message || '');
-                    const cleanPhone = getWhatsAppDigits(waModal.phone);
+                    const cleanPhone = getWhatsAppDialDigits(waModal.phone);
                     const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMsg}`;
                     window.open(waUrl, '_blank', 'noopener,noreferrer');
                   }}
@@ -6565,7 +6627,7 @@ function App() {
               </div>
 
               <p className="text-center text-muted-foreground text-xs mt-4">
-                Tip: Copy the number/message if needed, then use <strong className="text-foreground">Mark Sent</strong> after sending.
+                Tip: Use <strong className="text-foreground">Send via Browser</strong> for automation. Use <strong className="text-foreground">Open WhatsApp</strong> only for manual fallback.
               </p>
             </div>
           </Card>
