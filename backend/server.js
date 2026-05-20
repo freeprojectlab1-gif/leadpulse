@@ -3067,6 +3067,23 @@ app.post('/api/saved-leads/bulk-delete', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/saved-leads/bulk-delete-no-number', async (req, res) => {
+  try {
+    const result = await ScrapedLead.deleteMany({
+      $or: [
+        { phone: { $exists: false } },
+        { phone: null },
+        { phone: "" },
+        { phone: "N/A" },
+        { phone: "n/a" }
+      ]
+    });
+    res.json({ message: `${result.deletedCount} leads without numbers deleted successfully!` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.delete('/api/saved-leads/:id', async (req, res) => {
   try {
     await ScrapedLead.findByIdAndDelete(req.params.id);

@@ -5342,9 +5342,15 @@ function App() {
                 }
               }
             });
-            const uniqueMobileLeads = Object.values(leadsByPhone).sort((a, b) => 
-              new Date(b.whatsappUpdatedAt || b.createdAt) - new Date(a.whatsappUpdatedAt || a.createdAt)
-            );
+            const uniqueMobileLeads = Object.values(leadsByPhone).sort((a, b) => {
+              const statusA = getLeadWhatsappStatus(a);
+              const statusB = getLeadWhatsappStatus(b);
+              const rank = { 'pending': 1, 'failed': 2, 'sending': 3, 'sent': 4 };
+              const rankA = rank[statusA] || 5;
+              const rankB = rank[statusB] || 5;
+              if (rankA !== rankB) return rankA - rankB;
+              return new Date(b.whatsappUpdatedAt || b.createdAt) - new Date(a.whatsappUpdatedAt || a.createdAt);
+            });
 
             return (
               <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
@@ -5692,6 +5698,24 @@ function App() {
                       <Button variant="outline" size="sm" onClick={fetchSavedLeads}>
                         <RefreshCw size={14} className="mr-2" /> Refresh CRM
                       </Button>
+                      <Button variant="destructive" size="sm" onClick={() => {
+                        setConfirmModal({
+                          open: true,
+                          title: "Delete all leads without phone numbers?",
+                          onConfirm: async () => {
+                            try {
+                              const res = await axios.post('/api/saved-leads/bulk-delete-no-number');
+                              showToast(res.data.message || "Leads without numbers deleted!", "success");
+                              fetchSavedLeads();
+                              fetchStats();
+                            } catch (e) {
+                              showToast("Failed to delete leads", "error");
+                            }
+                          }
+                        });
+                      }}>
+                        <X size={14} className="mr-2" /> Delete No Number
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
@@ -5895,7 +5919,17 @@ function App() {
                       </div>
 
                       {(() => {
-                        const groupLeads = savedLeads.filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup);
+                        const groupLeads = savedLeads
+                          .filter(lead => `${(lead.keyword || 'Unknown').toUpperCase()} in ${(lead.city || 'Unknown').toUpperCase()}` === selectedGroup)
+                          .sort((a, b) => {
+                            const statusA = getLeadWhatsappStatus(a);
+                            const statusB = getLeadWhatsappStatus(b);
+                            const rank = { 'pending': 1, 'failed': 2, 'sending': 3, 'sent': 4 };
+                            const rankA = rank[statusA] || 5;
+                            const rankB = rank[statusB] || 5;
+                            if (rankA !== rankB) return rankA - rankB;
+                            return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+                          });
                         const allSelected = groupLeads.length > 0 && groupLeads.every(l => selectedIds.includes(l._id));
                         const someSelected = groupLeads.some(l => selectedIds.includes(l._id));
 
