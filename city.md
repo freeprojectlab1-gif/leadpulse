@@ -22,9 +22,9 @@ This document contains a comprehensive list of cities in India, categorized by s
 <!--Nashik -->
 <!-- Kalyan-Dombivli -->
 <!-- Vasai-Virar -->
-Aurangabad
-Solapur
-Bhiwandi
+<!-- Aurangabad -->
+<!-- Solapur -->
+<!-- Bhiwandi -->
 Amravati
 Malegaon
 Kolhapur

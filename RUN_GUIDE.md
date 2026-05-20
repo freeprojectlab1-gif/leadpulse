@@ -23,15 +23,19 @@ npm run dev
 
 ---
 
-## 2. Hard Restart (Port Busy / EADDRINUSE Error)
-**Situation:** Jab terminal crash ho jaye, ya `Port 5001 / 5173 is in use` ka error aaye.
+## 2. Hard Restart + Fresh QR
+**Situation:** Jab aapko sab kuch clean start karna ho aur WhatsApp QR dubara chahiye ho.
 
-### Windows / Linux common commands to free ports (Linux/Ubuntu):
-Run this command in terminal to kill processes running on ports `5001` and `5173`:
+### One-command start:
+Root folder se ye command run karein:
 ```bash
-fuser -k 5001/tcp && fuser -k 5173/tcp
+npm run hard-start
 ```
-Iske baad **Normal Run** wale commands se dubara start karein.
+
+Ye command kya karega:
+- `5001` aur `5173` ports clear karega
+- backend aur frontend dono start karega
+- WhatsApp session ko preserve karega taaki restart par automatic reconnect ho sake
 
 ---
 
@@ -40,15 +44,17 @@ Iske baad **Normal Run** wale commands se dubara start karein.
 
 Run this from the root folder:
 ```bash
-# 1. Kill old processes
-fuser -k 5001/tcp && fuser -k 5173/tcp
-
-# 2. Build frontend production package
-cd frontend && npm run build
-
-# 3. Start backend again (serves the updated build)
-cd ../backend && node server.js
+npm run hard-rebuild
 ```
+
+Ye flow pehle frontend build karega, phir backend start karega aur existing WhatsApp session ko preserve karega.
+
+### Fresh QR chahiye ho to:
+```bash
+rm -rf backend/wa_session backend/browser_session
+npm run hard-start
+```
+Isse WhatsApp puri tarah reset hoga aur naye QR scan ki zarurat padegi.
 
 ---
 

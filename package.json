@@ -5,8 +5,10 @@
   "main": "backend/server.js",
   "scripts": {
     "start": "cd backend && node server.js",
+    "hard-start": "bash scripts/hard-start.sh",
     "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "build": "npm run install-all && cd frontend && npm run build",
+    "hard-rebuild": "bash scripts/hard-rebuild.sh",
     "postinstall": "cd backend && rm -rf .cache/puppeteer && npx puppeteer browsers install chrome"
   },
   "engines": {

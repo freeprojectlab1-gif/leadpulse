@@ -217,6 +217,17 @@ setTimeout(syncWaDailyCounter, 5000); // Wait for DB connection
 // --- WhatsApp Client Logic ---
 
 const { execSync } = require('child_process');
+const WA_SESSION_DIR = path.join(__dirname, 'wa_session');
+
+const resetWhatsappSession = () => {
+  try {
+    fs.rmSync(WA_SESSION_DIR, { recursive: true, force: true });
+  } catch (e) { }
+  try {
+    fs.rmSync(BROWSER_SESSION_DIR, { recursive: true, force: true });
+  } catch (e) { }
+};
+
 const initWhatsapp = async () => {
   // Kill any existing Chrome processes and clear locks
   try { execSync('pkill -9 -f chrome-linux64 2>/dev/null', { stdio: 'ignore' }); } catch (e) { }
@@ -224,6 +235,7 @@ const initWhatsapp = async () => {
   await new Promise(r => setTimeout(r, 2000)); // Wait for Chrome to fully die
 
   const chromePath = '/usr/bin/google-chrome-stable';
+  console.log('[WhatsApp] Initializing client...');
   waClient = new Client({
     authStrategy: new LocalAuth({ dataPath: path.join(__dirname, 'wa_session') }),
     puppeteer: { headless: true, executablePath: chromePath, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas', '--disable-gpu'] },
@@ -357,6 +369,16 @@ const initWhatsapp = async () => {
   waClient.on('message_create', async (msg) => { if (!msg.fromMe && (msg.from.includes('@c.us') || msg.from.includes('@lid'))) await processMessage(msg, msg.from.split('@')[0]); });
 
   waClient.initialize().catch(err => { console.error('[WhatsApp] Init Error:', err.message); waStatus = 'disconnected'; waQr = ''; });
+
+  setTimeout(async () => {
+    if (waStatus === 'disconnected' && !waQr) {
+      console.log('[WhatsApp] Startup timeout. Resetting session and retrying...');
+      resetWhatsappSession();
+      try { await waClient.destroy(); } catch (e) { }
+      waClient = null;
+      setTimeout(() => initWhatsapp(), 2000);
+    }
+  }, 30000);
 
   let polls = 0, openings = 0, chatPollStarted = false;
   let lastChecked = Date.now() - 604800000; // Check last 7 days on startup
@@ -1175,15 +1197,50 @@ app.post('/api/send-custom/:leadId/:templateId', async (req, res) => {
 });
 
 const distPath = path.join(__dirname, '../frontend/dist');
-app.use(express.static(distPath, { setHeaders: (res, path) => { if (path.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache'); } }));
-app.use((req, res, next) => {
-  if (!req.path.startsWith('/api')) {
+const distIndexPath = path.join(distPath, 'index.html');
+const hasFrontendBuild = fs.existsSync(distIndexPath);
+
+if (hasFrontendBuild) {
+  app.use(express.static(distPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+    }
+  }));
+  app.use((req, res, next) => {
+    if (!req.path.startsWith('/api')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.sendFile(distIndexPath);
+    } else {
+      next();
+    }
+  });
+} else {
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.sendFile(path.join(distPath, 'index.html'));
-  } else {
-    next();
-  }
-});
+    res.status(200).send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Frontend not built</title>
+    <meta http-equiv="refresh" content="0; url=http://localhost:5173" />
+    <style>
+      body { font-family: Arial, sans-serif; padding: 32px; line-height: 1.5; }
+      code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; }
+      a { color: #0f62fe; }
+    </style>
+  </head>
+  <body>
+    <h1>Frontend build not found</h1>
+    <p>The backend is running on <code>5001</code>, but <code>frontend/dist/index.html</code> is missing.</p>
+    <p>Run <code>npm run build</code> from the project root, or use <code>npm run hard-start</code> to start backend and frontend together.</p>
+    <p>Redirecting to <a href="http://localhost:5173">http://localhost:5173</a> now.</p>
+  </body>
+</html>`);
+  });
+}
 
 cron.schedule('*/1 * * * *', async () => {
   const pending = await Recipient.find({
@@ -3674,10 +3731,12 @@ app.get('/api/whatsapp/qr', (req, res) => {
 
 app.post('/api/whatsapp/send', async (req, res) => {
   const { phone, message } = req.body;
+  console.log(`[WhatsApp] Send requested -> phone: ${phone || 'N/A'}, chars: ${message ? String(message).length : 0}, status: ${waStatus}, daily: ${waDailySent}/${WA_DAILY_LIMIT}`);
   if (!phone || !message) return res.status(400).json({ error: 'phone and message required' });
   if (!waClient || waStatus !== 'connected') return res.status(503).json({ error: 'WhatsApp not connected' });
   try {
     const cleanPhone = phone.replace(/\D/g, '');
+    console.log(`[WhatsApp] Sending direct message to cleaned phone: +${cleanPhone}`);
 
     // Find the actual chat by scanning all chats for matching phone number
     // This handles both @c.us and @lid formats used in newer WhatsApp
@@ -3694,10 +3753,12 @@ app.post('/api/whatsapp/send', async (req, res) => {
 
     if (targetChat) {
       // Use existing chat (works with @lid format)
+      console.log(`[WhatsApp] Using existing chat id: ${targetChat.id?._serialized || 'unknown'}`);
       await targetChat.sendMessage(message);
     } else {
       // Fallback: try @c.us directly
       const chatId = cleanPhone + '@c.us';
+      console.log(`[WhatsApp] Fallback send via chat id: ${chatId}`);
       await waClient.sendMessage(chatId, message);
     }
 
@@ -3765,6 +3826,7 @@ const sendWhatsappInterakt = async (phone, message) => {
 
 app.post('/api/whatsapp/broadcast', async (req, res) => {
   const { phones, message, messages, delay = 3000, provider = 'browser' } = req.body;
+  console.log(`[WA Broadcast] Request received -> phones: ${Array.isArray(phones) ? phones.length : 0}, provider: ${provider}, daily: ${waDailySent}/${WA_DAILY_LIMIT}, status: ${waStatus}`);
   if (!phones || !Array.isArray(phones) || phones.length === 0) return res.status(400).json({ error: 'phones array required' });
   if (!message && (!Array.isArray(messages) || messages.length === 0)) return res.status(400).json({ error: 'message required' });
 
@@ -3858,8 +3920,10 @@ app.post('/api/whatsapp/broadcast', async (req, res) => {
       }
 
       if (targetChat) {
+        console.log(`[WA Broadcast] Using existing chat for +${cleanPhone}: ${targetChat.id?._serialized || 'unknown'}`);
         await targetChat.sendMessage(outgoingMessage);
       } else {
+        console.log(`[WA Broadcast] Fallback send for +${cleanPhone} via ${resolvedId._serialized}`);
         await waClient.sendMessage(resolvedId._serialized, outgoingMessage);
       }
 
@@ -3921,9 +3985,11 @@ app.post('/api/whatsapp/restart', async (req, res) => {
   try {
     waStatus = "disconnected";
     waQr = "";
+    resetWhatsappSession();
     if (waClient) {
       try { await waClient.destroy(); } catch (e) { }
     }
+    waClient = null;
     setTimeout(() => initWhatsapp(), 1000);
     res.json({ success: true, message: "WhatsApp restarting..." });
     console.log('[WhatsApp] Manual restart triggered.');
