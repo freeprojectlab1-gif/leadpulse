@@ -1,685 +1,588 @@
-# 🇮🇳 Indian Cities by State
+# 🏨 India's Top Cities for Hotels & Restaurants
 
-This document contains a comprehensive list of cities in India, categorized by state and union territory. The states are ordered based on industrial and economic development.
+*This list is ranked starting from the best cities for the hospitality industry (Metros, Tourist Hubs, Tier-2 Business Hubs) down to Tier-3 cities.*
 
----
-
-## 📑 Table of Contents
-1. [Developed & Industrial States](#developed--industrial-states)
-2. [Other States & Union Territories](#other-states--union-territories)
-
----
-
-## 🚀 Developed & Industrial States
-
-### 🏙️ Maharashtra
-<!--Mumbai -->
-<!--Navi Mumbai -->
-<!--Pune -->
-<!--Nagpur -->
-<!--Thane -->
-<!--Pimpri-Chinchwad -->
-<!--Nashik -->
-<!-- Kalyan-Dombivli -->
-<!-- Vasai-Virar -->
-Aurangabad
-Solapur
-Bhiwandi
-Amravati
-Malegaon
-Kolhapur
-Nanded
-Sangli
-Jalgaon
-Akola
-Latur
-Dhule
-Ahmednagar
-Chandrapur
-Parbhani
-Ichalkaranji
-Jalna
-Bhusawal
-Panvel
-Satara
-Ratnagiri
-Ahmadnagar
-Bhandara
-Bhusawal
-Bid
-Buldhana
-Daulatabad
-Karli
-Mahabaleshwar
-Matheran
-Osmanabad
-Pandharpur
-Sevagram
-Ulhasnagar
-Wardha
-Yavatmal
-
-### 🏙️ Tamil Nadu
-Chennai
-Coimbatore
-Madurai
-Tiruchirappalli
-Salem
-Tiruppur
-Erode
-Vellore
-Thoothukudi
-Tirunelveli
-Thanjavur
-Dindigul
-Ranipet
-Sivakasi
-Karur
-Ooty (Udhagamandalam)
-Hosur
-Nagercoil
-Kanchipuram
-Kumbakonam
-Arcot
-Chengalpattu
-Chidambaram
-Cuddalore
-Dharmapuri
-Kanniyakumari
-Kodaikanal
-Mamallapuram
-Nagappattinam
-Palayamkottai
-Pudukkottai
-Rajapalayam
-Ramanathapuram
-
-### 🏙️ Karnataka
-Bengaluru (Bangalore)
-Hubballi-Dharwad
-Mysuru (Mysore)
-Kalaburagi (Gulbarga)
-Mangaluru (Mangalore)
-Belagavi (Belgaum)
-Davanagere
-Ballari (Bellary)
-Vijayapura (Bijapur)
-Shivamogga (Shimoga)
-Tumakuru (Tumkur)
-Raichur
-Bidar
-Hassan
-Hospet
-Badami
-Bhadravati
-Chikkamagaluru
-Chitradurga
-Halebid
-Kolar
-Madikeri
-Mandya
-Shravanabelagola
-Shrirangapattana
-
-### 🏙️ Gujarat
-Ahmedabad
-Surat
-Vadodara
-Rajkot
-Bhavnagar
-Jamnagar
-Junagadh
-Gandhinagar
-Anand
-Navsari
-Morbi
-Nadiad
-Bharuch
-Mehsana
-Bhuj
-Porbandar
-Valsad
-Vapi
-Gandhidham
-Veraval
-Amreli
-Dwarka
-Godhra
-Kandla
-Khambhat
-Kheda
-Okha
-Palanpur
-Patan
-Surendranagar
-
-### 🏙️ Telangana
-Hyderabad
-Warangal
-Nizamabad
-Karimnagar
-Ramagundam
-Khammam
-Mahbubnagar
-Nalgonda
-Adilabad
-Suryapet
-Miryalaguda
-Siddipet
-Sangareddi
-
-### 🏙️ Delhi (NCT)
-Delhi
-New Delhi
-North Delhi
-South Delhi
-East Delhi
-West Delhi
-Delhi Cantonment
-
-### 🏙️ Haryana
-Gurugram (Gurgaon)
-Faridabad
-Panipat
-Ambala
-Yamunanagar
-Rohtak
-Hisar
-Karnal
-Sonipat
-Panchkula
-Sirsa
-Bhiwani
-Bahadurgarh
-Firozpur Jhirka
-Hansi
-Jind
-Kaithal
-Kurukshetra
-Pehowa
-Rewari
-
-### 🏙️ Kerala
-Thiruvananthapuram
-Kochi
-Kozhikode
-Kollam
-Thrissur
-Alappuzha
-Palakkad
-Malappuram
-Kannur
-Kottayam
-Kasaragod
-Idukki
-Pathanamthitta
-Vatakara
-Mattancheri
-Thalassery
-
-### 🏙️ Punjab
-Ludhiana
-Amritsar
-Jalandhar
-Patiala
-Bathinda
-Mohali (SAS Nagar)
-Pathankot
-Hoshiarpur
-Batala
-Moga
-Abohar
-Khanna
-Chandigarh (Shared)
-Faridkot
-Firozpur
-Gurdaspur
-Kapurthala
-Nabha
-Rupnagar
-Sangrur
-
----
-
-## 🏛️ Other States & Union Territories
-
-### 📍 Uttar Pradesh
-Lucknow
-Kanpur
-Ghaziabad
-Agra
-Meerut
-Varanasi
-Prayagraj (Allahabad)
-Bareilly
-Aligarh
-Moradabad
-Saharanpur
-Noida
-Greater Noida
-Firozabad
-Jhansi
-Muzaffarnagar
-Mathura
-Ayodhya
-Gorakhpur
-Rampur
-Shahjahanpur
-Amroha
-Azamgarh
-Bahraich
-Ballia
-Banda
-Bara Banki
-Basti
-Bijnor
-Bithur
-Budaun
-Bulandshahr
-Deoria
-Etah
-Etawah
-Faizabad
-Farrukhabad-cum-Fatehgarh
-Fatehpur
-Fatehpur Sikri
-Ghazipur
-Gonda
-Hamirpur
-Hardoi
-Hathras
-Jalaun
-Jaunpur
-Kannauj
-Lakhimpur
-Lalitpur
-Mainpuri
-Mirzapur-Vindhyachal
-Partapgarh
-Pilibhit
-Rae Bareli
-Saharanpur
-Sambhal
-Sitapur
-Sultanpur
-Tehri
-
-### 📍 West Bengal
-Kolkata
-Howrah
-Asansol
-Siliguri
-Durgapur
-Bardhaman
-Malda
-Baharampur
-Habra
-Kharagpur
-Shantipur
-Dankuni
-Alipore
-Alipur Duar
-Bally
-Balurghat
-Bankura
-Baranagar
-Barasat
-Barrackpore
-Basirhat
-Bhatpara
-Bishnupur
-Budge Budge
-Chandernagore
-Darjeeling
-Diamond Harbour
-Dum Dum
-Halisahar
-Hugli
-Ingraj Bazar
-Jalpaiguri
-Kalimpong
-Kamarhati
-Kanchrapara
-Cooch Behar
-Krishnanagar
-Midnapore
-Murshidabad
-Nabadwip
-Palashi
-Panihati
-Purulia
-Raiganj
-Santipur
-Shantiniketan
-Shrirampur
-Siuri
-Tamluk
-Titagarh
-
-### 📍 Rajasthan
-Jaipur
-Jodhpur
-Kota
-Bikaner
-Ajmer
-Udaipur
-Bhilwara
-Alwar
-Bharatpur
-Sikar
-Pali
-Sri Ganganagar
-Abu
-Amer
-Barmer
-Beawar
-Bundi
-Chittaurgarh
-Churu
-Dhaulpur
-Dungarpur
-Ganganagar
-Hanumangarh
-Jaisalmer
-Jalor
-Jhalawar
-Jhunjhunu
-Kishangarh
-Merta
-Nagaur
-Nathdwara
-Phalodi
-Pushkar
-Sawai Madhopur
-Shahpura
-Sirohi
-Tonk
-
-### 📍 Andhra Pradesh
-Visakhapatnam
-Vijayawada
-Guntur
-Nellore
-Kurnool
-Kakinada
-Tirupati
-Rajamahendravaram (Rajahmundry)
-Kadapa
-Anantapur
-Vizianagaram
-Eluru
-Ongole
-Adoni
-Amaravati
-Chandragiri
-Chittoor
-Dowlaiswaram
-Machilipatnam
-Nagarjunakoṇḍa
-Srikakulam
-Yemmiganur
-
-### 📍 Madhya Pradesh
-Indore
-Bhopal
-Jabalpur
-Gwalior
-Ujjain
-Sagar
-Dewas
-Satna
-Ratlam
-Rewa
-Katni
-Singrauli
-Balaghat
-Barwani
-Betul
-Bharhut
-Bhind
-Bhojpur
-Burhanpur
-Chhatarpur
-Chhindwara
-Damoh
-Datia
-Dhar
-Dr. Ambedkar Nagar (Mhow)
-Guna
-Hoshangabad
-Itarsi
-Jhabua
-Khajuraho
-Khandwa
-Khargone
-Maheshwar
-Mandla
-Mandsaur
-Morena
-Murwara
-Narsimhapur
-Narsinghgarh
-Narwar
-Neemuch
-Nowgong
-Orchha
-Panna
-Raisen
-Rajgarh
-Sarangpur
-Sehore
-Seoni
-Shahdol
-Shajapur
-Sheopur
-Shivpuri
-Vidisha
-
-### 📍 Bihar
-Patna
-Gaya
-Bhagalpur
-Muzaffarpur
-Purnia
-Darbhanga
-Bihar Sharif
-Arrah
-Begusarai
-Katihar
-Munger
-Chhapra
-Ara
-Barauni
-Bettiah
-Bodh Gaya
-Buxar
-Dehri
-Dinapur Nizamat
-Hajipur
-Jamalpur
-Madhubani
-Motihari
-Pusa
-Saharsa
-Samastipur
-Sasaram
-Sitamarhi
-Siwan
-
-### 📍 Odisha
-Bhubaneswar
-Cuttack
-Rourkela
-Berhampur
-Sambalpur
-Puri
-Balasore
-Bhadrak
-Baripada
-Jharsuguda
-Balangir
-Baleshwar
-Brahmapur
-Dhenkanal
-Kendujhar
-Konark
-Koraput
-Paradip
-Phulabani
-Udayagiri
-
-### 📍 Chhattisgarh
-Raipur
-Bhilai
-Bilaspur
-Korba
-Rajnandgaon
-Jagdalpur
-Ambikapur
-Dhamtari
-Durg
-
-### 📍 Jharkhand
-Ranchi
-Jamshedpur
-Dhanbad
-Bokaro Steel City
-Deoghar
-Phusro
-Hazaribagh
-Giridih
-Chaibasa
-Dumka
-Jharia
-Rajmahal
-Saraikela
-
-### 📍 Uttarakhand
-Dehradun
-Haridwar
-Roorkee
-Haldwani
-Rudrapur
-Kashipur
-Rishikesh
-Almora
-Mussoorie
-Nainital
-Pithoragarh
-
-### 📍 Himachal Pradesh
-Shimla
-Solan
-Dharamshala
-Mandi
-Palampur
-Baddi
-Bilaspur
-Chamba
-Dalhousie
-Hamirpur
-Kangra
-Kullu
-Nahan
-Una
-
-### 📍 Assam
-Guwahati
-Silchar
-Dibrugarh
-Jorhat
-Nagaon
-Tinsukia
-Tezpur
-Dhuburi
-Dispur
-Sivasagar
-
-### 📍 Jammu & Kashmir (UT)
-Srinagar
-Jammu
-Anantnag
-Baramulla
-Kathua
-Sopore
-Doda
-Gulmarg
-Punch
-Rajouri
-Udhampur
-
-### 📍 Goa
-Panaji
-Margao
-Vasco da Gama
-Mapusa
-Ponda
-Madgaon
-
-### 📍 Manipur
-Imphal
-Thoubal
-Bishnupur
-
-### 📍 Meghalaya
-Shillong
-Tura
-Jowai
-Cherrapunji
-
-### 📍 Nagaland
-Kohima
-Dimapur
-Mokokchung
-Mon
-Phek
-Wokha
-Zunheboto
-
-### 📍 Tripura
-Agartala
-Udaipur
-Dharmanagar
-
-### 📍 Mizoram
-Aizawl
-Lunglei
-Saiha
-
-### 📍 Arunachal Pradesh
-Itanagar
-Naharlagun
-Pasighat
-
-### 📍 Sikkim
-Gangtok
-Namchi
-Geyzing
-Gyalshing
-Lachung
-Mangan
-
-### 📍 Chandigarh (UT)
-Chandigarh
-
-### 📍 Puducherry (UT)
-Puducherry
-Ozhukarai
-Karaikal
-Mahe
-Yanam
-
-### 📍 Ladakh (UT)
-Leh
-Kargil
-
-### 📍 Dadra and Nagar Haveli and Daman and Diu (UT)
-Daman
-Silvassa
-Diu
-
-### 📍 Andaman and Nicobar Islands (UT)
-Port Blair
-
-### 📍 Lakshadweep (UT)
-Kavaratti
+1. Delhi
+2. Delhi Cantonment
+3. East Delhi
+4. New Delhi
+5. North Delhi
+6. South Delhi
+7. West Delhi
+8. Bengaluru (Bangalore)
+9. Hyderabad
+10. Chennai
+11. Kolkata
+12. Ahmedabad
+13. Gurugram (Gurgaon)
+14. Greater Noida
+15. Noida
+16. Jaipur
+17. Udaipur
+18. Agra
+19. Prayagraj (Allahabad)
+20. Sevagram
+21. Varanasi
+22. Kochi
+23. Panaji
+24. Shimla
+25. Darjeeling
+26. Mysuru (Mysore)
+27. Amritsar
+28. Chandigarh
+29. Chandigarh (Shared)
+30. Rishikesh
+31. Haridwar
+32. Ooty (Udhagamandalam)
+33. Jodhpur
+34. Jaisalmer
+35. Pushkar
+36. Nainital
+37. Mussoorie
+38. Mahabaleshwar
+39. Puducherry
+40. Srinagar
+41. Leh
+42. Surat
+43. Vadodara
+44. Indore
+45. Bhopal
+46. Lucknow
+47. Kanpur
+48. Visakhapatnam
+49. Machilipatnam
+50. Patna
+51. Ludhiana
+52. Coimbatore
+53. Kozhikode
+54. Thiruvananthapuram
+55. Madurai
+56. Guwahati
+57. Bhubaneswar
+58. Dehradun
+59. Ranchi
+60. Raipur
+61. Tirupati
+62. Mathura
+63. Ayodhya
+64. Dharmapuri
+65. Mainpuri
+66. Puri
+67. Shivpuri
+68. Aurangabad
+69. Gwalior
+70. Jabalpur
+71. Rajkot
+72. Jalandhar
+73. Faridabad
+74. Ghaziabad
+75. Meerut
+76. Agartala
+77. Shillong
+78. Gangtok
+79. [Developed & Industrial States](#developed--industrial-states)
+80. [Other States & Union Territories](#other-states--union-territories)
+81. Abohar
+82. Abu
+83. Adilabad
+84. Adoni
+85. Ahmadnagar
+86. Ahmednagar
+87. Aizawl
+88. Ajmer
+89. Akola
+90. Alappuzha
+91. Aligarh
+92. Alipore
+93. Alipur Duar
+94. Almora
+95. Alwar
+96. Amaravati
+97. Ambala
+98. Ambikapur
+99. Amer
+100. Amravati
+101. Amreli
+102. Amroha
+103. Anand
+104. Anantapur
+105. Anantnag
+106. Ara
+107. Arcot
+108. Arrah
+109. Asansol
+110. Azamgarh
+111. Badami
+112. Baddi
+113. Bahadurgarh
+114. Baharampur
+115. Bahraich
+116. Balaghat
+117. Balangir
+118. Balasore
+119. Baleshwar
+120. Ballari (Bellary)
+121. Ballia
+122. Bally
+123. Balurghat
+124. Banda
+125. Bankura
+126. Bara Banki
+127. Baramulla
+128. Baranagar
+129. Barasat
+130. Barauni
+131. Bardhaman
+132. Bareilly
+133. Baripada
+134. Barmer
+135. Barrackpore
+136. Barwani
+137. Basirhat
+138. Basti
+139. Batala
+140. Bathinda
+141. Beawar
+142. Begusarai
+143. Belagavi (Belgaum)
+144. Berhampur
+145. Bettiah
+146. Betul
+147. Bhadrak
+148. Bhadravati
+149. Bhagalpur
+150. Bhandara
+151. Bharatpur
+152. Bharhut
+153. Bharuch
+154. Bhatpara
+155. Bhavnagar
+156. Bhilai
+157. Bhilwara
+158. Bhind
+159. Bhiwandi
+160. Bhiwani
+161. Bhojpur
+162. Bhuj
+163. Bhusawal
+164. Bid
+165. Bidar
+166. Bihar Sharif
+167. Bijnor
+168. Bikaner
+169. Bilaspur
+170. Bishnupur
+171. Bithur
+172. Bodh Gaya
+173. Bokaro Steel City
+174. Brahmapur
+175. Budaun
+176. Budge Budge
+177. Bulandshahr
+178. Buldhana
+179. Bundi
+180. Burhanpur
+181. Buxar
+182. Chaibasa
+183. Chamba
+184. Chandernagore
+185. Chandragiri
+186. Chandrapur
+187. Chengalpattu
+188. Cherrapunji
+189. Chhapra
+190. Chhatarpur
+191. Chhindwara
+192. Chidambaram
+193. Chikkamagaluru
+194. Chitradurga
+195. Chittaurgarh
+196. Chittoor
+197. Churu
+198. Cooch Behar
+199. Cuddalore
+200. Cuttack
+201. Dalhousie
+202. Daman
+203. Damoh
+204. Dankuni
+205. Darbhanga
+206. Datia
+207. Daulatabad
+208. Davanagere
+209. Dehri
+210. Deoghar
+211. Deoria
+212. Dewas
+213. Dhamtari
+214. Dhanbad
+215. Dhar
+216. Dharamshala
+217. Dharmanagar
+218. Dhaulpur
+219. Dhenkanal
+220. Dhuburi
+221. Dhule
+222. Diamond Harbour
+223. Dibrugarh
+224. Dimapur
+225. Dinapur Nizamat
+226. Dindigul
+227. Dispur
+228. Diu
+229. Doda
+230. Dowlaiswaram
+231. Dr. Ambedkar Nagar (Mhow)
+232. Dum Dum
+233. Dumka
+234. Dungarpur
+235. Durg
+236. Durgapur
+237. Dwarka
+238. Eluru
+239. Erode
+240. Etah
+241. Etawah
+242. Faizabad
+243. Faridkot
+244. Farrukhabad-cum-Fatehgarh
+245. Fatehpur
+246. Fatehpur Sikri
+247. Firozabad
+248. Firozpur
+249. Firozpur Jhirka
+250. Gandhidham
+251. Gandhinagar
+252. Ganganagar
+253. Gaya
+254. Geyzing
+255. Ghazipur
+256. Giridih
+257. Godhra
+258. Gonda
+259. Gorakhpur
+260. Gulmarg
+261. Guna
+262. Guntur
+263. Gurdaspur
+264. Gyalshing
+265. Habra
+266. Hajipur
+267. Haldwani
+268. Halebid
+269. Halisahar
+270. Hamirpur
+271. Hansi
+272. Hanumangarh
+273. Hardoi
+274. Hassan
+275. Hathras
+276. Hazaribagh
+277. Hisar
+278. Hoshangabad
+279. Hoshiarpur
+280. Hospet
+281. Hosur
+282. Howrah
+283. Hubballi-Dharwad
+284. Hugli
+285. Ichalkaranji
+286. Idukki
+287. Imphal
+288. Ingraj Bazar
+289. Itanagar
+290. Itarsi
+291. Jagdalpur
+292. Jalaun
+293. Jalgaon
+294. Jalna
+295. Jalor
+296. Jalpaiguri
+297. Jamalpur
+298. Jammu
+299. Jamnagar
+300. Jamshedpur
+301. Jaunpur
+302. Jhabua
+303. Jhalawar
+304. Jhansi
+305. Jharia
+306. Jharsuguda
+307. Jhunjhunu
+308. Jind
+309. Jorhat
+310. Jowai
+311. Junagadh
+312. Kadapa
+313. Kaithal
+314. Kakinada
+315. Kalaburagi (Gulbarga)
+316. Kalimpong
+317. Kamarhati
+318. Kanchipuram
+319. Kanchrapara
+320. Kandla
+321. Kangra
+322. Kannauj
+323. Kanniyakumari
+324. Kannur
+325. Kapurthala
+326. Karaikal
+327. Kargil
+328. Karimnagar
+329. Karli
+330. Karnal
+331. Karur
+332. Kasaragod
+333. Kashipur
+334. Kathua
+335. Katihar
+336. Katni
+337. Kavaratti
+338. Kendujhar
+339. Khajuraho
+340. Khambhat
+341. Khammam
+342. Khandwa
+343. Khanna
+344. Kharagpur
+345. Khargone
+346. Kheda
+347. Kishangarh
+348. Kodaikanal
+349. Kohima
+350. Kolar
+351. Kolhapur
+352. Kollam
+353. Konark
+354. Koraput
+355. Korba
+356. Kota
+357. Kottayam
+358. Krishnanagar
+359. Kullu
+360. Kumbakonam
+361. Kurnool
+362. Kurukshetra
+363. Lachung
+364. Lakhimpur
+365. Lalitpur
+366. Latur
+367. Lunglei
+368. Madgaon
+369. Madhubani
+370. Madikeri
+371. Mahbubnagar
+372. Mahe
+373. Maheshwar
+374. Malappuram
+375. Malda
+376. Malegaon
+377. Mamallapuram
+378. Mandi
+379. Mandla
+380. Mandsaur
+381. Mandya
+382. Mangaluru (Mangalore)
+383. Mangan
+384. Mapusa
+385. Margao
+386. Matheran
+387. Mattancheri
+388. Mehsana
+389. Merta
+390. Midnapore
+391. Miryalaguda
+392. Mirzapur-Vindhyachal
+393. Moga
+394. Mohali (SAS Nagar)
+395. Mokokchung
+396. Mon
+397. Moradabad
+398. Morbi
+399. Morena
+400. Motihari
+401. Munger
+402. Murshidabad
+403. Murwara
+404. Muzaffarnagar
+405. Muzaffarpur
+406. Nabadwip
+407. Nabha
+408. Nadiad
+409. Nagaon
+410. Nagappattinam
+411. Nagarjunakoṇḍa
+412. Nagaur
+413. Nagercoil
+414. Nahan
+415. Naharlagun
+416. Nalgonda
+417. Namchi
+418. Nanded
+419. Narsimhapur
+420. Narsinghgarh
+421. Narwar
+422. Nathdwara
+423. Navsari
+424. Neemuch
+425. Nellore
+426. Nizamabad
+427. Nowgong
+428. Okha
+429. Ongole
+430. Orchha
+431. Osmanabad
+432. Ozhukarai
+433. Palakkad
+434. Palampur
+435. Palanpur
+436. Palashi
+437. Palayamkottai
+438. Pali
+439. Panchkula
+440. Pandharpur
+441. Panihati
+442. Panipat
+443. Panna
+444. Panvel
+445. Paradip
+446. Parbhani
+447. Partapgarh
+448. Pasighat
+449. Patan
+450. Pathanamthitta
+451. Pathankot
+452. Patiala
+453. Pehowa
+454. Phalodi
+455. Phek
+456. Phulabani
+457. Phusro
+458. Pilibhit
+459. Pithoragarh
+460. Ponda
+461. Porbandar
+462. Port Blair
+463. Pudukkottai
+464. Punch
+465. Purnia
+466. Purulia
+467. Pusa
+468. Rae Bareli
+469. Raichur
+470. Raiganj
+471. Raisen
+472. Rajamahendravaram (Rajahmundry)
+473. Rajapalayam
+474. Rajgarh
+475. Rajmahal
+476. Rajnandgaon
+477. Rajouri
+478. Ramagundam
+479. Ramanathapuram
+480. Rampur
+481. Ranipet
+482. Ratlam
+483. Ratnagiri
+484. Rewa
+485. Rewari
+486. Rohtak
+487. Roorkee
+488. Rourkela
+489. Rudrapur
+490. Rupnagar
+491. Sagar
+492. Saharanpur
+493. Saharsa
+494. Saiha
+495. Salem
+496. Samastipur
+497. Sambalpur
+498. Sambhal
+499. Sangareddi
+500. Sangli
+501. Sangrur
+502. Santipur
+503. Saraikela
+504. Sarangpur
+505. Sasaram
+506. Satara
+507. Satna
+508. Sawai Madhopur
+509. Sehore
+510. Seoni
+511. Shahdol
+512. Shahjahanpur
+513. Shahpura
+514. Shajapur
+515. Shantiniketan
+516. Shantipur
+517. Sheopur
+518. Shivamogga (Shimoga)
+519. Shravanabelagola
+520. Shrirampur
+521. Shrirangapattana
+522. Siddipet
+523. Sikar
+524. Silchar
+525. Siliguri
+526. Silvassa
+527. Singrauli
+528. Sirohi
+529. Sirsa
+530. Sitamarhi
+531. Sitapur
+532. Siuri
+533. Sivakasi
+534. Sivasagar
+535. Siwan
+536. Solan
+537. Solapur
+538. Sonipat
+539. Sopore
+540. Sri Ganganagar
+541. Srikakulam
+542. Sultanpur
+543. Surendranagar
+544. Suryapet
+545. Tamluk
+546. Tehri
+547. Tezpur
+548. Thalassery
+549. Thanjavur
+550. This document contains a comprehensive list of cities in India, categorized by state and union territory. The states are ordered based on industrial and economic development.
+551. Thoothukudi
+552. Thoubal
+553. Thrissur
+554. Tinsukia
+555. Tiruchirappalli
+556. Tirunelveli
+557. Tiruppur
+558. Titagarh
+559. Tonk
+560. Tumakuru (Tumkur)
+561. Tura
+562. Udayagiri
+563. Udhampur
+564. Ujjain
+565. Ulhasnagar
+566. Una
+567. Valsad
+568. Vapi
+569. Vasco da Gama
+570. Vatakara
+571. Vellore
+572. Veraval
+573. Vidisha
+574. Vijayapura (Bijapur)
+575. Vijayawada
+576. Vizianagaram
+577. Warangal
+578. Wardha
+579. Wokha
+580. Yamunanagar
+581. Yanam
+582. Yavatmal
+583. Yemmiganur
+584. Zunheboto
