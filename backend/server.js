@@ -310,7 +310,7 @@ const issueAuthToken = (user) => signAuthToken({
 const getAuthTokenFromReq = (req) => {
   const header = req.headers.authorization || '';
   if (header.startsWith('Bearer ')) return header.slice(7).trim();
-  return req.headers['x-auth-token'] || '';
+  return req.headers['x-auth-token'] || req.query.token || '';
 };
 
 const requireAuth = async (req, res, next) => {

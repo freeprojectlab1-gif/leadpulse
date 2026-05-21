@@ -3128,7 +3128,7 @@ function App() {
     setIsBulkFinding(true);
     setEmailFindLog('');
     showToast(`${ids.length} leads ke liye email dhundh raha hai...`, 'success');
-    const es = new EventSource(`/api/bulk-find-emails?ids=${ids.join(',')}`);
+    const es = new EventSource(`/api/bulk-find-emails?ids=${ids.join(',')}&token=${localStorage.getItem('leadpulse_auth_token') || ''}`);
     es.onmessage = (event) => {
       try {
         const d = JSON.parse(event.data);
@@ -3162,7 +3162,7 @@ function App() {
     setScrapedLeads([]);
     showToast("Live Scraping Started! Data will stream in every 10-15s...", "success");
 
-    const url = `/api/scrape-leads?keyword=${encodeURIComponent(scrapeKeyword)}&city=${encodeURIComponent(scrapeCity)}&mode=${scrapeMode}&sources=${scrapeSources.join(',')}&igSession=${encodeURIComponent(igSession)}&liAt=${encodeURIComponent(liAt)}&fbCUser=${encodeURIComponent(fbCUser)}&fbXs=${encodeURIComponent(fbXs)}`;
+    const url = `/api/scrape-leads?keyword=${encodeURIComponent(scrapeKeyword)}&city=${encodeURIComponent(scrapeCity)}&mode=${scrapeMode}&sources=${scrapeSources.join(',')}&igSession=${encodeURIComponent(igSession)}&liAt=${encodeURIComponent(liAt)}&fbCUser=${encodeURIComponent(fbCUser)}&fbXs=${encodeURIComponent(fbXs)}&token=${localStorage.getItem('leadpulse_auth_token') || ''}`;
 
     // Save to history
     if (!keywordHistory.includes(scrapeKeyword)) {
@@ -3247,7 +3247,7 @@ function App() {
       noWebsiteOnly: String(mapNoWebsiteOnly)
     });
 
-    const eventSource = new EventSource(`/api/map-businesses?${params.toString()}`);
+    const eventSource = new EventSource(`/api/map-businesses?${params.toString()}&token=${localStorage.getItem('leadpulse_auth_token') || ''}`);
     window.currentMapBusinessES = eventSource;
 
     eventSource.onmessage = (event) => {
