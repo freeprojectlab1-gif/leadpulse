@@ -2328,6 +2328,7 @@ function App() {
   const [waQr, setWaQr] = useState('');
   const lastSavedPublicEmailRef = useRef('');
   const publicEmailSaveTimerRef = useRef(null);
+  const canManageTasks = String(currentUser?.loginId || '').trim().toLowerCase() === 'admin';
 
   const teamAccessPreviewAccess = activeTab === 'team_access' && teamAccessTarget
     ? ACCESS_TABS.reduce((acc, item) => {
@@ -3456,11 +3457,14 @@ function App() {
     setTeamLoading(true);
     try {
       const res = await axios.get('/api/users');
-      setTeamMembers(Array.isArray(res.data) ? res.data : []);
+      const members = Array.isArray(res.data) ? res.data : [];
+      setTeamMembers(members);
       setTeamMessage('');
+      return members;
     } catch (e) {
       setTeamMembers([]);
       setTeamMessage(e.response?.data?.error || e.message);
+      return [];
     } finally {
       setTeamLoading(false);
     }
@@ -3503,6 +3507,15 @@ function App() {
     } catch (err) {
       showToast(err.response?.data?.error || 'Failed to update task', 'error');
     }
+  };
+
+  const openAssignLeadsDialog = async (target, selectedAssignee = '') => {
+    setAssignTarget(target);
+    setSelectedAssigneeId(selectedAssignee);
+    if (currentUser?.role === 'admin') {
+      await fetchTeamMembers();
+    }
+    setAssignDialogOpen(true);
   };
 
   const handleDeleteTask = async (taskId) => {
@@ -4941,7 +4954,7 @@ function App() {
                   <Button variant="outline" className="rounded-xl" onClick={fetchTasks} disabled={tasksLoading}>
                     <RefreshCw size={16} className={tasksLoading ? 'animate-spin' : ''} />
                   </Button>
-                  {currentUser?.role === 'admin' && (
+                  {canManageTasks && (
                     <Button className="rounded-xl gap-2 bg-primary hover:bg-primary/90" onClick={() => { setTaskEditTarget(null); setTaskForm({ title: '', description: '', assignedTo: '', priority: 'medium', dueDate: '' }); setTaskDialogOpen(true); }}>
                       <Plus size={16} /> Assign Task
                     </Button>
@@ -5078,7 +5091,7 @@ function App() {
                           </div>
                         </div>
                         {/* Right: Actions */}
-                        {currentUser?.role === 'admin' && (
+                        {canManageTasks && (
                           <div className="flex items-center gap-1.5 flex-shrink-0">
                             <Button variant="ghost" size="sm" className="rounded-lg h-8 w-8 p-0 hover:bg-primary/10" onClick={() => {
                               setTaskEditTarget(task);
@@ -7856,11 +7869,12 @@ function App() {
                                   variant="ghost"
                                   size="icon"
                                   className="absolute top-3 left-3 h-7 w-7 rounded-full bg-card/80 border border-border/50 text-muted-foreground hover:text-foreground z-10 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={(e) => {
+                                  onClick={async (e) => {
                                     e.stopPropagation();
-                                    setAssignTarget({ keyword: sample.keyword, city: sample.city });
-                                    setSelectedAssigneeId(assignedMembers.length === 1 ? assignedMembers[0] : '');
-                                    setAssignDialogOpen(true);
+                                    await openAssignLeadsDialog(
+                                      { keyword: sample.keyword, city: sample.city },
+                                      assignedMembers.length === 1 ? assignedMembers[0] : ''
+                                    );
                                   }}
                                   title="Assign Folder"
                                 >
@@ -8055,10 +8069,9 @@ function App() {
                                   {currentUser?.role === 'admin' && (
                                     <Button
                                       className="bg-purple-600 hover:bg-purple-700 text-white font-bold"
-                                      onClick={() => {
+                                      onClick={async () => {
                                         const selectedInGroup = selectedIds.filter(id => groupLeads.some(l => l._id === id));
-                                        setAssignTarget({ leadIds: selectedInGroup });
-                                        setAssignDialogOpen(true);
+                                        await openAssignLeadsDialog({ leadIds: selectedInGroup });
                                       }}
                                     >
                                       <Users size={14} className="mr-2" /> Assign Selection
@@ -8464,6 +8477,17 @@ function App() {
             <div>
               <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Select Team Member</Label>
               <div className="space-y-2 max-h-[220px] overflow-y-auto rounded-xl border border-border/40 bg-muted/20 p-2">
+                {teamLoading && (
+                  <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                    <Loader2 size={16} className="animate-spin" />
+                    Loading team members...
+                  </div>
+                )}
+                {!teamLoading && teamMembers.filter(m => m.role !== 'admin').length === 0 && (
+                  <div className="py-6 text-center text-sm text-muted-foreground">
+                    No team members found. Add members first.
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => setSelectedAssigneeId('')}
@@ -8489,7 +8513,7 @@ function App() {
                   )}
                 </button>
 
-                {teamMembers.filter(m => m.role !== 'admin').map(member => (
+                {!teamLoading && teamMembers.filter(m => m.role !== 'admin').map(member => (
                   <button
                     key={member._id}
                     type="button"
