@@ -40,6 +40,8 @@ import {
   Eye,
   EyeOff,
   Briefcase,
+  Layers,
+  CheckCircle2,
   User,
   Building2,
   Clock,
@@ -130,6 +132,7 @@ const PAGE_TITLES = {
   dashboard: 'Dashboard',
   tasks: 'Task Management',
   campaign: 'Campaign Studio',
+  website_pricing: 'Website Pricing',
   template: 'Email Templates',
   custom_templates: 'Custom Folders',
   whatsapp_settings: 'WhatsApp Settings',
@@ -162,6 +165,7 @@ const ACCESS_SECTIONS = [
       { id: 'campaign', label: 'New Campaign', icon: Rocket },
       { id: 'logs', label: 'Delivery Logs', icon: Activity },
       { id: 'deals', label: 'Projects & Deals', icon: Briefcase },
+      { id: 'website_pricing', label: 'Website Pricing', icon: Globe },
     ],
   },
   {
@@ -201,13 +205,58 @@ const ACCESS_SECTIONS = [
 const ACCESS_TABS = ACCESS_SECTIONS.flatMap(section => section.items);
 const ACCESS_TAB_IDS = ACCESS_TABS.map(item => item.id);
 const MEMBER_DEFAULT_ACCESS = ACCESS_TAB_IDS.reduce((acc, key) => {
-  acc[key] = key === 'dashboard' || key === 'calling_scripts' || key === 'deals';
+  acc[key] = key === 'dashboard' || key === 'calling_scripts' || key === 'deals' || key === 'website_pricing';
   return acc;
 }, {});
 const FULL_ACCESS = ACCESS_TAB_IDS.reduce((acc, key) => {
   acc[key] = true;
   return acc;
 }, {});
+
+const WEBSITE_PRICING_CATALOG = [
+  {
+    type: 'Static Website / Landing Page',
+    price: '₹5,000 - ₹14,999',
+    bestFor: 'One offer, one goal, fast launch',
+    timeline: '2-4 days',
+    features: ['Hero section', 'Lead form', 'WhatsApp button', 'Mobile responsive', 'Basic SEO'],
+  },
+  {
+    type: 'Business Website',
+    price: '₹14,999 - ₹29,999',
+    bestFor: 'Service businesses and local brands',
+    timeline: '4-7 days',
+    features: ['Home, About, Services', 'Contact page', 'Testimonials', 'Google Maps', 'Lead capture'],
+  },
+  {
+    type: 'Portfolio Website',
+    price: '₹9,999 - ₹19,999',
+    bestFor: 'Freelancers, creators, agencies',
+    timeline: '3-5 days',
+    features: ['Projects gallery', 'About section', 'Case studies', 'Inquiry form', 'Social links'],
+  },
+  {
+    type: 'Restaurant / Hotel',
+    price: '₹19,999 - ₹49,999',
+    bestFor: 'Menu, booking, calls, direct inquiries',
+    timeline: '5-10 days',
+    features: ['Menu / rooms', 'Booking form', 'Gallery', 'WhatsApp / Call CTA', 'Reviews section'],
+  },
+  {
+    type: 'E-commerce Store',
+    price: '₹24,999 - ₹79,999',
+    bestFor: 'Products, payments, orders',
+    timeline: '7-14 days',
+    features: ['Product catalog', 'Cart / checkout', 'Payment gateway', 'Inventory basics', 'Order tracking'],
+  },
+  {
+    type: 'Custom CRM / Dashboard',
+    price: '₹29,999+',
+    bestFor: 'Internal sales, operations, automation',
+    timeline: '10-30 days',
+    features: ['Lead management', 'Tasks', 'Analytics', 'Roles & permissions', 'Custom workflows'],
+  },
+];
 
 const SCRIPT_CATEGORIES = [
   { id: 'all', label: 'All Scripts', emoji: '📋' },
@@ -4182,6 +4231,7 @@ function App() {
             { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
             { id: 'tasks', icon: ClipboardList, label: 'Tasks' },
             { id: 'deals', icon: Briefcase, label: 'Projects & Deals' },
+            { id: 'website_pricing', icon: Globe, label: 'Website Pricing' },
             { id: 'calling_scripts', icon: PhoneCall, label: 'Call Scripts' },
             { id: 'campaign', icon: Rocket, label: 'New Campaign' },
             { id: 'logs', icon: Activity, label: 'Delivery Logs' },
@@ -5676,6 +5726,124 @@ function App() {
                   </div>
                 </DialogContent>
               </Dialog>
+            </div>
+          )}
+
+          {activeTab === 'website_pricing' && (
+            <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-10">
+              <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+                <div className="max-w-3xl space-y-3">
+                  <Badge variant="outline" className="w-fit rounded-full px-4 py-1.5 border-primary/20 bg-primary/5 text-primary uppercase tracking-[0.3em] text-[10px] font-black">
+                    Sales Reference
+                  </Badge>
+                  <div>
+                    <h2 className="text-3xl md:text-5xl font-black tracking-tight text-foreground">
+                      Website Types & Pricing
+                    </h2>
+                    <p className="text-muted-foreground mt-3 text-sm md:text-base max-w-2xl leading-relaxed">
+                      Team ko client ke budget aur requirement ke hisaab se quickly quote dene ke liye ek simple price guide.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full lg:max-w-xl">
+                  {[
+                    { label: 'Fastest Close', value: 'Landing Page', tone: 'text-emerald-500' },
+                    { label: 'Most Common', value: 'Business Website', tone: 'text-sky-500' },
+                    { label: 'High Ticket', value: 'Custom CRM', tone: 'text-violet-500' },
+                  ].map(item => (
+                    <Card key={item.label} className="border-border/40 bg-card/40 backdrop-blur-md rounded-2xl">
+                      <CardContent className="p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{item.label}</p>
+                        <p className={`text-sm font-extrabold mt-2 ${item.tone}`}>{item.value}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  { icon: Globe, title: 'Quote by need', text: 'Client ko type ke hisaab se package dikhana easy hota hai.' },
+                  { icon: ShieldCheck, title: 'Scope clear rakho', text: 'Hosting, domain, content aur revisions alag mention karo.' },
+                  { icon: Target, title: 'Sell outcome', text: 'Price ke saath result bolo: leads, bookings, trust, sales.' },
+                ].map(card => {
+                  const Icon = card.icon;
+                  return (
+                    <Card key={card.title} className="border-border/40 bg-card/40 backdrop-blur-md rounded-2xl">
+                      <CardContent className="p-5 flex gap-4">
+                        <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                          <Icon size={20} className="text-primary" />
+                        </div>
+                        <div className="space-y-1">
+                          <h3 className="font-bold text-foreground">{card.title}</h3>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{card.text}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {WEBSITE_PRICING_CATALOG.map((item) => (
+                  <Card key={item.type} className="border-border/40 bg-card/40 backdrop-blur-md rounded-3xl overflow-hidden transition-all hover:border-primary/25 hover:shadow-lg">
+                    <CardContent className="p-6 space-y-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-muted-foreground">Website Type</p>
+                          <h3 className="text-2xl font-black tracking-tight text-foreground mt-2">{item.type}</h3>
+                        </div>
+                        <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                          <Layers size={20} className="text-primary" />
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Price Range</p>
+                        <p className="text-2xl font-black text-foreground mt-1">{item.price}</p>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Best for</span>
+                        <span className="font-semibold text-foreground text-right max-w-[60%]">{item.bestFor}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Delivery</span>
+                        <span className="font-semibold text-foreground">{item.timeline}</span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {item.features.map(feature => (
+                          <div key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                            <span>{feature}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <Card className="border-border/40 bg-gradient-to-br from-primary/10 via-card/60 to-card/30 backdrop-blur-md rounded-3xl">
+                <CardContent className="p-6 md:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="max-w-3xl space-y-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.35em] text-primary">Quick Notes</p>
+                    <h3 className="text-xl md:text-2xl font-black text-foreground">Use price as a starting point, not the final truth.</h3>
+                    <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+                      Final quote client ke scope, pages, integrations, content, design complexity aur revisions par depend karega.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {['Domain + Hosting', 'Content Writing', 'Extra Pages', 'SEO Setup', 'Maintenance'].map(tag => (
+                      <Badge key={tag} variant="outline" className="rounded-full px-3 py-1.5 border-border/40 bg-background/60 text-xs font-semibold">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
