@@ -6785,19 +6785,19 @@ function App() {
           )}
 
           {activeTab === 'team_access' && currentUser?.role === 'admin' && (
-            <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-10">
-              <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 animate-fade-in pb-10">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex flex-col gap-1">
                   <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Access Control</h2>
                   <p className="text-muted-foreground text-sm font-medium">Choose which tabs this member can see after login.</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 w-fit">
                     {teamAccessTarget ? teamAccessTarget.fullName : 'No member selected'}
                   </Badge>
                   <Button
                     variant="outline"
-                    className="rounded-xl"
+                    className="rounded-xl w-full sm:w-auto"
                     onClick={() => {
                       setActiveTab('team_management');
                       localStorage.setItem('activeTab', 'team_management');
@@ -6810,20 +6810,20 @@ function App() {
 
               {!teamAccessTarget ? (
                 <Card className="border-border/40 bg-card/50 backdrop-blur-sm shadow-sm">
-                  <CardContent className="p-10 text-center">
+                  <CardContent className="p-8 md:p-10 text-center">
                     <Users size={36} className="mx-auto text-primary mb-4" />
                     <h3 className="text-lg font-bold text-foreground mb-2">Select a team member</h3>
                     <p className="text-sm text-muted-foreground">Open Team Management and click a member to manage tab access.</p>
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                  <Card className="xl:col-span-1 border-border/40 bg-card/50 backdrop-blur-sm shadow-sm h-fit sticky top-24">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 md:gap-8">
+                  <Card className="xl:col-span-1 border-border/40 bg-card/50 backdrop-blur-sm shadow-sm h-fit xl:sticky xl:top-24">
                     <div className="h-24 bg-gradient-to-br from-primary/20 to-primary/5 border-b border-border/40"></div>
-                    <CardContent className="p-6 -mt-12">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-20 w-20 border-4 border-background shadow-2xl">
-                          <AvatarFallback className="bg-primary text-primary-foreground font-bold text-xl">
+                    <CardContent className="p-4 md:p-6 -mt-8 md:-mt-12">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                        <Avatar className="h-16 w-16 md:h-20 md:w-20 border-4 border-background shadow-2xl">
+                          <AvatarFallback className="bg-primary text-primary-foreground font-bold text-lg md:text-xl">
                             {teamAccessTarget.fullName?.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
@@ -6861,7 +6861,7 @@ function App() {
                   <div className="xl:col-span-2 space-y-6">
                     {ACCESS_SECTIONS.map(section => (
                       <Card key={section.label} className="border-border/40 bg-card/50 backdrop-blur-sm shadow-sm overflow-hidden">
-                        <CardHeader className="border-b border-border/40 bg-muted/20">
+                        <CardHeader className="border-b border-border/40 bg-muted/20 p-4 md:p-6">
                           <CardTitle className="text-sm font-bold flex items-center justify-between">
                             {section.label}
                             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
@@ -6874,14 +6874,14 @@ function App() {
                             const Icon = item.icon;
                             const locked = !!item.locked;
                             return (
-                              <div key={item.id} className="flex items-center justify-between gap-4 px-5 py-4 border-b border-border/30 last:border-b-0">
-                                <div className="flex items-center gap-4 min-w-0">
-                                  <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                                    <Icon size={18} />
+                              <div key={item.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 md:px-5 py-4 border-b border-border/30 last:border-b-0">
+                                <div className="flex items-start sm:items-center gap-4 min-w-0">
+                                  <div className="w-10 h-10 md:w-11 md:h-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                    <Icon size={16} className="md:w-[18px] md:h-[18px]" />
                                   </div>
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                      <span className="text-sm font-semibold text-foreground">{item.label}</span>
+                                      <span className="text-sm md:text-sm font-semibold text-foreground">{item.label}</span>
                                       {locked && (
                                         <Badge variant="outline" className="text-[10px] uppercase tracking-wider bg-amber-500/10 text-amber-500 border-amber-500/20">
                                           Required
@@ -6893,11 +6893,13 @@ function App() {
                                     </p>
                                   </div>
                                 </div>
-                                <Switch
-                                  checked={locked ? true : !!teamAccessForm[item.id]}
-                                  onCheckedChange={() => !locked && toggleTeamAccess(item.id)}
-                                  disabled={locked || teamAccessSaving}
-                                />
+                                <div className="self-end sm:self-auto">
+                                  <Switch
+                                    checked={locked ? true : !!teamAccessForm[item.id]}
+                                    onCheckedChange={() => !locked && toggleTeamAccess(item.id)}
+                                    disabled={locked || teamAccessSaving}
+                                  />
+                                </div>
                               </div>
                             );
                           })}
@@ -6905,10 +6907,10 @@ function App() {
                       </Card>
                     ))}
 
-                    <div className="flex items-center justify-end gap-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
                       <Button
                         variant="outline"
-                        className="rounded-xl"
+                        className="rounded-xl w-full sm:w-auto"
                         onClick={() => {
                           setActiveTab('team_management');
                           localStorage.setItem('activeTab', 'team_management');
@@ -6917,7 +6919,7 @@ function App() {
                         Close
                       </Button>
                       <Button
-                        className="rounded-xl shadow-glow-primary"
+                        className="rounded-xl shadow-glow-primary w-full sm:w-auto"
                         onClick={handleSaveTeamAccess}
                         disabled={teamAccessSaving}
                       >
