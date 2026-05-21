@@ -96,7 +96,8 @@ const settingsSchema = new mongoose.Schema({
   publicEmail: { type: String, default: '' },
   userName: { type: String, default: 'Muntazir' },
   userRole: { type: String, default: 'Admin' },
-  mapBusinessCategories: { type: [String], default: [] }
+  mapBusinessCategories: { type: [String], default: [] },
+  customCallScripts: { type: [mongoose.Schema.Types.Mixed], default: [] }
 });
 const Settings = mongoose.models.Settings || mongoose.model('Settings', settingsSchema);
 
@@ -194,9 +195,10 @@ const MEMBER_ACCESS_KEYS = [
   'template',
   'custom_templates',
   'variables',
+  'calling_scripts',
   'tasks'
 ];
-const REQUIRED_MEMBER_ACCESS = new Set(['dashboard']);
+const REQUIRED_MEMBER_ACCESS = new Set(['dashboard', 'calling_scripts']);
 const MEMBER_DEFAULT_ACCESS = MEMBER_ACCESS_KEYS.reduce((acc, key) => {
   acc[key] = REQUIRED_MEMBER_ACCESS.has(key);
   return acc;
@@ -3503,6 +3505,9 @@ app.post('/api/settings', async (req, res) => {
     if (req.body.publicEmail !== undefined) settings.publicEmail = req.body.publicEmail;
     if (req.body.mapBusinessCategories !== undefined) {
       settings.mapBusinessCategories = dedupeCategories(parseCategoryInput(req.body.mapBusinessCategories));
+    }
+    if (req.body.customCallScripts !== undefined) {
+      settings.customCallScripts = Array.isArray(req.body.customCallScripts) ? req.body.customCallScripts : [];
     }
     await settings.save();
     res.json(settings);

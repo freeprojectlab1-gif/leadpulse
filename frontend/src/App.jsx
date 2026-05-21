@@ -199,7 +199,7 @@ const ACCESS_SECTIONS = [
 const ACCESS_TABS = ACCESS_SECTIONS.flatMap(section => section.items);
 const ACCESS_TAB_IDS = ACCESS_TABS.map(item => item.id);
 const MEMBER_DEFAULT_ACCESS = ACCESS_TAB_IDS.reduce((acc, key) => {
-  acc[key] = key === 'dashboard';
+  acc[key] = key === 'dashboard' || key === 'calling_scripts';
   return acc;
 }, {});
 const FULL_ACCESS = ACCESS_TAB_IDS.reduce((acc, key) => {
@@ -226,7 +226,7 @@ const CALLING_SCRIPTS = [
     steps: [
       {
         label: '👋 Introduction',
-        dialogue: 'Hello Sir/Madam! Mera naam [Aapka Naam] hai, main [Company] se bol raha hoon. Humne aapke hotel ki Google Maps listing dekhi — photos bohot sundar hain aur rating bhi 4+ hai! Lekin humne notice kiya ki aapki apni official website nahi hai, ya bohot purani hai. Kya main 2 minute mein bata sakta hoon ki isse aapka kitna business loss ho raha hai?',
+        dialogue: 'Hello Sir/Madam! Mera naam [Aapka Naam] hai. Main aapse baat kar raha hoon kyunki humne aapke hotel ki Google Maps listing dekhi — photos bohot sundar hain aur rating bhi 4+ hai! Lekin humne notice kiya ki aapki apni official website nahi hai, ya bohot purani hai. Kya main 2 minute mein bata sakta hoon ki isse aapka kitna business loss ho raha hai?',
         tip: 'Awaaz confident aur friendly rakhein. Hotel ka naam lein taaki personal lage.'
       },
       {
@@ -254,7 +254,7 @@ const CALLING_SCRIPTS = [
     steps: [
       {
         label: '👋 Reminder',
-        dialogue: 'Hello Sir! Main [Naam] bol raha hoon [Company] se. Kal humne baat ki thi aapke hotel website ke baare mein aur maine aapko WhatsApp par kuch designs bheji thi. Kya aapne dekhi?',
+        dialogue: 'Hello Sir! Main [Naam] bol raha hoon. Kal humne baat ki thi aapke hotel website ke baare mein aur maine aapko WhatsApp par kuch designs bheji thi. Kya aapne dekhi?',
         tip: 'Agar unhone nahi dekhi, to politely bolo — "Koi baat nahi Sir, main abhi dubara bhej deta hoon."'
       },
       {
@@ -277,7 +277,7 @@ const CALLING_SCRIPTS = [
     steps: [
       {
         label: '👋 Introduction',
-        dialogue: 'Hello Sir/Madam! Mera naam [Naam] hai [Company] se. Humne aapke restaurant ki Zomato/Google listing dekhi — rating bohot achhi hai aur reviews bhi kamal ke hain! Lekin humne ek cheez notice ki — aapki khud ki website nahi hai. Main 2 minute mein samjhata hoon ki website se aapka profit kaise 2x ho sakta hai.',
+        dialogue: 'Hello Sir/Madam! Mera naam [Naam] hai. Humne aapke restaurant ki Zomato/Google listing dekhi — rating bohot achhi hai aur reviews bhi kamal ke hain! Lekin humne ek cheez notice ki — aapki khud ki website nahi hai. Main 2 minute mein samjhata hoon ki website se aapka profit kaise 2x ho sakta hai.',
         tip: 'Restaurant ka specific naam aur rating mention karein.'
       },
       {
@@ -305,7 +305,7 @@ const CALLING_SCRIPTS = [
     steps: [
       {
         label: '👋 Introduction',
-        dialogue: 'Hello! Mera naam [Naam] hai [Company] se. Humne aapke salon/gym ki Google listing dekhi — bohot achhi rating hai aur customer reviews bhi positive hain! Main aapko ek idea dena chahta hoon jisse aapke customers ka experience aur better ho jayega aur aapki bookings bhi badhengi.',
+        dialogue: 'Hello! Mera naam [Naam] hai. Humne aapke salon/gym ki Google listing dekhi — bohot achhi rating hai aur customer reviews bhi positive hain! Main aapko ek idea dena chahta hoon jisse aapke customers ka experience aur better ho jayega aur aapki bookings bhi badhengi.',
         tip: 'Salon owners ko customer experience ki baat karo — wo isse seriously lete hain.'
       },
       {
@@ -333,7 +333,7 @@ const CALLING_SCRIPTS = [
     steps: [
       {
         label: '👋 Introduction',
-        dialogue: 'Hello Doctor Sahab! Mera naam [Naam] hai [Company] se. Humne aapki Google listing dekhi — aapke patient reviews bohot positive hain! Main aapko ek important baat batana chahta hoon — aaj kal patients doctor se milne se pehle Google par search karte hain, aur agar aapki professional website nahi hai to wo dusre doctor ke paas chale jaate hain.',
+        dialogue: 'Hello Doctor Sahab! Mera naam [Naam] hai. Humne aapki Google listing dekhi — aapke patient reviews bohot positive hain! Main aapko ek important baat batana chahta hoon — aaj kal patients doctor se milne se pehle Google par search karte hain, aur agar aapki professional website nahi hai to wo dusre doctor ke paas chale jaate hain.',
         tip: 'Doctors ko "Doctor Sahab" ya "Dr." ke saath address karein — respect important hai.'
       },
       {
@@ -361,7 +361,7 @@ const CALLING_SCRIPTS = [
     steps: [
       {
         label: '👋 Introduction',
-        dialogue: 'Hello Sir/Madam! Mera naam [Naam] hai [Company] se. Humne aapke shop ki Google listing dekhi — bohot achhi location hai aur reviews bhi positive hain! Main aapko batana chahta hoon ki ek website se aapke shop ki reach sirf local area se poore city tak ho sakti hai.',
+        dialogue: 'Hello Sir/Madam! Mera naam [Naam] hai. Humne aapke shop ki Google listing dekhi — bohot achhi location hai aur reviews bhi positive hain! Main aapko batana chahta hoon ki ek website se aapke shop ki reach sirf local area se poore city tak ho sakti hai.',
         tip: 'Local shop owners ko "reach badhana" aur "naye customers" ki baat karo.'
       },
       {
@@ -470,8 +470,133 @@ const CALLING_SCRIPTS = [
         tip: 'Upgrade angle use karo — naya banwao mat bolo, "improve" bolo.'
       }
     ]
+  },
+  {
+    id: 'real_estate_intro',
+    category: 'retail',
+    title: '🏠 Real Estate — Lead Conversion Pitch',
+    subtitle: 'Property inquiries ko site par trust mein convert karo',
+    steps: [
+      {
+        label: '👋 Open',
+        dialogue: 'Hello Sir! Main [Naam] bol raha hoon. Humne aapki property listings dekhi — photos achhi hain, lekin buyers ko proper website par full details mil jaye to trust aur enquiries dono badh jaati hain.',
+        tip: 'Property type aur location ko mention karo taaki call personal लगे.'
+      },
+      {
+        label: '📉 Problem',
+        dialogue: 'Abhi buyers multiple portals par same listing dekhte hain. Unko aapki branding ya direct contact point clearly nahi milta, aur kaafi log simple brochure dekh kar hi next broker par chale jaate hain.',
+        tip: 'Portal dependency aur weak branding ko highlight karo.'
+      },
+      {
+        label: '✨ Solution',
+        dialogue: 'Hum aapke liye ek premium property website banayenge jisme: listings with photos, location map, WhatsApp inquiry button, brochure download aur lead form sab hoga. Isse buyer directly aapko contact karega.',
+        tip: 'Lead form + WhatsApp button real estate ke liye strongest combo hai.'
+      },
+      {
+        label: '🎯 Close',
+        dialogue: 'Main aapko 2 sample property websites bhej raha hoon. Aap dekh ke batayein, agar achha lage to main ek simple demo aapke project ke naam se bana deta hoon.',
+        tip: 'Demo ko property/project specific bana ke bhejo.'
+      }
+    ]
+  },
+  {
+    id: 'education_intro',
+    category: 'objections',
+    title: '🎓 Coaching / Institute — Enrollment Pitch',
+    subtitle: 'Admissions aur course trust ko website se boost karo',
+    steps: [
+      {
+        label: '👋 Open',
+        dialogue: 'Sir/Madam, main [Naam] bol raha hoon. Aaj kal students course lene se pehle website check karte hain — agar details clear nahi milti to wo dusre institute ko choose kar lete hain.',
+        tip: 'Course trust aur student credibility pe focus karo.'
+      },
+      {
+        label: '⚠️ Problem',
+        dialogue: 'Bohot institutes social media par depend karte hain, lekin wahan course structure, faculty, fees aur success stories properly organized nahi hoti. Is wajah se inquiries hoti hain, par enrollments kam convert hoti hain.',
+        tip: 'Instagram posts aur actual enrollment flow ka difference samjhao.'
+      },
+      {
+        label: '🚀 Solution',
+        dialogue: 'Hum ek admission website bana sakte hain jisme course pages, faculty profile, testimonials, FAQ, WhatsApp inquiry aur downloadable brochure hoga. Parents aur students ko sab ek jagah mil jayega.',
+        tip: 'Parents ko trust dena zaroori hai — FAQ aur testimonials add karo.'
+      },
+      {
+        label: '🎯 Close',
+        dialogue: 'Main aapko ek institute homepage ka sample bhej deta hoon. Agar pasand aaye to course-wise layout aur admission funnel bhi plan kar lenge.',
+        tip: 'Course-wise landing page future upsell ka achha point hai.'
+      }
+    ]
+  },
+  {
+    id: 'auto_service_intro',
+    category: 'retail',
+    title: '🚗 Auto Service — Workshop Booking Pitch',
+    subtitle: 'Service booking aur repeat customers badhao',
+    steps: [
+      {
+        label: '👋 Open',
+        dialogue: 'Hello Sir! Mera naam [Naam] hai. Humne aapka workshop dekha — kaam strong lag raha hai, bas online presence se aapke repeat customers aur new bookings dono aur better ho sakte hain.',
+        tip: 'Workshop ke existing work ko respect do.'
+      },
+      {
+        label: '🧩 Problem',
+        dialogue: 'Clients service schedule, pricing aur location confirm karne ke liye call karte rehte hain. Jab phone busy hota hai ya staff available nahi hota, to wo dusre garage ya service center chala jaata hai.',
+        tip: 'Missed call = missed service booking.'
+      },
+      {
+        label: '💡 Solution',
+        dialogue: 'Website me service packages, booking form, pickup/drop note, WhatsApp button aur customer reviews honge. Isse trust bhi badhega aur repeat bookings ka system ban jayega.',
+        tip: 'Pickup/drop option aur reviews workshop owners ko attract karte hain.'
+      },
+      {
+        label: '🎯 Close',
+        dialogue: 'Aap chahein to main aapke workshop ke naam se ek simple demo page bana ke bhej deta hoon. Uske baad aap khud decide kar lena.',
+        tip: 'Demo page se decision easy hota hai.'
+      }
+    ]
+  },
+  {
+    id: 'ecommerce_intro',
+    category: 'retail',
+    title: '🛍️ E-commerce — Catalog to Checkout Pitch',
+    subtitle: 'Product catalog aur direct checkout ko clean karo',
+    steps: [
+      {
+        label: '👋 Open',
+        dialogue: 'Hello Sir/Madam! Mera naam [Naam] hai. Agar aapke products ke liye ek fast, clean website ho to customer ko har product detail easily mil sakti hai aur purchase flow smooth ho jaata hai.',
+        tip: 'Product variety aur convenience dono highlight karo.'
+      },
+      {
+        label: '📉 Problem',
+        dialogue: 'Abhi kai businesses product photos social media ya marketplace par spread karke rakhte hain. Customer ko compare karna mushkil hota hai aur checkout tak pohanchte pohanchte interest kam ho jaata hai.',
+        tip: 'Scattered product discovery ko problem banao.'
+      },
+      {
+        label: '⚡ Solution',
+        dialogue: 'Hum aapke liye catalog website + inquiry/checkout flow build kar sakte hain jisme categories, filters, featured products, WhatsApp order aur enquiry form ho.',
+        tip: 'Filters aur WhatsApp order conversion ko improve karte hain.'
+      },
+      {
+        label: '🎯 Close',
+        dialogue: 'Main ek sample storefront bhej deta hoon. Aapko design pasand aaye to aapke products ke hisaab se next version plan kar lenge.',
+        tip: 'Storefront sample se visual impact milta hai.'
+      }
+    ]
   }
 ];
+
+const createEmptyCallingScriptForm = () => ({
+  emoji: '🧩',
+  category: 'hotels',
+  title: '',
+  subtitle: '',
+  steps: [
+    { label: 'Step 1', dialogue: '', tip: '' },
+    { label: 'Step 2', dialogue: '', tip: '' },
+    { label: 'Step 3', dialogue: '', tip: '' },
+    { label: 'Step 4', dialogue: '', tip: '' }
+  ]
+});
 
 const BACKEND_ORIGIN = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 const AUTH_TOKEN_KEY = 'leadpulse_auth_token';
@@ -2025,9 +2150,14 @@ function App() {
   const [showLoginForm, setShowLoginForm] = useState(false);
   const [loginId, setLoginId] = useState(localStorage.getItem('saved_login_id') || 'admin');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState(localStorage.getItem('activeTab') || 'dashboard');
   const [activeScriptCat, setActiveScriptCat] = useState('all');
   const [scriptQuery, setScriptQuery] = useState('');
+  const [customCallingScripts, setCustomCallingScripts] = useState([]);
+  const [scriptComposerOpen, setScriptComposerOpen] = useState(false);
+  const [scriptComposerSaving, setScriptComposerSaving] = useState(false);
+  const [scriptForm, setScriptForm] = useState(createEmptyCallingScriptForm());
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const switchTab = (tab) => {
@@ -2051,6 +2181,13 @@ function App() {
     if (user.role === 'admin') return 'dashboard';
     const first = ACCESS_TABS.find(item => canAccessTab(item.id, user));
     return first?.id || 'dashboard';
+  };
+
+  const getPreferredTab = (user = currentUser, preferredTab = localStorage.getItem('activeTab') || 'dashboard') => {
+    if (!user) return preferredTab || 'dashboard';
+    if (user.role === 'admin') return preferredTab || 'dashboard';
+    if (preferredTab && canAccessTab(preferredTab, user)) return preferredTab;
+    return getFirstAllowedTab(user);
   };
 
   const [file, setFile] = useState(null);
@@ -2274,6 +2411,30 @@ function App() {
     }
   };
 
+  const refreshCurrentUser = async () => {
+    if (!authToken) return;
+    try {
+      const res = await axios.get('/api/auth/me');
+      const user = res.data.user;
+      if (!user) return;
+      setCurrentUser(user);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+      setProfile(prev => ({
+        ...prev,
+        userName: user.fullName || prev.userName || 'User',
+        userRole: user.role === 'admin' ? 'Admin' : (user.position || prev.userRole || 'Member')
+      }));
+
+      const nextTab = getPreferredTab(user, activeTab);
+      if (nextTab && nextTab !== activeTab && activeTab !== 'team_access') {
+        setActiveTab(nextTab);
+        localStorage.setItem('activeTab', nextTab);
+      }
+    } catch (err) {
+      // Ignore transient refresh failures; the login/session flow will handle real auth errors.
+    }
+  };
+
   useEffect(() => {
     setAxiosAuthToken(authToken);
   }, [authToken]);
@@ -2281,8 +2442,20 @@ function App() {
   useEffect(() => {
     if (!authToken) return;
     fetchWaStatus();
+    refreshCurrentUser();
     const interval = setInterval(fetchWaStatus, 5000);
-    return () => clearInterval(interval);
+    const userInterval = setInterval(refreshCurrentUser, 60000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refreshCurrentUser();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      clearInterval(userInterval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [authToken]);
 
   useEffect(() => {
@@ -2302,7 +2475,7 @@ function App() {
           publicEmail: '',
           profilePic: ''
         });
-        const nextTab = getFirstAllowedTab(user);
+        const nextTab = getPreferredTab(user, localStorage.getItem('activeTab') || activeTab);
         setActiveTab(nextTab);
         localStorage.setItem('activeTab', nextTab);
       } catch (e) {
@@ -2316,7 +2489,7 @@ function App() {
   useEffect(() => {
     if (!isLoggedIn || !currentUser) return;
     if (canAccessTab(activeTab, currentUser)) return;
-    const nextTab = getFirstAllowedTab(currentUser);
+    const nextTab = getPreferredTab(currentUser, activeTab);
     if (nextTab !== activeTab) {
       switchTab(nextTab);
     }
@@ -2658,6 +2831,9 @@ function App() {
         if (Array.isArray(res.data.mapBusinessCategories) && res.data.mapBusinessCategories.length > 0) {
           setMapCategories(res.data.mapBusinessCategories);
         }
+        if (Array.isArray(res.data.customCallScripts)) {
+          setCustomCallingScripts(res.data.customCallScripts);
+        }
         lastSavedPublicEmailRef.current = res.data.publicEmail || '';
         setProfile({
           userName: userContext?.fullName || res.data.userName || 'User',
@@ -2667,6 +2843,56 @@ function App() {
         });
       }
     } catch (e) { console.error("Error fetching settings:", e); }
+  };
+
+  const saveCustomCallingScripts = async (nextScripts) => {
+    const cleanScripts = Array.isArray(nextScripts) ? nextScripts : [];
+    await axios.post('/api/settings', { customCallScripts: cleanScripts });
+    setCustomCallingScripts(cleanScripts);
+  };
+
+  const handleAddCustomCallingScript = async () => {
+    const title = String(scriptForm.title || '').trim();
+    const subtitle = String(scriptForm.subtitle || '').trim();
+    const emoji = String(scriptForm.emoji || '').trim() || '🧩';
+    const category = String(scriptForm.category || 'hotels').trim() || 'hotels';
+    const steps = (Array.isArray(scriptForm.steps) ? scriptForm.steps : [])
+      .map((step, idx) => ({
+        label: String(step.label || `Step ${idx + 1}`).trim() || `Step ${idx + 1}`,
+        dialogue: String(step.dialogue || '').trim(),
+        tip: String(step.tip || '').trim()
+      }))
+      .filter(step => step.dialogue);
+
+    if (!title || !subtitle || steps.length === 0) {
+      showToast('Title, subtitle aur at least one step required hai.', 'error');
+      return;
+    }
+
+    const nextScript = {
+      id: `custom_${Date.now()}`,
+      emoji,
+      category,
+      title,
+      subtitle,
+      steps,
+      isCustom: true,
+      createdBy: currentUser?.fullName || currentUser?.loginId || 'team',
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      setScriptComposerSaving(true);
+      const nextScripts = [...customCallingScripts, nextScript];
+      await saveCustomCallingScripts(nextScripts);
+      setScriptForm(createEmptyCallingScriptForm());
+      setScriptComposerOpen(false);
+      showToast('Custom script added!', 'success');
+    } catch (err) {
+      showToast(err.response?.data?.error || err.message || 'Failed to save script', 'error');
+    } finally {
+      setScriptComposerSaving(false);
+    }
   };
 
   const fetchMapCategories = async () => {
@@ -3215,7 +3441,7 @@ function App() {
         profilePic: ''
       });
       setPassword('');
-      const nextTab = getFirstAllowedTab(user);
+      const nextTab = getPreferredTab(user, activeTab);
       setActiveTab(nextTab);
       localStorage.setItem('activeTab', nextTab);
       showToast(`Welcome, ${user.fullName || user.loginId}!`, "success");
@@ -3634,89 +3860,118 @@ function App() {
     }
 
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4 overflow-hidden relative">
+      <div className="relative min-h-[100svh] overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(66,120,244,0.16),_transparent_32%),linear-gradient(180deg,_hsl(var(--background))_0%,_hsl(var(--background))_100%)] px-4 py-4 sm:px-6 lg:px-8 lg:py-6 flex items-center justify-center">
         {/* Modern Animated Background */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-primary/10 rounded-full blur-[120px] animate-pulse"></div>
-          <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[100px] animate-pulse delay-700"></div>
-          <div className="absolute top-[20%] right-[10%] w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[80px] animate-pulse delay-1000"></div>
+          <div className="absolute top-[-12%] left-[-12%] w-[42rem] h-[42rem] bg-primary/10 rounded-full blur-[120px] animate-pulse"></div>
+          <div className="absolute bottom-[-16%] right-[-12%] w-[34rem] h-[34rem] bg-blue-500/10 rounded-full blur-[120px] animate-pulse delay-700"></div>
+          <div className="absolute top-[18%] right-[8%] w-[24rem] h-[24rem] bg-emerald-500/10 rounded-full blur-[90px] animate-pulse delay-1000"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] opacity-30"></div>
         </div>
 
-        <div className="absolute top-8 left-8 flex items-center gap-2 cursor-pointer group z-50" onClick={() => setShowLoginForm(false)}>
-          <div className="w-10 h-10 rounded-full border border-border flex items-center justify-center group-hover:border-primary group-hover:text-primary transition-all bg-background/50 backdrop-blur-sm">
+        <div className="absolute top-4 left-4 sm:top-6 sm:left-6 flex items-center gap-2 cursor-pointer group z-50" onClick={() => setShowLoginForm(false)}>
+          <div className="w-10 h-10 rounded-full border border-border/70 flex items-center justify-center group-hover:border-primary group-hover:text-primary transition-all bg-background/60 backdrop-blur-md shadow-sm">
             <ArrowRight className="rotate-180" size={16} />
           </div>
           <span className="text-[10px] font-bold text-muted-foreground group-hover:text-foreground transition-colors uppercase tracking-[0.2em] hidden sm:block">Back to Home</span>
         </div>
 
-        <div className="w-full max-w-[440px] space-y-10 text-center relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-          <div className="flex flex-col items-center gap-6">
-            <div className="w-24 h-24 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-glow-primary/20 relative group">
-              <Rocket className="w-12 h-12 text-primary group-hover:scale-110 transition-transform" />
-              <div className="absolute -inset-2 bg-primary/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div className="relative z-10 w-full max-w-7xl grid items-center gap-8 lg:grid-cols-[1.08fr_minmax(360px,0.92fr)] xl:gap-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+          <div className="hidden lg:flex flex-col gap-6 pr-6 xl:pr-12">
+            <div className="inline-flex w-fit items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-[0.35em]">
+              <ShieldCheck size={12} /> Secure access only
             </div>
-            <div className="flex flex-col gap-2">
-              <h2 className="text-4xl font-black tracking-tighter text-foreground uppercase">{BRAND_NAME}</h2>
-              <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full">
+
+            <div className="max-w-2xl">
+              <h2 className="text-5xl xl:text-6xl font-black tracking-tighter text-foreground uppercase leading-[0.92]">{BRAND_NAME}</h2>
+              <div className="mt-4 inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
                 <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{BRAND_SUBTITLE}</span>
               </div>
+              <p className="mt-6 max-w-xl text-base xl:text-lg text-muted-foreground leading-relaxed">
+                Deploy your outreach engine from one calm, focused control room. Built for fast login, clear hierarchy, and zero wasted vertical space.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl">
+              {[
+                ['Fast login', 'Compact form flow with less vertical drag'],
+                ['Mobile ready', 'Responsive layout that stacks cleanly'],
+                ['Less scroll', 'Fits laptop screens more naturally'],
+              ].map(([title, copy]) => (
+                <div key={title} className="rounded-2xl border border-border/60 bg-card/50 backdrop-blur-xl p-4 shadow-lg">
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-foreground/70">{title}</p>
+                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{copy}</p>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="space-y-4">
-            <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl leading-tight">
-              Access Your <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-500 to-primary bg-[length:200%_auto] animate-shimmer">Infrastructure.</span>
-            </h1>
-            <p className="text-muted-foreground text-sm max-w-[340px] mx-auto leading-relaxed font-medium">
-              Deploy your cold outreach engine. <br /> Secure administrative access required.
+          <div className="w-full max-w-[520px] mx-auto lg:mx-0 lg:justify-self-end">
+            <Card className="w-full border-border/40 bg-card/50 backdrop-blur-2xl shadow-2xl overflow-hidden group rounded-[1.75rem] md:rounded-[2rem]">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <CardContent className="relative z-10 p-6 sm:p-8 lg:p-9 xl:p-10">
+                <div className="flex flex-col items-center gap-4 text-center mb-8 lg:hidden">
+                  <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 shadow-glow-primary relative group">
+                    <Rocket className="w-10 h-10 text-primary group-hover:scale-110 transition-transform" />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <h2 className="text-3xl font-black tracking-tighter text-foreground uppercase">{BRAND_NAME}</h2>
+                    <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                      Deploy your cold outreach engine. Secure administrative access required.
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleLogin} className="space-y-6 sm:space-y-7">
+                  <div className="space-y-3 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 ml-1">Login ID</Label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary opacity-50" />
+                      <Input
+                        type="text"
+                        placeholder="admin or phone number"
+                        value={loginId}
+                        onChange={e => setLoginId(e.target.value)}
+                        className="bg-background/40 border-border/40 pl-14 h-14 sm:h-[3.75rem] text-center font-mono text-lg sm:text-xl tracking-[0.12em] focus:ring-primary/20 focus:border-primary/40 rounded-2xl"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-3 text-left">
+                    <Label className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 ml-1">Password</Label>
+                    <div className="relative">
+                      <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary opacity-50" />
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        className="bg-background/40 border-border/40 pl-14 pr-14 h-14 sm:h-[3.75rem] text-center font-mono text-lg sm:text-xl tracking-[0.28em] focus:ring-primary/20 focus:border-primary/40 rounded-2xl"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((value) => !value)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/60 hover:text-primary transition-colors"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full h-14 sm:h-[3.75rem] rounded-2xl text-[11px] font-black shadow-glow-primary group relative overflow-hidden tracking-[0.22em] uppercase">
+                    <span className="relative z-10 flex items-center justify-center gap-3">
+                      Verify & Deploy <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary via-blue-500 to-primary bg-[length:200%_auto] animate-shimmer opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <p className="mt-6 text-[10px] text-muted-foreground/30 font-black uppercase tracking-[0.4em] flex items-center justify-center gap-2 lg:justify-start">
+              <ShieldCheck size={12} /> Neural Security Active v2.5.0
             </p>
           </div>
-
-          <Card className="w-full border-border/40 bg-card/40 backdrop-blur-2xl shadow-2xl overflow-hidden group rounded-2xl">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <CardContent className="p-12 relative z-10">
-              <form onSubmit={handleLogin} className="space-y-10">
-                <div className="space-y-4 text-left">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 ml-1">Login ID</Label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary opacity-50" />
-                    <Input
-                      type="text"
-                      placeholder="admin or phone number"
-                      value={loginId}
-                      onChange={e => setLoginId(e.target.value)}
-                      className="bg-background/40 border-border/40 pl-14 h-16 text-center font-mono text-xl tracking-[0.15em] focus:ring-primary/20 focus:border-primary/40 rounded-2xl"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-4 text-left">
-                  <Label className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 ml-1">Password</Label>
-                  <div className="relative">
-                    <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary opacity-50" />
-                    <Input
-                      type="password"
-                      placeholder="Enter password"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      className="bg-background/40 border-border/40 pl-14 h-16 text-center font-mono text-xl tracking-[0.35em] focus:ring-primary/20 focus:border-primary/40 rounded-2xl"
-                    />
-                  </div>
-                </div>
-                <Button type="submit" className="w-full h-16 rounded-2xl text-[11px] font-black shadow-glow-primary group relative overflow-hidden tracking-[0.2em] uppercase">
-                  <span className="relative z-10 flex items-center justify-center gap-3">
-                    Verify & Deploy <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary via-blue-500 to-primary bg-[length:200%_auto] animate-shimmer opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          <p className="text-[10px] text-muted-foreground/30 font-black uppercase tracking-[0.4em] flex items-center justify-center gap-2">
-            <ShieldCheck size={12} /> Neural Security Active v2.5.0
-          </p>
         </div>
       </div>
     );
@@ -3737,6 +3992,16 @@ function App() {
     return counts;
   };
   const whatsappLeadStats = getWhatsappLeadStats();
+  const allCallingScripts = [...CALLING_SCRIPTS, ...customCallingScripts];
+  const visibleCallingScripts = allCallingScripts
+    .filter(s => activeScriptCat === 'all' || s.category === activeScriptCat)
+    .filter(s => {
+      if (!scriptQuery.trim()) return true;
+      const q = scriptQuery.toLowerCase();
+      return s.title.toLowerCase().includes(q) || s.subtitle.toLowerCase().includes(q) || s.steps.some(st => st.dialogue.toLowerCase().includes(q));
+    });
+  const callerDisplayName = String(currentUser?.fullName || profile.userName || currentUser?.loginId || 'Aapka Naam').trim() || 'Aapka Naam';
+  const resolveCallerPlaceholders = (value = '') => String(value).replace(/\[(Aapka Naam|Naam|Your Name|Caller Name)\]/gi, callerDisplayName);
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
@@ -7118,27 +7383,150 @@ function App() {
             <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
               <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-lg">
                 <CardHeader className="pb-4 border-b border-border/50">
-                  <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <PhoneCall size={20} className="text-primary" /> Calling Scripts
-                      </CardTitle>
-                      <CardDescription>Apni team ke liye ready-made call scripts — copy karein aur baat shuru karein!</CardDescription>
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <span className="text-2xl">📞</span> Calling Scripts
+                        </CardTitle>
+                        <CardDescription>Apni team ke liye ready-made call scripts — copy karein, customize karein aur baat shuru karein!</CardDescription>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                        <Button
+                          variant="outline"
+                          onClick={() => setScriptComposerOpen(v => !v)}
+                          className="shrink-0 gap-2"
+                        >
+                          <span>{scriptComposerOpen ? '🧾' : '➕'}</span>
+                          {scriptComposerOpen ? 'Close Builder' : 'Add Script'}
+                        </Button>
+                        <div className="relative w-full md:w-72">
+                          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                          <input
+                            type="text"
+                            placeholder="Search scripts..."
+                            value={scriptQuery}
+                            onChange={e => setScriptQuery(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="relative w-full md:w-72">
-                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <input
-                        type="text"
-                        placeholder="Search scripts..."
-                        value={scriptQuery}
-                        onChange={e => setScriptQuery(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                    </div>
+
+                    {scriptComposerOpen && (
+                      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 md:p-5 space-y-5">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div>
+                            <h4 className="text-lg font-bold text-foreground">Team Script Builder</h4>
+                            <p className="text-sm text-muted-foreground">Banayein ek shared script jo team ke sab permitted members ke liye available rahega.</p>
+                          </div>
+                          <Badge className="w-fit bg-primary/10 text-primary border-primary/20">Shared Library</Badge>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-[0.2em]">Emoji</Label>
+                            <Input
+                              value={scriptForm.emoji}
+                              onChange={e => setScriptForm(prev => ({ ...prev, emoji: e.target.value.slice(0, 2) }))}
+                              placeholder="📣"
+                              className="bg-background/60"
+                              maxLength={2}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-[0.2em]">Category</Label>
+                            <Select value={scriptForm.category} onValueChange={value => setScriptForm(prev => ({ ...prev, category: value }))}>
+                              <SelectTrigger className="bg-background/60">
+                                <SelectValue placeholder="Select category" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SCRIPT_CATEGORIES.filter(cat => cat.id !== 'all').map(cat => (
+                                  <SelectItem key={cat.id} value={cat.id}>{cat.emoji} {cat.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <Label className="text-xs font-bold uppercase tracking-[0.2em]">Title</Label>
+                            <Input
+                              value={scriptForm.title}
+                              onChange={e => setScriptForm(prev => ({ ...prev, title: e.target.value }))}
+                              placeholder="e.g. 🧑‍💼 SaaS Founder Pitch"
+                              className="bg-background/60"
+                            />
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <Label className="text-xs font-bold uppercase tracking-[0.2em]">Subtitle</Label>
+                            <Input
+                              value={scriptForm.subtitle}
+                              onChange={e => setScriptForm(prev => ({ ...prev, subtitle: e.target.value }))}
+                              placeholder="Short summary of the script angle"
+                              className="bg-background/60"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          {scriptForm.steps.map((step, idx) => (
+                            <div key={idx} className="rounded-2xl border border-border/50 bg-card/70 p-4 space-y-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="font-bold text-sm">Step {idx + 1}</p>
+                                <span className="text-sm">{['1️⃣', '2️⃣', '3️⃣', '4️⃣'][idx]}</span>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="space-y-2">
+                                  <Label className="text-[10px] font-bold uppercase tracking-[0.2em]">Label</Label>
+                                  <Input
+                                    value={step.label}
+                                    onChange={e => setScriptForm(prev => ({
+                                      ...prev,
+                                      steps: prev.steps.map((item, itemIdx) => itemIdx === idx ? { ...item, label: e.target.value } : item)
+                                    }))}
+                                    className="bg-background/60"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-[10px] font-bold uppercase tracking-[0.2em]">Tip</Label>
+                                  <Input
+                                    value={step.tip}
+                                    onChange={e => setScriptForm(prev => ({
+                                      ...prev,
+                                      steps: prev.steps.map((item, itemIdx) => itemIdx === idx ? { ...item, tip: e.target.value } : item)
+                                    }))}
+                                    className="bg-background/60"
+                                  />
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-[0.2em]">Dialogue</Label>
+                                <Textarea
+                                  value={step.dialogue}
+                                  onChange={e => setScriptForm(prev => ({
+                                    ...prev,
+                                    steps: prev.steps.map((item, itemIdx) => itemIdx === idx ? { ...item, dialogue: e.target.value } : item)
+                                  }))}
+                                  className="min-h-[110px] bg-background/60"
+                                  placeholder="Write the call script step..."
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row justify-end gap-2">
+                          <Button variant="outline" onClick={() => setScriptComposerOpen(false)}>
+                            Cancel
+                          </Button>
+                          <Button onClick={handleAddCustomCallingScript} disabled={scriptComposerSaving} className="shadow-glow-primary">
+                            {scriptComposerSaving ? 'Saving...' : 'Save Script'}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 md:p-6">
-                  {/* Category Filter Chips */}
                   <div className="flex flex-wrap gap-2 mb-6">
                     {SCRIPT_CATEGORIES.map(cat => (
                       <button
@@ -7155,93 +7543,84 @@ function App() {
                     ))}
                   </div>
 
-                  {/* Script Cards */}
                   <div className="space-y-6">
-                    {CALLING_SCRIPTS
-                      .filter(s => activeScriptCat === 'all' || s.category === activeScriptCat)
-                      .filter(s => {
-                        if (!scriptQuery.trim()) return true;
-                        const q = scriptQuery.toLowerCase();
-                        return s.title.toLowerCase().includes(q) || s.subtitle.toLowerCase().includes(q) || s.steps.some(st => st.dialogue.toLowerCase().includes(q));
-                      })
-                      .map(script => (
+                    {visibleCallingScripts.map(script => {
+                      const scriptEmoji = script.emoji || '📞';
+                      return (
                         <div key={script.id} className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                          {/* Script Header */}
                           <div className="px-5 py-4 border-b border-border/40 bg-muted/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <div>
-                              <h3 className="text-base font-bold text-foreground">{script.title}</h3>
-                              <p className="text-xs text-muted-foreground mt-0.5">{script.subtitle}</p>
+                            <div className="flex items-start gap-3">
+                              <div className="w-11 h-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-xl shrink-0">
+                                {scriptEmoji}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h3 className="text-base font-bold text-foreground">{script.title}</h3>
+                                  {script.isCustom && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">Team</Badge>}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">{script.subtitle}</p>
+                              </div>
                             </div>
                             <button
                               onClick={() => {
-                                const fullScript = script.steps.map((s, i) => `--- Step ${i + 1}: ${s.label} ---\n${s.dialogue}\n💡 Tip: ${s.tip}`).join('\n\n');
+                                const fullScript = script.steps.map((s, i) => `--- Step ${i + 1}: ${resolveCallerPlaceholders(s.label)} ---\n${resolveCallerPlaceholders(s.dialogue)}\n💡 Tip: ${resolveCallerPlaceholders(s.tip)}`).join('\n\n');
                                 navigator.clipboard.writeText(fullScript);
                                 showToast('Full script copied! 📋', 'success');
                               }}
                               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold border border-primary/20 hover:bg-primary/20 transition-colors shrink-0"
                             >
-                              <Copy size={12} /> Copy Full Script
+                              📋 Copy Full Script
                             </button>
                           </div>
 
-                          {/* Steps Timeline */}
                           <div className="p-5 space-y-0">
                             {script.steps.map((step, idx) => (
                               <div key={idx} className="flex gap-4">
-                                {/* Timeline Line */}
                                 <div className="flex flex-col items-center">
                                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 shrink-0 ${
                                     idx === 0 ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600' :
                                     idx === script.steps.length - 1 ? 'bg-primary/10 border-primary/40 text-primary' :
                                     'bg-amber-500/10 border-amber-500/40 text-amber-600'
                                   }`}>
-                                    {idx + 1}
+                                    {['1️⃣', '2️⃣', '3️⃣', '4️⃣'][idx] || String(idx + 1)}
                                   </div>
                                   {idx < script.steps.length - 1 && (
                                     <div className="w-0.5 flex-1 min-h-[24px] bg-border/50"></div>
                                   )}
                                 </div>
 
-                                {/* Step Content */}
                                 <div className={`flex-1 pb-6 ${idx === script.steps.length - 1 ? 'pb-0' : ''}`}>
-                                  <div className="flex items-center justify-between gap-2 mb-2">
-                                    <span className="text-sm font-bold text-foreground">{step.label}</span>
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                    <span className="text-sm font-bold text-foreground">{resolveCallerPlaceholders(step.label)}</span>
                                     <button
                                       onClick={() => {
-                                        navigator.clipboard.writeText(step.dialogue);
+                                        navigator.clipboard.writeText(resolveCallerPlaceholders(step.dialogue));
                                         showToast('Step copied! 📋', 'success');
                                       }}
                                       className="text-muted-foreground hover:text-primary transition-colors p-1 rounded"
                                       title="Copy this step"
                                     >
-                                      <Copy size={12} />
+                                      📋
                                     </button>
                                   </div>
                                   <div className="text-sm text-foreground/80 leading-relaxed bg-muted/20 rounded-xl p-4 border border-border/30 italic">
-                                    "{step.dialogue}"
+                                    "{resolveCallerPlaceholders(step.dialogue)}"
                                   </div>
                                   <div className="mt-2 flex items-start gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                                    <Zap size={12} className="mt-0.5 shrink-0" />
-                                    <span>💡 {step.tip}</span>
+                                    <span>💡</span>
+                                    <span>{resolveCallerPlaceholders(step.tip)}</span>
                                   </div>
                                 </div>
                               </div>
                             ))}
                           </div>
                         </div>
-                      ))
-                    }
+                      );
+                    })}
 
-                    {/* Empty State */}
-                    {CALLING_SCRIPTS
-                      .filter(s => activeScriptCat === 'all' || s.category === activeScriptCat)
-                      .filter(s => {
-                        if (!scriptQuery.trim()) return true;
-                        const q = scriptQuery.toLowerCase();
-                        return s.title.toLowerCase().includes(q) || s.subtitle.toLowerCase().includes(q) || s.steps.some(st => st.dialogue.toLowerCase().includes(q));
-                      }).length === 0 && (
+                    {visibleCallingScripts.length === 0 && (
                       <div className="text-center py-16">
-                        <PhoneCall size={40} className="mx-auto text-muted-foreground/30 mb-4" />
+                        <div className="text-4xl mb-4">🗂️</div>
                         <p className="text-muted-foreground font-medium">Koi script nahi mila</p>
                         <p className="text-muted-foreground/60 text-sm mt-1">Search ya category change karke try karein</p>
                       </div>
