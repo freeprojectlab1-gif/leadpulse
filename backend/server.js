@@ -175,6 +175,28 @@ const taskSchema = new mongoose.Schema({
 });
 const Task = mongoose.models.Task || mongoose.model('Task', taskSchema);
 
+const dealSchema = new mongoose.Schema({
+  clientName: { type: String, required: true },
+  companyName: { type: String, default: '' },
+  phone: { type: String, default: '' },
+  email: { type: String, default: '' },
+  website: { type: String, default: '' },
+  projectTitle: { type: String, default: '' },
+  projectDetails: { type: String, default: '' },
+  dealValue: { type: Number, default: 0 },
+  commissionAmount: { type: Number, default: 0 },
+  commissionType: { type: String, enum: ['fixed', 'percentage'], default: 'fixed' },
+  status: { type: String, enum: ['lead', 'proposal', 'negotiation', 'won', 'lost'], default: 'lead' },
+  deadline: { type: Date, default: null },
+  notes: { type: String, default: '' },
+  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  closedAt: { type: Date, default: null },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+const Deal = mongoose.models.Deal || mongoose.model('Deal', dealSchema);
+
 const AUTH_SECRET = process.env.AUTH_SECRET || 'leadpulse-auth-secret';
 const AUTH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const MEMBER_ACCESS_KEYS = [
@@ -4532,6 +4554,116 @@ app.delete('/api/tasks/:id', requireAdmin, async (req, res) => {
     const task = await Task.findByIdAndDelete(req.params.id);
     if (!task) return res.status(404).json({ error: 'Task not found' });
     res.json({ success: true, message: 'Task deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Deal / Project Management API ---
+
+app.get('/api/deals', async (req, res) => {
+  try {
+    const filter = req.user.role === 'admin'
+      ? {}
+      : { $or: [{ createdBy: req.user._id }, { assignedTo: req.user._id }] };
+    const deals = await Deal.find(filter)
+      .populate('assignedTo', 'fullName loginId position phone')
+      .populate('createdBy', 'fullName loginId position phone')
+      .sort({ createdAt: -1 });
+    res.json(deals);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/deals', async (req, res) => {
+  try {
+    const clientName = String(req.body.clientName || '').trim();
+    if (!clientName) return res.status(400).json({ error: 'clientName is required' });
+
+    let assignedTo = req.user._id;
+    if (req.user.role === 'admin' && req.body.assignedTo) {
+      const member = await User.findById(req.body.assignedTo);
+      if (!member || !member.active) return res.status(404).json({ error: 'Team member not found or inactive' });
+      assignedTo = member._id;
+    }
+
+    const deal = await Deal.create({
+      clientName,
+      companyName: String(req.body.companyName || '').trim(),
+      phone: String(req.body.phone || '').trim(),
+      email: String(req.body.email || '').trim(),
+      website: String(req.body.website || '').trim(),
+      projectTitle: String(req.body.projectTitle || '').trim(),
+      projectDetails: String(req.body.projectDetails || '').trim(),
+      dealValue: Number(req.body.dealValue || 0) || 0,
+      commissionAmount: Number(req.body.commissionAmount || 0) || 0,
+      commissionType: req.body.commissionType === 'percentage' ? 'percentage' : 'fixed',
+      status: req.body.status || 'lead',
+      deadline: req.body.deadline || null,
+      notes: String(req.body.notes || '').trim(),
+      assignedTo,
+      createdBy: req.user._id
+    });
+
+    const populated = await Deal.findById(deal._id)
+      .populate('assignedTo', 'fullName loginId position phone')
+      .populate('createdBy', 'fullName loginId position phone');
+
+    res.status(201).json(populated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/deals/:id', async (req, res) => {
+  try {
+    const deal = await Deal.findById(req.params.id);
+    if (!deal) return res.status(404).json({ error: 'Deal not found' });
+
+    const isOwner = String(deal.createdBy) === String(req.user._id);
+    const isAssigned = String(deal.assignedTo || '') === String(req.user._id);
+    if (req.user.role !== 'admin' && !isOwner && !isAssigned) {
+      return res.status(403).json({ error: 'Not authorized to update this deal' });
+    }
+
+    const editableFields = ['clientName', 'companyName', 'phone', 'email', 'website', 'projectTitle', 'projectDetails', 'dealValue', 'deadline', 'notes'];
+    const adminFields = [...editableFields, 'assignedTo', 'commissionAmount', 'commissionType', 'status'];
+
+    const allowed = req.user.role === 'admin' ? adminFields : editableFields.concat(['status', 'notes', 'projectDetails']);
+    allowed.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        if (field === 'dealValue' || field === 'commissionAmount') {
+          deal[field] = Number(req.body[field] || 0) || 0;
+        } else if (field === 'assignedTo' && req.user.role === 'admin') {
+          deal.assignedTo = req.body.assignedTo || null;
+        } else {
+          deal[field] = req.body[field];
+        }
+      }
+    });
+
+    if (req.body.status && ['won', 'lost'].includes(req.body.status)) deal.closedAt = new Date();
+    else if (req.body.status) deal.closedAt = null;
+
+    deal.updatedAt = new Date();
+    await deal.save();
+
+    const populated = await Deal.findById(deal._id)
+      .populate('assignedTo', 'fullName loginId position phone')
+      .populate('createdBy', 'fullName loginId position phone');
+
+    res.json(populated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/deals/:id', requireAdmin, async (req, res) => {
+  try {
+    const deal = await Deal.findByIdAndDelete(req.params.id);
+    if (!deal) return res.status(404).json({ error: 'Deal not found' });
+    res.json({ success: true, message: 'Deal deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

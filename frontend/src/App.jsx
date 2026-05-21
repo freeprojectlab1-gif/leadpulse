@@ -143,6 +143,7 @@ const PAGE_TITLES = {
   email_finder: 'Enrichment',
   mobile_finder: 'Mobile Enricher',
   saved_leads: 'Automation CRM',
+  deals: 'Projects & Deals',
   calling_scripts: 'Calling Scripts',
   archive: 'Archive',
   profile: 'Profile',
@@ -160,6 +161,7 @@ const ACCESS_SECTIONS = [
       { id: 'calling_scripts', label: 'Call Scripts', icon: PhoneCall },
       { id: 'campaign', label: 'New Campaign', icon: Rocket },
       { id: 'logs', label: 'Delivery Logs', icon: Activity },
+      { id: 'deals', label: 'Projects & Deals', icon: Briefcase },
     ],
   },
   {
@@ -199,7 +201,7 @@ const ACCESS_SECTIONS = [
 const ACCESS_TABS = ACCESS_SECTIONS.flatMap(section => section.items);
 const ACCESS_TAB_IDS = ACCESS_TABS.map(item => item.id);
 const MEMBER_DEFAULT_ACCESS = ACCESS_TAB_IDS.reduce((acc, key) => {
-  acc[key] = key === 'dashboard' || key === 'calling_scripts';
+  acc[key] = key === 'dashboard' || key === 'calling_scripts' || key === 'deals';
   return acc;
 }, {});
 const FULL_ACCESS = ACCESS_TAB_IDS.reduce((acc, key) => {
@@ -2242,6 +2244,29 @@ function App() {
   const [taskFilter, setTaskFilter] = useState('all');
   const [taskSearch, setTaskSearch] = useState('');
   const [taskEditTarget, setTaskEditTarget] = useState(null);
+  const [deals, setDeals] = useState([]);
+  const [dealsLoading, setDealsLoading] = useState(false);
+  const [dealDialogOpen, setDealDialogOpen] = useState(false);
+  const [dealSaving, setDealSaving] = useState(false);
+  const [dealFilter, setDealFilter] = useState('all');
+  const [dealSearch, setDealSearch] = useState('');
+  const [dealEditTarget, setDealEditTarget] = useState(null);
+  const [dealForm, setDealForm] = useState({
+    clientName: '',
+    companyName: '',
+    phone: '',
+    email: '',
+    website: '',
+    projectTitle: '',
+    projectDetails: '',
+    dealValue: '',
+    commissionAmount: '',
+    commissionType: 'fixed',
+    status: 'lead',
+    deadline: '',
+    notes: '',
+    assignedTo: ''
+  });
 
   const [teamLoading, setTeamLoading] = useState(false);
   const [teamForm, setTeamForm] = useState({
@@ -3528,6 +3553,111 @@ function App() {
     }
   };
 
+  const fetchDeals = async () => {
+    setDealsLoading(true);
+    try {
+      const res = await axios.get('/api/deals');
+      setDeals(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error('Failed to fetch deals:', err);
+      setDeals([]);
+    } finally {
+      setDealsLoading(false);
+    }
+  };
+
+  const openDealDialog = (deal = null) => {
+    setDealEditTarget(deal);
+    setDealForm({
+      clientName: deal?.clientName || '',
+      companyName: deal?.companyName || '',
+      phone: deal?.phone || '',
+      email: deal?.email || '',
+      website: deal?.website || '',
+      projectTitle: deal?.projectTitle || '',
+      projectDetails: deal?.projectDetails || '',
+      dealValue: deal?.dealValue ?? '',
+      commissionAmount: deal?.commissionAmount ?? '',
+      commissionType: deal?.commissionType || 'fixed',
+      status: deal?.status || 'lead',
+      deadline: deal?.deadline ? new Date(deal.deadline).toISOString().split('T')[0] : '',
+      notes: deal?.notes || '',
+      assignedTo: deal?.assignedTo?._id || (currentUser?.role === 'admin' ? '' : currentUser?._id || '')
+    });
+    setDealDialogOpen(true);
+  };
+
+  const handleSaveDeal = async () => {
+    const clientName = String(dealForm.clientName || '').trim();
+    if (!clientName) return showToast('Client name is required', 'error');
+    setDealSaving(true);
+    try {
+      const payload = {
+        clientName,
+        companyName: String(dealForm.companyName || '').trim(),
+        phone: String(dealForm.phone || '').trim(),
+        email: String(dealForm.email || '').trim(),
+        website: String(dealForm.website || '').trim(),
+        projectTitle: String(dealForm.projectTitle || '').trim(),
+        projectDetails: String(dealForm.projectDetails || '').trim(),
+        dealValue: Number(dealForm.dealValue || 0) || 0,
+        deadline: dealForm.deadline || null,
+        notes: String(dealForm.notes || '').trim(),
+        status: dealForm.status
+      };
+
+      if (currentUser?.role === 'admin') {
+        payload.assignedTo = dealForm.assignedTo || null;
+        payload.commissionAmount = Number(dealForm.commissionAmount || 0) || 0;
+        payload.commissionType = dealForm.commissionType || 'fixed';
+      }
+
+      if (dealEditTarget?._id) {
+        const res = await axios.patch(`/api/deals/${dealEditTarget._id}`, payload);
+        setDeals(prev => prev.map(item => item._id === dealEditTarget._id ? res.data : item));
+        showToast('Deal updated', 'success');
+      } else {
+        const res = await axios.post('/api/deals', payload);
+        setDeals(prev => [res.data, ...prev]);
+        showToast('Deal created', 'success');
+      }
+
+      setDealDialogOpen(false);
+      setDealEditTarget(null);
+      setDealForm({
+        clientName: '',
+        companyName: '',
+        phone: '',
+        email: '',
+        website: '',
+        projectTitle: '',
+        projectDetails: '',
+        dealValue: '',
+        commissionAmount: '',
+        commissionType: 'fixed',
+        status: 'lead',
+        deadline: '',
+        notes: '',
+        assignedTo: currentUser?.role === 'admin' ? '' : currentUser?._id || ''
+      });
+      fetchDeals();
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Failed to save deal', 'error');
+    } finally {
+      setDealSaving(false);
+    }
+  };
+
+  const handleDeleteDeal = async (dealId) => {
+    try {
+      await axios.delete(`/api/deals/${dealId}`);
+      setDeals(prev => prev.filter(item => item._id !== dealId));
+      showToast('Deal deleted', 'success');
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Failed to delete deal', 'error');
+    }
+  };
+
   const handleCreateTeamMember = async (e) => {
 
     e.preventDefault();
@@ -3679,6 +3809,13 @@ function App() {
   useEffect(() => {
     if (isLoggedIn && activeTab === 'tasks') {
       fetchTasks();
+      if (currentUser?.role === 'admin') fetchTeamMembers();
+    }
+  }, [activeTab, isLoggedIn]);
+
+  useEffect(() => {
+    if (isLoggedIn && activeTab === 'deals') {
+      fetchDeals();
       if (currentUser?.role === 'admin') fetchTeamMembers();
     }
   }, [activeTab, isLoggedIn]);
@@ -4044,6 +4181,7 @@ function App() {
           {renderSidebarSection('Overview', [
             { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
             { id: 'tasks', icon: ClipboardList, label: 'Tasks' },
+            { id: 'deals', icon: Briefcase, label: 'Projects & Deals' },
             { id: 'calling_scripts', icon: PhoneCall, label: 'Call Scripts' },
             { id: 'campaign', icon: Rocket, label: 'New Campaign' },
             { id: 'logs', icon: Activity, label: 'Delivery Logs' },
@@ -5196,6 +5334,344 @@ function App() {
                       }
                     }} disabled={taskSaving}>
                       {taskSaving ? <Loader2 size={16} className="animate-spin" /> : taskEditTarget ? <><Edit size={16} /> Update Task</> : <><Plus size={16} /> Assign Task</>}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
+
+          {activeTab === 'deals' && (
+            <div className="max-w-7xl mx-auto space-y-6 animate-fade-in pb-10">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <h2 className="text-2xl font-extrabold tracking-tight text-foreground">
+                    {currentUser?.role === 'admin' ? 'Projects & Deals' : 'My Deals'}
+                  </h2>
+                  <p className="text-muted-foreground text-sm font-medium">
+                    {currentUser?.role === 'admin'
+                      ? 'Track clients, project scope, deal value, and commission across the full team.'
+                      : 'Track only the deals assigned to you or created by you.'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" className="rounded-xl" onClick={fetchDeals} disabled={dealsLoading}>
+                    <RefreshCw size={16} className={dealsLoading ? 'animate-spin' : ''} />
+                  </Button>
+                  <Button className="rounded-xl gap-2 bg-primary hover:bg-primary/90" onClick={() => openDealDialog()}>
+                    <Plus size={16} /> Add Deal
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {[
+                  { label: 'Total', count: deals.length, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+                  { label: 'Lead', count: deals.filter(d => d.status === 'lead').length, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+                  { label: 'Won', count: deals.filter(d => d.status === 'won').length, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+                  { label: 'Lost', count: deals.filter(d => d.status === 'lost').length, color: 'text-rose-400', bg: 'bg-rose-500/10' },
+                ].map(stat => (
+                  <Card key={stat.label} className="border-border/40 bg-card/40 backdrop-blur-md rounded-2xl">
+                    <CardContent className="p-4 flex items-center gap-3">
+                      <div className={`w-10 h-10 ${stat.bg} rounded-xl flex items-center justify-center`}>
+                        <Briefcase size={18} className={stat.color} />
+                      </div>
+                      <div>
+                        <p className="text-xl font-extrabold text-foreground">{stat.count}</p>
+                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <Input placeholder="Search client, project, company..." value={dealSearch} onChange={e => setDealSearch(e.target.value)} className="pl-9 rounded-xl bg-card/60 border-border/40" />
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {['all', 'lead', 'proposal', 'negotiation', 'won', 'lost'].map(status => (
+                    <Button key={status} variant={dealFilter === status ? 'default' : 'outline'} className="rounded-xl text-xs capitalize" onClick={() => setDealFilter(status)}>
+                      {status === 'all' ? 'All' : status}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {dealsLoading ? (
+                  <Card className="border-border/40 bg-card/40 backdrop-blur-md rounded-2xl xl:col-span-2">
+                    <CardContent className="p-12 text-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
+                      <p className="text-muted-foreground text-sm">Loading deals...</p>
+                    </CardContent>
+                  </Card>
+                ) : deals
+                    .filter(deal => dealFilter === 'all' || deal.status === dealFilter)
+                    .filter(deal => !dealSearch || [deal.clientName, deal.companyName, deal.website, deal.projectTitle, deal.projectDetails, deal.notes].join(' ').toLowerCase().includes(dealSearch.toLowerCase()))
+                    .length === 0 ? (
+                  <Card className="border-border/40 bg-card/40 backdrop-blur-md rounded-2xl xl:col-span-2">
+                    <CardContent className="p-12 text-center flex flex-col items-center">
+                      <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 mb-4">
+                        <Briefcase className="w-7 h-7 text-primary" />
+                      </div>
+                      <h3 className="text-base font-bold text-foreground mb-1">No Deals Found</h3>
+                      <p className="text-muted-foreground text-sm">Click "Add Deal" to create the first project record.</p>
+                    </CardContent>
+                  </Card>
+                ) : deals
+                    .filter(deal => dealFilter === 'all' || deal.status === dealFilter)
+                    .filter(deal => !dealSearch || [deal.clientName, deal.companyName, deal.website, deal.projectTitle, deal.projectDetails, deal.notes].join(' ').toLowerCase().includes(dealSearch.toLowerCase()))
+                    .map(deal => {
+                      const assignedName = deal.assignedTo?.fullName || deal.assignedTo?.loginId || 'Unassigned';
+                      const createdByName = deal.createdBy?.fullName || deal.createdBy?.loginId || 'Unknown';
+                      const statusClass = deal.status === 'won'
+                        ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
+                        : deal.status === 'lost'
+                          ? 'border-rose-500/40 text-rose-400 bg-rose-500/10'
+                          : deal.status === 'negotiation'
+                            ? 'border-sky-500/40 text-sky-400 bg-sky-500/10'
+                            : deal.status === 'proposal'
+                              ? 'border-violet-500/40 text-violet-400 bg-violet-500/10'
+                              : 'border-amber-500/40 text-amber-400 bg-amber-500/10';
+                      const canEditDeal = currentUser?.role === 'admin' || String(deal.createdBy?._id || deal.createdBy) === String(currentUser?._id) || String(deal.assignedTo?._id || deal.assignedTo) === String(currentUser?._id);
+                      return (
+                        <Card key={deal._id} className={`border-border/40 bg-card/40 backdrop-blur-md rounded-2xl transition-all hover:shadow-lg hover:border-primary/20 ${deal.status === 'won' ? 'ring-1 ring-emerald-500/20' : ''}`}>
+                          <CardContent className="p-5 space-y-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h3 className="font-extrabold text-foreground truncate">{deal.clientName}</h3>
+                                  <Badge variant="outline" className={`text-[10px] font-bold uppercase tracking-wider ${statusClass}`}>
+                                    {deal.status}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground truncate">{deal.companyName || 'No company name'}</p>
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                <Button variant="ghost" size="sm" className="rounded-lg h-8 w-8 p-0 hover:bg-primary/10" onClick={() => openDealDialog(deal)}>
+                                  <Edit size={14} />
+                                </Button>
+                                {currentUser?.role === 'admin' && (
+                                  <Button variant="ghost" size="sm" className="rounded-lg h-8 w-8 p-0 hover:bg-red-500/10 text-red-400" onClick={() => handleDeleteDeal(deal._id)}>
+                                    <Trash2 size={14} />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <div className="rounded-xl bg-muted/20 border border-border/40 p-3">
+                                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Project</div>
+                                <div className="font-semibold text-foreground truncate">{deal.projectTitle || 'No title'}</div>
+                              </div>
+                              <div className="rounded-xl bg-muted/20 border border-border/40 p-3">
+                                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Deal Value</div>
+                                <div className="font-semibold text-foreground">₹{Number(deal.dealValue || 0).toLocaleString('en-IN')}</div>
+                              </div>
+                              <div className="rounded-xl bg-muted/20 border border-border/40 p-3">
+                                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Commission</div>
+                                <div className="font-semibold text-foreground">
+                                  {Number(deal.commissionAmount || 0).toLocaleString('en-IN')} {deal.commissionType === 'percentage' ? '%' : '₹'}
+                                </div>
+                              </div>
+                              <div className="rounded-xl bg-muted/20 border border-border/40 p-3">
+                                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Assigned</div>
+                                <div className="font-semibold text-foreground truncate">{assignedName}</div>
+                              </div>
+                            </div>
+
+                            {deal.projectDetails && (
+                              <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{deal.projectDetails}</p>
+                            )}
+
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-muted-foreground">
+                              <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">Created by {createdByName}</span>
+                              {deal.deadline && <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">Deadline {new Date(deal.deadline).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>}
+                              {deal.phone && <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">{deal.phone}</span>}
+                              {deal.email && <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">{deal.email}</span>}
+                              {deal.website && <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">{deal.website}</span>}
+                            </div>
+
+                            {deal.notes && (
+                              <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-sm text-muted-foreground">
+                                {deal.notes}
+                              </div>
+                            )}
+
+                            {canEditDeal && (
+                              <div className="flex items-center gap-2">
+                                <Select value={deal.status} onValueChange={async (nextStatus) => {
+                                  try {
+                                    const res = await axios.patch(`/api/deals/${deal._id}`, { status: nextStatus });
+                                    setDeals(prev => prev.map(item => item._id === deal._id ? res.data : item));
+                                  } catch (err) {
+                                    showToast(err.response?.data?.error || 'Failed to update deal status', 'error');
+                                  }
+                                }}>
+                                  <SelectTrigger className="w-[170px] h-9 rounded-xl bg-muted/30 border-border/40">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="lead">Lead</SelectItem>
+                                    <SelectItem value="proposal">Proposal</SelectItem>
+                                    <SelectItem value="negotiation">Negotiation</SelectItem>
+                                    <SelectItem value="won">Won</SelectItem>
+                                    <SelectItem value="lost">Lost</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+
+                            {canEditDeal && deal.status === 'won' && (
+                              <div className="space-y-2">
+                                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Website Link</Label>
+                                <Input
+                                  type="url"
+                                  value={deal.website || ''}
+                                  onChange={(e) => {
+                                    const nextWebsite = e.target.value;
+                                    setDeals(prev => prev.map(item => item._id === deal._id ? { ...item, website: nextWebsite } : item));
+                                  }}
+                                  onBlur={async (e) => {
+                                    const nextWebsite = String(e.target.value || '').trim();
+                                    if (nextWebsite === String(deal.website || '').trim()) return;
+                                    try {
+                                      const res = await axios.patch(`/api/deals/${deal._id}`, { website: nextWebsite });
+                                      setDeals(prev => prev.map(item => item._id === deal._id ? res.data : item));
+                                    } catch (err) {
+                                      showToast(err.response?.data?.error || 'Failed to update website', 'error');
+                                    }
+                                  }}
+                                  className="h-9 rounded-xl bg-muted/30 border-border/40"
+                                  placeholder="https://client-website.com"
+                                />
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })
+                }
+              </div>
+
+              <Dialog open={dealDialogOpen} onOpenChange={setDealDialogOpen}>
+                <DialogContent className="sm:max-w-2xl bg-card border-border/40 rounded-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="text-lg font-extrabold">{dealEditTarget ? 'Edit Deal' : 'Add New Deal'}</DialogTitle>
+                  </DialogHeader>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Client Name *</Label>
+                      <Input value={dealForm.clientName} onChange={e => setDealForm(f => ({ ...f, clientName: e.target.value }))} className="rounded-xl bg-muted/30 border-border/40" placeholder="Client name" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Company</Label>
+                      <Input value={dealForm.companyName} onChange={e => setDealForm(f => ({ ...f, companyName: e.target.value }))} className="rounded-xl bg-muted/30 border-border/40" placeholder="Company / brand" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Phone</Label>
+                      <Input value={dealForm.phone} onChange={e => setDealForm(f => ({ ...f, phone: e.target.value }))} className="rounded-xl bg-muted/30 border-border/40" placeholder="Contact number" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email</Label>
+                      <Input value={dealForm.email} onChange={e => setDealForm(f => ({ ...f, email: e.target.value }))} className="rounded-xl bg-muted/30 border-border/40" placeholder="Email address" />
+                    </div>
+                    {dealForm.status === 'won' && (
+                      <div className="space-y-2 md:col-span-2">
+                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Website Link</Label>
+                        <Input
+                          value={dealForm.website}
+                          onChange={e => setDealForm(f => ({ ...f, website: e.target.value }))}
+                          className="rounded-xl bg-muted/30 border-border/40"
+                          placeholder="https://client-website.com"
+                          type="url"
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          Won deal ke liye client ka website link yahan add karein.
+                        </p>
+                      </div>
+                    )}
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Project Title</Label>
+                      <Input value={dealForm.projectTitle} onChange={e => setDealForm(f => ({ ...f, projectTitle: e.target.value }))} className="rounded-xl bg-muted/30 border-border/40" placeholder="Website redesign, CRM setup, etc." />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Project Details</Label>
+                      <Textarea value={dealForm.projectDetails} onChange={e => setDealForm(f => ({ ...f, projectDetails: e.target.value }))} className="rounded-xl bg-muted/30 border-border/40 min-h-[90px]" placeholder="Scope, requirements, notes..." />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Deal Value</Label>
+                      <Input type="number" min="0" value={dealForm.dealValue} onChange={e => setDealForm(f => ({ ...f, dealValue: e.target.value }))} className="rounded-xl bg-muted/30 border-border/40" placeholder="0" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Deadline</Label>
+                      <Input type="date" value={dealForm.deadline} onChange={e => setDealForm(f => ({ ...f, deadline: e.target.value }))} className="rounded-xl bg-muted/30 border-border/40" />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Notes</Label>
+                      <Textarea value={dealForm.notes} onChange={e => setDealForm(f => ({ ...f, notes: e.target.value }))} className="rounded-xl bg-muted/30 border-border/40 min-h-[80px]" placeholder="Follow-up notes, next steps, objections..." />
+                    </div>
+                    {currentUser?.role === 'admin' && (
+                      <>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Commission Type</Label>
+                          <Select value={dealForm.commissionType} onValueChange={v => setDealForm(f => ({ ...f, commissionType: v }))}>
+                            <SelectTrigger className="rounded-xl bg-muted/30 border-border/40">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="fixed">Fixed</SelectItem>
+                              <SelectItem value="percentage">Percentage</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Commission</Label>
+                          <Input type="number" min="0" value={dealForm.commissionAmount} onChange={e => setDealForm(f => ({ ...f, commissionAmount: e.target.value }))} className="rounded-xl bg-muted/30 border-border/40" placeholder="Commission amount" />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Assign To</Label>
+                          <Select value={dealForm.assignedTo} onValueChange={v => setDealForm(f => ({ ...f, assignedTo: v }))}>
+                            <SelectTrigger className="rounded-xl bg-muted/30 border-border/40">
+                              <SelectValue placeholder="Assign to team member" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {teamMembers.filter(m => m.role !== 'admin').map(member => (
+                                <SelectItem key={member._id} value={member._id}>{member.fullName} {member.position ? `• ${member.position}` : ''}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Status</Label>
+                          <Select value={dealForm.status} onValueChange={v => setDealForm(f => ({ ...f, status: v }))}>
+                            <SelectTrigger className="rounded-xl bg-muted/30 border-border/40">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="lead">Lead</SelectItem>
+                              <SelectItem value="proposal">Proposal</SelectItem>
+                              <SelectItem value="negotiation">Negotiation</SelectItem>
+                              <SelectItem value="won">Won</SelectItem>
+                              <SelectItem value="lost">Lost</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {dealForm.status === 'won' && (
+                            <p className="text-[11px] text-muted-foreground">
+                              Status Won hone par website link visible hai.
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-end gap-2 pt-4">
+                    <Button variant="ghost" onClick={() => setDealDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSaveDeal} disabled={dealSaving}>
+                      {dealSaving ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+                      {dealEditTarget ? 'Update Deal' : 'Save Deal'}
                     </Button>
                   </div>
                 </DialogContent>
