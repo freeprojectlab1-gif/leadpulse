@@ -2436,11 +2436,10 @@ function App() {
                           fetchSavedLeads();
                         }
                       }}
-                      className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        activeTab === item.id
+                      className={`w-full flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === item.id
                           ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm'
                           : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50'
-                      }`}
+                        }`}
                     >
                       <Icon size={18} className={activeTab === item.id ? 'text-primary' : ''} />
                       {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
@@ -4364,13 +4363,13 @@ function App() {
             <Badge
               variant="outline"
               className={`hidden md:flex gap-1.5 px-3 py-1 border-none rounded-lg text-[11px] font-bold tracking-tight ${waDailyStats.sent >= waDailyStats.limit ? 'bg-red-500/10 text-red-600' :
-                  waDailyStats.sent >= waDailyStats.limit * 0.8 ? 'bg-amber-500/10 text-amber-600' :
-                    'bg-emerald-500/10 text-emerald-600'
+                waDailyStats.sent >= waDailyStats.limit * 0.8 ? 'bg-amber-500/10 text-amber-600' :
+                  'bg-emerald-500/10 text-emerald-600'
                 }`}
             >
               <div className={`w-1 h-1 rounded-full ${waDailyStats.sent >= waDailyStats.limit ? 'bg-red-500' :
-                  waDailyStats.sent >= waDailyStats.limit * 0.8 ? 'bg-amber-500' :
-                    'bg-emerald-500'
+                waDailyStats.sent >= waDailyStats.limit * 0.8 ? 'bg-amber-500' :
+                  'bg-emerald-500'
                 }`}></div>
               WA: {waDailyStats.sent}/{waDailyStats.limit} Sent
             </Badge>
@@ -5197,9 +5196,9 @@ function App() {
                     </CardContent>
                   </Card>
                 ) : tasks
-                    .filter(t => taskFilter === 'all' || t.status === taskFilter)
-                    .filter(t => !taskSearch || t.title.toLowerCase().includes(taskSearch.toLowerCase()) || (t.assignedTo?.fullName || '').toLowerCase().includes(taskSearch.toLowerCase()))
-                    .length === 0 ? (
+                  .filter(t => taskFilter === 'all' || t.status === taskFilter)
+                  .filter(t => !taskSearch || t.title.toLowerCase().includes(taskSearch.toLowerCase()) || (t.assignedTo?.fullName || '').toLowerCase().includes(taskSearch.toLowerCase()))
+                  .length === 0 ? (
                   <Card className="border-border/40 bg-card/40 backdrop-blur-md rounded-2xl">
                     <CardContent className="p-12 text-center flex flex-col items-center">
                       <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 mb-4">
@@ -5212,97 +5211,93 @@ function App() {
                     </CardContent>
                   </Card>
                 ) : tasks
-                    .filter(t => taskFilter === 'all' || t.status === taskFilter)
-                    .filter(t => !taskSearch || t.title.toLowerCase().includes(taskSearch.toLowerCase()) || (t.assignedTo?.fullName || '').toLowerCase().includes(taskSearch.toLowerCase()))
-                    .map(task => (
-                  <Card key={task._id} className={`border-border/40 bg-card/40 backdrop-blur-md rounded-2xl transition-all hover:shadow-lg hover:border-primary/20 ${task.status === 'completed' ? 'opacity-70' : ''}`}>
-                    <CardContent className="p-5">
-                      <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                        {/* Left: Status indicator + Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start gap-3">
-                            <button
-                              onClick={() => {
-                                const nextStatus = task.status === 'pending' ? 'in_progress' : task.status === 'in_progress' ? 'completed' : 'pending';
-                                handleUpdateTask(task._id, { status: nextStatus });
-                              }}
-                              className={`mt-0.5 flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                                task.status === 'completed' ? 'bg-emerald-500 border-emerald-500 text-white' :
-                                task.status === 'in_progress' ? 'border-sky-400 bg-sky-500/20' :
-                                'border-muted-foreground/40 hover:border-primary'
-                              }`}
-                            >
-                              {task.status === 'completed' && <Check size={14} />}
-                              {task.status === 'in_progress' && <div className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />}
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <h3 className={`font-bold text-foreground ${task.status === 'completed' ? 'line-through opacity-60' : ''}`}>{task.title}</h3>
-                              {task.description && <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{task.description}</p>}
-                              <div className="flex flex-wrap items-center gap-2 mt-3">
-                                {/* Assigned To */}
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-muted/30 rounded-lg">
-                                  <Avatar className="w-5 h-5">
-                                    <AvatarFallback className="text-[9px] font-bold bg-primary/20 text-primary">
-                                      {(task.assignedTo?.fullName || '?').charAt(0).toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                  <span className="text-xs font-semibold text-foreground">{task.assignedTo?.fullName || 'Unknown'}</span>
-                                </div>
-                                {/* Priority */}
-                                <Badge variant="outline" className={`text-[10px] font-bold uppercase tracking-wider ${
-                                  task.priority === 'urgent' ? 'border-red-500/40 text-red-400 bg-red-500/10' :
-                                  task.priority === 'high' ? 'border-orange-500/40 text-orange-400 bg-orange-500/10' :
-                                  task.priority === 'medium' ? 'border-blue-500/40 text-blue-400 bg-blue-500/10' :
-                                  'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
-                                }`}>
-                                  {task.priority}
-                                </Badge>
-                                {/* Status */}
-                                <Badge variant="outline" className={`text-[10px] font-bold uppercase tracking-wider ${
-                                  task.status === 'completed' ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' :
-                                  task.status === 'in_progress' ? 'border-sky-500/40 text-sky-400 bg-sky-500/10' :
-                                  'border-amber-500/40 text-amber-400 bg-amber-500/10'
-                                }`}>
-                                  {task.status === 'in_progress' ? 'In Progress' : task.status}
-                                </Badge>
-                                {/* Due Date */}
-                                {task.dueDate && (
-                                  <div className={`flex items-center gap-1 text-xs font-medium ${
-                                    new Date(task.dueDate) < new Date() && task.status !== 'completed' ? 'text-red-400' : 'text-muted-foreground'
-                                  }`}>
-                                    <Calendar size={12} />
-                                    {new Date(task.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  .filter(t => taskFilter === 'all' || t.status === taskFilter)
+                  .filter(t => !taskSearch || t.title.toLowerCase().includes(taskSearch.toLowerCase()) || (t.assignedTo?.fullName || '').toLowerCase().includes(taskSearch.toLowerCase()))
+                  .map(task => (
+                    <Card key={task._id} className={`border-border/40 bg-card/40 backdrop-blur-md rounded-2xl transition-all hover:shadow-lg hover:border-primary/20 ${task.status === 'completed' ? 'opacity-70' : ''}`}>
+                      <CardContent className="p-5">
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                          {/* Left: Status indicator + Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start gap-3">
+                              <button
+                                onClick={() => {
+                                  const nextStatus = task.status === 'pending' ? 'in_progress' : task.status === 'in_progress' ? 'completed' : 'pending';
+                                  handleUpdateTask(task._id, { status: nextStatus });
+                                }}
+                                className={`mt-0.5 flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${task.status === 'completed' ? 'bg-emerald-500 border-emerald-500 text-white' :
+                                    task.status === 'in_progress' ? 'border-sky-400 bg-sky-500/20' :
+                                      'border-muted-foreground/40 hover:border-primary'
+                                  }`}
+                              >
+                                {task.status === 'completed' && <Check size={14} />}
+                                {task.status === 'in_progress' && <div className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />}
+                              </button>
+                              <div className="flex-1 min-w-0">
+                                <h3 className={`font-bold text-foreground ${task.status === 'completed' ? 'line-through opacity-60' : ''}`}>{task.title}</h3>
+                                {task.description && <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{task.description}</p>}
+                                <div className="flex flex-wrap items-center gap-2 mt-3">
+                                  {/* Assigned To */}
+                                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-muted/30 rounded-lg">
+                                    <Avatar className="w-5 h-5">
+                                      <AvatarFallback className="text-[9px] font-bold bg-primary/20 text-primary">
+                                        {(task.assignedTo?.fullName || '?').charAt(0).toUpperCase()}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-xs font-semibold text-foreground">{task.assignedTo?.fullName || 'Unknown'}</span>
                                   </div>
-                                )}
+                                  {/* Priority */}
+                                  <Badge variant="outline" className={`text-[10px] font-bold uppercase tracking-wider ${task.priority === 'urgent' ? 'border-red-500/40 text-red-400 bg-red-500/10' :
+                                      task.priority === 'high' ? 'border-orange-500/40 text-orange-400 bg-orange-500/10' :
+                                        task.priority === 'medium' ? 'border-blue-500/40 text-blue-400 bg-blue-500/10' :
+                                          'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
+                                    }`}>
+                                    {task.priority}
+                                  </Badge>
+                                  {/* Status */}
+                                  <Badge variant="outline" className={`text-[10px] font-bold uppercase tracking-wider ${task.status === 'completed' ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' :
+                                      task.status === 'in_progress' ? 'border-sky-500/40 text-sky-400 bg-sky-500/10' :
+                                        'border-amber-500/40 text-amber-400 bg-amber-500/10'
+                                    }`}>
+                                    {task.status === 'in_progress' ? 'In Progress' : task.status}
+                                  </Badge>
+                                  {/* Due Date */}
+                                  {task.dueDate && (
+                                    <div className={`flex items-center gap-1 text-xs font-medium ${new Date(task.dueDate) < new Date() && task.status !== 'completed' ? 'text-red-400' : 'text-muted-foreground'
+                                      }`}>
+                                      <Calendar size={12} />
+                                      {new Date(task.dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
+                          {/* Right: Actions */}
+                          {canManageTasks && (
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <Button variant="ghost" size="sm" className="rounded-lg h-8 w-8 p-0 hover:bg-primary/10" onClick={() => {
+                                setTaskEditTarget(task);
+                                setTaskForm({
+                                  title: task.title,
+                                  description: task.description || '',
+                                  assignedTo: task.assignedTo?._id || '',
+                                  priority: task.priority,
+                                  dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ''
+                                });
+                                setTaskDialogOpen(true);
+                              }}>
+                                <Edit size={14} />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="rounded-lg h-8 w-8 p-0 hover:bg-red-500/10 text-red-400" onClick={() => handleDeleteTask(task._id)}>
+                                <Trash2 size={14} />
+                              </Button>
+                            </div>
+                          )}
                         </div>
-                        {/* Right: Actions */}
-                        {canManageTasks && (
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                            <Button variant="ghost" size="sm" className="rounded-lg h-8 w-8 p-0 hover:bg-primary/10" onClick={() => {
-                              setTaskEditTarget(task);
-                              setTaskForm({
-                                title: task.title,
-                                description: task.description || '',
-                                assignedTo: task.assignedTo?._id || '',
-                                priority: task.priority,
-                                dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ''
-                              });
-                              setTaskDialogOpen(true);
-                            }}>
-                              <Edit size={14} />
-                            </Button>
-                            <Button variant="ghost" size="sm" className="rounded-lg h-8 w-8 p-0 hover:bg-red-500/10 text-red-400" onClick={() => handleDeleteTask(task._id)}>
-                              <Trash2 size={14} />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ))}
               </div>
 
               {/* Create/Edit Task Dialog */}
@@ -5330,11 +5325,10 @@ function App() {
                             key={member._id}
                             type="button"
                             onClick={() => setTaskForm(f => ({ ...f, assignedTo: member._id }))}
-                            className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all text-left ${
-                              taskForm.assignedTo === member._id
+                            className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all text-left ${taskForm.assignedTo === member._id
                                 ? 'bg-primary/15 border border-primary/30 shadow-sm'
                                 : 'hover:bg-muted/40 border border-transparent'
-                            }`}
+                              }`}
                           >
                             <Avatar className="w-8 h-8">
                               <AvatarFallback className="text-xs font-bold bg-primary/20 text-primary">
@@ -5458,9 +5452,9 @@ function App() {
                     </CardContent>
                   </Card>
                 ) : deals
-                    .filter(deal => dealFilter === 'all' || deal.status === dealFilter)
-                    .filter(deal => !dealSearch || [deal.clientName, deal.companyName, deal.website, deal.projectTitle, deal.projectDetails, deal.notes].join(' ').toLowerCase().includes(dealSearch.toLowerCase()))
-                    .length === 0 ? (
+                  .filter(deal => dealFilter === 'all' || deal.status === dealFilter)
+                  .filter(deal => !dealSearch || [deal.clientName, deal.companyName, deal.website, deal.projectTitle, deal.projectDetails, deal.notes].join(' ').toLowerCase().includes(dealSearch.toLowerCase()))
+                  .length === 0 ? (
                   <Card className="border-border/40 bg-card/40 backdrop-blur-md rounded-2xl xl:col-span-2">
                     <CardContent className="p-12 text-center flex flex-col items-center">
                       <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20 mb-4">
@@ -5471,138 +5465,138 @@ function App() {
                     </CardContent>
                   </Card>
                 ) : deals
-                    .filter(deal => dealFilter === 'all' || deal.status === dealFilter)
-                    .filter(deal => !dealSearch || [deal.clientName, deal.companyName, deal.website, deal.projectTitle, deal.projectDetails, deal.notes].join(' ').toLowerCase().includes(dealSearch.toLowerCase()))
-                    .map(deal => {
-                      const assignedName = deal.assignedTo?.fullName || deal.assignedTo?.loginId || 'Unassigned';
-                      const createdByName = deal.createdBy?.fullName || deal.createdBy?.loginId || 'Unknown';
-                      const statusClass = deal.status === 'won'
-                        ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
-                        : deal.status === 'lost'
-                          ? 'border-rose-500/40 text-rose-400 bg-rose-500/10'
-                          : deal.status === 'negotiation'
-                            ? 'border-sky-500/40 text-sky-400 bg-sky-500/10'
-                            : deal.status === 'proposal'
-                              ? 'border-violet-500/40 text-violet-400 bg-violet-500/10'
-                              : 'border-amber-500/40 text-amber-400 bg-amber-500/10';
-                      const canEditDeal = currentUser?.role === 'admin' || String(deal.createdBy?._id || deal.createdBy) === String(currentUser?._id) || String(deal.assignedTo?._id || deal.assignedTo) === String(currentUser?._id);
-                      return (
-                        <Card key={deal._id} className={`border-border/40 bg-card/40 backdrop-blur-md rounded-2xl transition-all hover:shadow-lg hover:border-primary/20 ${deal.status === 'won' ? 'ring-1 ring-emerald-500/20' : ''}`}>
-                          <CardContent className="p-5 space-y-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h3 className="font-extrabold text-foreground truncate">{deal.clientName}</h3>
-                                  <Badge variant="outline" className={`text-[10px] font-bold uppercase tracking-wider ${statusClass}`}>
-                                    {deal.status}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground truncate">{deal.companyName || 'No company name'}</p>
+                  .filter(deal => dealFilter === 'all' || deal.status === dealFilter)
+                  .filter(deal => !dealSearch || [deal.clientName, deal.companyName, deal.website, deal.projectTitle, deal.projectDetails, deal.notes].join(' ').toLowerCase().includes(dealSearch.toLowerCase()))
+                  .map(deal => {
+                    const assignedName = deal.assignedTo?.fullName || deal.assignedTo?.loginId || 'Unassigned';
+                    const createdByName = deal.createdBy?.fullName || deal.createdBy?.loginId || 'Unknown';
+                    const statusClass = deal.status === 'won'
+                      ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
+                      : deal.status === 'lost'
+                        ? 'border-rose-500/40 text-rose-400 bg-rose-500/10'
+                        : deal.status === 'negotiation'
+                          ? 'border-sky-500/40 text-sky-400 bg-sky-500/10'
+                          : deal.status === 'proposal'
+                            ? 'border-violet-500/40 text-violet-400 bg-violet-500/10'
+                            : 'border-amber-500/40 text-amber-400 bg-amber-500/10';
+                    const canEditDeal = currentUser?.role === 'admin' || String(deal.createdBy?._id || deal.createdBy) === String(currentUser?._id) || String(deal.assignedTo?._id || deal.assignedTo) === String(currentUser?._id);
+                    return (
+                      <Card key={deal._id} className={`border-border/40 bg-card/40 backdrop-blur-md rounded-2xl transition-all hover:shadow-lg hover:border-primary/20 ${deal.status === 'won' ? 'ring-1 ring-emerald-500/20' : ''}`}>
+                        <CardContent className="p-5 space-y-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="font-extrabold text-foreground truncate">{deal.clientName}</h3>
+                                <Badge variant="outline" className={`text-[10px] font-bold uppercase tracking-wider ${statusClass}`}>
+                                  {deal.status}
+                                </Badge>
                               </div>
-                              <div className="flex items-center gap-1.5 flex-shrink-0">
-                                <Button variant="ghost" size="sm" className="rounded-lg h-8 w-8 p-0 hover:bg-primary/10" onClick={() => openDealDialog(deal)}>
-                                  <Edit size={14} />
+                              <p className="text-sm text-muted-foreground truncate">{deal.companyName || 'No company name'}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <Button variant="ghost" size="sm" className="rounded-lg h-8 w-8 p-0 hover:bg-primary/10" onClick={() => openDealDialog(deal)}>
+                                <Edit size={14} />
+                              </Button>
+                              {currentUser?.role === 'admin' && (
+                                <Button variant="ghost" size="sm" className="rounded-lg h-8 w-8 p-0 hover:bg-red-500/10 text-red-400" onClick={() => handleDeleteDeal(deal._id)}>
+                                  <Trash2 size={14} />
                                 </Button>
-                                {currentUser?.role === 'admin' && (
-                                  <Button variant="ghost" size="sm" className="rounded-lg h-8 w-8 p-0 hover:bg-red-500/10 text-red-400" onClick={() => handleDeleteDeal(deal._id)}>
-                                    <Trash2 size={14} />
-                                  </Button>
-                                )}
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div className="rounded-xl bg-muted/20 border border-border/40 p-3">
+                              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Project</div>
+                              <div className="font-semibold text-foreground truncate">{deal.projectTitle || 'No title'}</div>
+                            </div>
+                            <div className="rounded-xl bg-muted/20 border border-border/40 p-3">
+                              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Deal Value</div>
+                              <div className="font-semibold text-foreground">₹{Number(deal.dealValue || 0).toLocaleString('en-IN')}</div>
+                            </div>
+                            <div className="rounded-xl bg-muted/20 border border-border/40 p-3">
+                              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Commission</div>
+                              <div className="font-semibold text-foreground">
+                                {Number(deal.commissionAmount || 0).toLocaleString('en-IN')} {deal.commissionType === 'percentage' ? '%' : '₹'}
                               </div>
                             </div>
-
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                              <div className="rounded-xl bg-muted/20 border border-border/40 p-3">
-                                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Project</div>
-                                <div className="font-semibold text-foreground truncate">{deal.projectTitle || 'No title'}</div>
-                              </div>
-                              <div className="rounded-xl bg-muted/20 border border-border/40 p-3">
-                                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Deal Value</div>
-                                <div className="font-semibold text-foreground">₹{Number(deal.dealValue || 0).toLocaleString('en-IN')}</div>
-                              </div>
-                              <div className="rounded-xl bg-muted/20 border border-border/40 p-3">
-                                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Commission</div>
-                                <div className="font-semibold text-foreground">
-                                  {Number(deal.commissionAmount || 0).toLocaleString('en-IN')} {deal.commissionType === 'percentage' ? '%' : '₹'}
-                                </div>
-                              </div>
-                              <div className="rounded-xl bg-muted/20 border border-border/40 p-3">
-                                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Assigned</div>
-                                <div className="font-semibold text-foreground truncate">{assignedName}</div>
-                              </div>
+                            <div className="rounded-xl bg-muted/20 border border-border/40 p-3">
+                              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Assigned</div>
+                              <div className="font-semibold text-foreground truncate">{assignedName}</div>
                             </div>
+                          </div>
 
-                            {deal.projectDetails && (
-                              <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{deal.projectDetails}</p>
-                            )}
+                          {deal.projectDetails && (
+                            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{deal.projectDetails}</p>
+                          )}
 
-                            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-muted-foreground">
-                              <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">Created by {createdByName}</span>
-                              {deal.deadline && <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">Deadline {new Date(deal.deadline).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>}
-                              {deal.phone && <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">{deal.phone}</span>}
-                              {deal.email && <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">{deal.email}</span>}
-                              {deal.website && <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">{deal.website}</span>}
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-muted-foreground">
+                            <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">Created by {createdByName}</span>
+                            {deal.deadline && <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">Deadline {new Date(deal.deadline).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>}
+                            {deal.phone && <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">{deal.phone}</span>}
+                            {deal.email && <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">{deal.email}</span>}
+                            {deal.website && <span className="px-2.5 py-1 rounded-full bg-muted/30 border border-border/40">{deal.website}</span>}
+                          </div>
+
+                          {deal.notes && (
+                            <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-sm text-muted-foreground">
+                              {deal.notes}
                             </div>
+                          )}
 
-                            {deal.notes && (
-                              <div className="rounded-xl border border-border/40 bg-muted/20 p-3 text-sm text-muted-foreground">
-                                {deal.notes}
-                              </div>
-                            )}
+                          {canEditDeal && (
+                            <div className="flex items-center gap-2">
+                              <Select value={deal.status} onValueChange={async (nextStatus) => {
+                                try {
+                                  const res = await axios.patch(`/api/deals/${deal._id}`, { status: nextStatus });
+                                  setDeals(prev => prev.map(item => item._id === deal._id ? res.data : item));
+                                } catch (err) {
+                                  showToast(err.response?.data?.error || 'Failed to update deal status', 'error');
+                                }
+                              }}>
+                                <SelectTrigger className="w-[170px] h-9 rounded-xl bg-muted/30 border-border/40">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="lead">Lead</SelectItem>
+                                  <SelectItem value="proposal">Proposal</SelectItem>
+                                  <SelectItem value="negotiation">Negotiation</SelectItem>
+                                  <SelectItem value="won">Won</SelectItem>
+                                  <SelectItem value="lost">Lost</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
 
-                            {canEditDeal && (
-                              <div className="flex items-center gap-2">
-                                <Select value={deal.status} onValueChange={async (nextStatus) => {
+                          {canEditDeal && deal.status === 'won' && (
+                            <div className="space-y-2">
+                              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Website Link</Label>
+                              <Input
+                                type="url"
+                                value={deal.website || ''}
+                                onChange={(e) => {
+                                  const nextWebsite = e.target.value;
+                                  setDeals(prev => prev.map(item => item._id === deal._id ? { ...item, website: nextWebsite } : item));
+                                }}
+                                onBlur={async (e) => {
+                                  const nextWebsite = String(e.target.value || '').trim();
+                                  if (nextWebsite === String(deal.website || '').trim()) return;
                                   try {
-                                    const res = await axios.patch(`/api/deals/${deal._id}`, { status: nextStatus });
+                                    const res = await axios.patch(`/api/deals/${deal._id}`, { website: nextWebsite });
                                     setDeals(prev => prev.map(item => item._id === deal._id ? res.data : item));
                                   } catch (err) {
-                                    showToast(err.response?.data?.error || 'Failed to update deal status', 'error');
+                                    showToast(err.response?.data?.error || 'Failed to update website', 'error');
                                   }
-                                }}>
-                                  <SelectTrigger className="w-[170px] h-9 rounded-xl bg-muted/30 border-border/40">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="lead">Lead</SelectItem>
-                                    <SelectItem value="proposal">Proposal</SelectItem>
-                                    <SelectItem value="negotiation">Negotiation</SelectItem>
-                                    <SelectItem value="won">Won</SelectItem>
-                                    <SelectItem value="lost">Lost</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            )}
-
-                            {canEditDeal && deal.status === 'won' && (
-                              <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Website Link</Label>
-                                <Input
-                                  type="url"
-                                  value={deal.website || ''}
-                                  onChange={(e) => {
-                                    const nextWebsite = e.target.value;
-                                    setDeals(prev => prev.map(item => item._id === deal._id ? { ...item, website: nextWebsite } : item));
-                                  }}
-                                  onBlur={async (e) => {
-                                    const nextWebsite = String(e.target.value || '').trim();
-                                    if (nextWebsite === String(deal.website || '').trim()) return;
-                                    try {
-                                      const res = await axios.patch(`/api/deals/${deal._id}`, { website: nextWebsite });
-                                      setDeals(prev => prev.map(item => item._id === deal._id ? res.data : item));
-                                    } catch (err) {
-                                      showToast(err.response?.data?.error || 'Failed to update website', 'error');
-                                    }
-                                  }}
-                                  className="h-9 rounded-xl bg-muted/30 border-border/40"
-                                  placeholder="https://client-website.com"
-                                />
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      );
-                    })
+                                }}
+                                className="h-9 rounded-xl bg-muted/30 border-border/40"
+                                placeholder="https://client-website.com"
+                              />
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })
                 }
               </div>
 
@@ -7971,9 +7965,9 @@ function App() {
                                         <Badge
                                           variant="outline"
                                           className={`text-[9px] uppercase font-black px-1.5 py-0.5 h-4.5 border transition-all duration-300 ${stat === 'sent' ? 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.1)]' :
-                                              stat === 'failed' ? 'bg-rose-500/15 text-rose-600 border-rose-500/30 shadow-[0_0_8px_rgba(244,63,94,0.1)]' :
-                                                stat === 'sending' ? 'bg-blue-500/15 text-blue-600 border-blue-500/30 animate-pulse' :
-                                                  'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                                            stat === 'failed' ? 'bg-rose-500/15 text-rose-600 border-rose-500/30 shadow-[0_0_8px_rgba(244,63,94,0.1)]' :
+                                              stat === 'sending' ? 'bg-blue-500/15 text-blue-600 border-blue-500/30 animate-pulse' :
+                                                'bg-slate-500/10 text-slate-500 border-slate-500/20'
                                             }`}
                                         >
                                           {stat}
@@ -8191,11 +8185,10 @@ function App() {
                       <button
                         key={cat.id}
                         onClick={() => setActiveScriptCat(cat.id)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 border ${
-                          activeScriptCat === cat.id
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 border ${activeScriptCat === cat.id
                             ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-105'
                             : 'bg-muted/30 text-muted-foreground border-border hover:bg-muted/60 hover:text-foreground'
-                        }`}
+                          }`}
                       >
                         {cat.emoji} {cat.label}
                       </button>
@@ -8236,11 +8229,10 @@ function App() {
                             {script.steps.map((step, idx) => (
                               <div key={idx} className="flex gap-4">
                                 <div className="flex flex-col items-center">
-                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 shrink-0 ${
-                                    idx === 0 ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600' :
-                                    idx === script.steps.length - 1 ? 'bg-primary/10 border-primary/40 text-primary' :
-                                    'bg-amber-500/10 border-amber-500/40 text-amber-600'
-                                  }`}>
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 shrink-0 ${idx === 0 ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600' :
+                                      idx === script.steps.length - 1 ? 'bg-primary/10 border-primary/40 text-primary' :
+                                        'bg-amber-500/10 border-amber-500/40 text-amber-600'
+                                    }`}>
                                     {['1️⃣', '2️⃣', '3️⃣', '4️⃣'][idx] || String(idx + 1)}
                                   </div>
                                   {idx < script.steps.length - 1 && (
@@ -8249,7 +8241,7 @@ function App() {
                                 </div>
 
                                 <div className={`flex-1 pb-6 ${idx === script.steps.length - 1 ? 'pb-0' : ''}`}>
-                              <div className="flex items-center justify-between gap-2 mb-2">
+                                  <div className="flex items-center justify-between gap-2 mb-2">
                                     <span className="text-sm font-bold text-foreground">{resolveCallerPlaceholders(step.label)}</span>
                                     <button
                                       onClick={() => {
@@ -8309,8 +8301,8 @@ function App() {
                         )}
                       </CardTitle>
                       <CardDescription>
-                        {currentUser?.role === 'admin' 
-                          ? "Centralized vault for all AI-scraped high-intent leads." 
+                        {currentUser?.role === 'admin'
+                          ? "Centralized vault for all AI-scraped high-intent leads."
                           : "List of folders assigned to you. Click on any folder to contact leads and update status."}
                       </CardDescription>
                     </div>
@@ -8371,8 +8363,8 @@ function App() {
                     <div className="space-y-4">
                       <div
                         className={`rounded-2xl border border-dashed p-6 text-center transition-all outline-none ${isMapScreenshotDragging
-                            ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
-                            : 'border-border bg-muted/20'
+                          ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
+                          : 'border-border bg-muted/20'
                           }`}
                         onDragOver={(e) => {
                           e.preventDefault();
@@ -8507,74 +8499,74 @@ function App() {
                         }
 
                         return (
-                            <div key={groupName} className="group relative bg-card rounded-2xl border border-border shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-300 cursor-pointer overflow-hidden animate-in zoom-in duration-300" onClick={() => setSelectedGroup(groupName)}>
-                              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/60 to-indigo-500/60 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                          <div key={groupName} className="group relative bg-card rounded-2xl border border-border shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-300 cursor-pointer overflow-hidden animate-in zoom-in duration-300" onClick={() => setSelectedGroup(groupName)}>
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/60 to-indigo-500/60 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
 
-                              {currentUser?.role === 'admin' && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="absolute top-3 left-3 h-7 w-7 rounded-full bg-card/80 border border-border/50 text-muted-foreground hover:text-foreground z-10 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    await openAssignLeadsDialog(
-                                      { keyword: sample.keyword, city: sample.city },
-                                      assignedMembers.length === 1 ? assignedMembers[0] : ''
-                                    );
-                                  }}
-                                  title="Assign Folder"
-                                >
-                                  <Users size={14} />
-                                </Button>
-                              )}
-
+                            {currentUser?.role === 'admin' && (
                               <Button
-                                variant="destructive"
+                                variant="ghost"
                                 size="icon"
-                                className="absolute top-3 right-3 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm"
-                                onClick={(e) => { e.stopPropagation(); handleDeleteGroup(sample.keyword, sample.city); }}
-                                title="Delete Folder"
+                                className="absolute top-3 left-3 h-7 w-7 rounded-full bg-card/80 border border-border/50 text-muted-foreground hover:text-foreground z-10 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  await openAssignLeadsDialog(
+                                    { keyword: sample.keyword, city: sample.city },
+                                    assignedMembers.length === 1 ? assignedMembers[0] : ''
+                                  );
+                                }}
+                                title="Assign Folder"
                               >
-                                <X size={14} />
+                                <Users size={14} />
                               </Button>
+                            )}
 
-                              <div className="p-6 flex flex-col items-center text-center">
-                                <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                  <Folder size={24} />
-                                </div>
-                                <h4 className="font-bold text-foreground text-sm mb-2 line-clamp-2">{groupName}</h4>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-3 right-3 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteGroup(sample.keyword, sample.city); }}
+                              title="Delete Folder"
+                            >
+                              <X size={14} />
+                            </Button>
 
-                                <div className="flex flex-wrap justify-center gap-2 mb-4">
-                                  <Badge className="bg-emerald-500/10 text-emerald-600 border-transparent text-[10px]">
-                                    {leads.length} Total
-                                  </Badge>
-                                  <Badge className="bg-blue-500/10 text-blue-600 border-transparent text-[10px]">
-                                    {leads.filter(l => getLeadWhatsappStatus(l) === 'sent').length} Sent
-                                  </Badge>
-                                  <Badge className="bg-rose-500/10 text-rose-600 border-transparent text-[10px]">
-                                    {leads.filter(l => getLeadWhatsappStatus(l) === 'failed').length} Failed
-                                  </Badge>
-                                  <Badge className="bg-amber-500/10 text-amber-600 border-transparent text-[10px]">
-                                    {leads.filter(l => getLeadWhatsappStatus(l) === 'pending').length} Pending
-                                  </Badge>
-                                </div>
+                            <div className="p-6 flex flex-col items-center text-center">
+                              <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <Folder size={24} />
+                              </div>
+                              <h4 className="font-bold text-foreground text-sm mb-2 line-clamp-2">{groupName}</h4>
 
-                                <div className="flex items-center gap-1.5 mb-4 justify-center">
-                                  <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Assigned:</span>
-                                  <Badge variant="outline" className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${assignmentColor}`}>
-                                    {assignmentText}
-                                  </Badge>
-                                </div>
+                              <div className="flex flex-wrap justify-center gap-2 mb-4">
+                                <Badge className="bg-emerald-500/10 text-emerald-600 border-transparent text-[10px]">
+                                  {leads.length} Total
+                                </Badge>
+                                <Badge className="bg-blue-500/10 text-blue-600 border-transparent text-[10px]">
+                                  {leads.filter(l => getLeadWhatsappStatus(l) === 'sent').length} Sent
+                                </Badge>
+                                <Badge className="bg-rose-500/10 text-rose-600 border-transparent text-[10px]">
+                                  {leads.filter(l => getLeadWhatsappStatus(l) === 'failed').length} Failed
+                                </Badge>
+                                <Badge className="bg-amber-500/10 text-amber-600 border-transparent text-[10px]">
+                                  {leads.filter(l => getLeadWhatsappStatus(l) === 'pending').length} Pending
+                                </Badge>
+                              </div>
 
-                                <div className="w-full bg-muted/40 h-1.5 rounded-full overflow-hidden mt-auto">
-                                  <div
-                                    className="h-full bg-emerald-500 transition-all duration-500"
-                                    style={{ width: `${(leads.filter(l => getLeadWhatsappStatus(l) === 'sent').length / leads.length) * 100}%` }}
-                                  ></div>
-                                </div>
+                              <div className="flex items-center gap-1.5 mb-4 justify-center">
+                                <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Assigned:</span>
+                                <Badge variant="outline" className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border ${assignmentColor}`}>
+                                  {assignmentText}
+                                </Badge>
+                              </div>
+
+                              <div className="w-full bg-muted/40 h-1.5 rounded-full overflow-hidden mt-auto">
+                                <div
+                                  className="h-full bg-emerald-500 transition-all duration-500"
+                                  style={{ width: `${(leads.filter(l => getLeadWhatsappStatus(l) === 'sent').length / leads.length) * 100}%` }}
+                                ></div>
                               </div>
                             </div>
-                          );
+                          </div>
+                        );
                       })}
                     </div>
                   ) : (
@@ -8787,6 +8779,15 @@ function App() {
                                                 </Badge>
                                               )}
                                             </div>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-7 px-2 text-xs border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10"
+                                              onClick={() => openWhatsappComposer(lead)}
+                                            >
+                                              <MessageSquare size={14} className="mr-1" /> WhatsApp
+                                            </Button>
+
                                           </div>
                                         )}
                                       </td>
@@ -8856,7 +8857,7 @@ function App() {
                                               </Badge>
                                             );
                                           })()}
-                                           <Badge
+                                          <Badge
                                             variant="outline"
                                             className={`w-fit cursor-pointer transition-all ${lead.isContacted ? 'bg-blue-500/10 text-blue-600 border-blue-500/20 hover:bg-blue-500/20' : 'bg-slate-500/5 text-slate-400 border-slate-500/10 hover:bg-slate-500/10'}`}
                                             onClick={(e) => { e.stopPropagation(); toggleLeadContacted(lead._id, lead.isContacted); }}
@@ -9137,11 +9138,10 @@ function App() {
                 <button
                   type="button"
                   onClick={() => setSelectedAssigneeId('')}
-                  className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all text-left ${
-                    selectedAssigneeId === ''
+                  className={`w-full flex items-center gap-3 p-2 rounded-xl transition-all text-left ${selectedAssigneeId === ''
                       ? 'bg-primary/15 border border-primary/30 shadow-sm'
                       : 'hover:bg-muted/40 border border-transparent'
-                  }`}
+                    }`}
                 >
                   <Avatar className="w-8 h-8">
                     <AvatarFallback className="text-xs font-bold bg-muted/30 text-muted-foreground">
@@ -9164,11 +9164,10 @@ function App() {
                     key={member._id}
                     type="button"
                     onClick={() => setSelectedAssigneeId(member._id)}
-                    className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all text-left ${
-                      selectedAssigneeId === member._id
+                    className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all text-left ${selectedAssigneeId === member._id
                         ? 'bg-primary/15 border border-primary/30 shadow-sm'
                         : 'hover:bg-muted/40 border border-transparent'
-                    }`}
+                      }`}
                   >
                     <Avatar className="w-8 h-8">
                       <AvatarFallback className="text-xs font-bold bg-primary/20 text-primary">
