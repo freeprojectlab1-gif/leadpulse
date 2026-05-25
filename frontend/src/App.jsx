@@ -133,6 +133,7 @@ const PAGE_TITLES = {
   tasks: 'Task Management',
   campaign: 'Campaign Studio',
   website_pricing: 'Website Pricing',
+  website_templates: 'Website Templates',
   template: 'Email Templates',
   custom_templates: 'Custom Folders',
   whatsapp_settings: 'WhatsApp Settings',
@@ -165,6 +166,12 @@ const ACCESS_SECTIONS = [
       { id: 'campaign', label: 'New Campaign', icon: Rocket },
       { id: 'logs', label: 'Delivery Logs', icon: Activity },
       { id: 'deals', label: 'Projects & Deals', icon: Briefcase },
+    ],
+  },
+  {
+    label: 'Website Reference',
+    items: [
+      { id: 'website_templates', label: 'Website Templates', icon: Layers },
       { id: 'website_pricing', label: 'Website Pricing', icon: Globe },
     ],
   },
@@ -205,7 +212,7 @@ const ACCESS_SECTIONS = [
 const ACCESS_TABS = ACCESS_SECTIONS.flatMap(section => section.items);
 const ACCESS_TAB_IDS = ACCESS_TABS.map(item => item.id);
 const MEMBER_DEFAULT_ACCESS = ACCESS_TAB_IDS.reduce((acc, key) => {
-  acc[key] = key === 'dashboard' || key === 'calling_scripts' || key === 'deals' || key === 'website_pricing';
+  acc[key] = key === 'dashboard' || key === 'calling_scripts' || key === 'deals' || key === 'website_pricing' || key === 'website_templates';
   return acc;
 }, {});
 const FULL_ACCESS = ACCESS_TAB_IDS.reduce((acc, key) => {
@@ -256,6 +263,19 @@ const WEBSITE_PRICING_CATALOG = [
     timeline: '10-30 days',
     features: ['Lead management', 'Tasks', 'Analytics', 'Roles & permissions', 'Custom workflows'],
   },
+];
+
+const REF_CATEGORIES = [
+  'All',
+  'E-commerce',
+  'Restaurant & Cafe',
+  'Hotel & Resort',
+  'Gym & Salon',
+  'Medical & Clinic',
+  'Real Estate',
+  'Corporate & Agency',
+  'Portfolio & Personal',
+  'Other'
 ];
 
 const SCRIPT_CATEGORIES = [
@@ -2398,6 +2418,16 @@ function App() {
   const [waModal, setWaModal] = useState({ open: false, phone: '', message: '' });
   const [waStatus, setWaStatus] = useState('disconnected');
   const [waProvider, setWaProvider] = useState('browser'); // 'browser' or 'interakt'
+
+  // --- Website Reference Templates State ---
+  const [websiteReferences, setWebsiteReferences] = useState([]);
+  const [refCategoryFilter, setRefCategoryFilter] = useState('All');
+  const [refSearchQuery, setRefSearchQuery] = useState('');
+  const [refDialogOpen, setRefDialogOpen] = useState(false);
+  const [refSaving, setRefSaving] = useState(false);
+  const [refEditTarget, setRefEditTarget] = useState(null);
+  const [refForm, setRefForm] = useState({ title: '', url: '', category: 'E-commerce', description: '', thumbnailUrl: '' });
+  const [refThumbnailFile, setRefThumbnailFile] = useState(null);
   const [waDailyStats, setWaDailyStats] = useState({ sent: 0, limit: 80, remaining: 80 });
   const [waQr, setWaQr] = useState('');
   const lastSavedPublicEmailRef = useRef('');
@@ -2643,6 +2673,7 @@ function App() {
       fetchWhatsappTemplates(); // Load WA templates
       fetchSettings();
       fetchMapCategories();
+      fetchWebsiteReferences(); // Fetch references on login
       const interval = setInterval(() => {
         fetchStats();
         fetchRecipients();
@@ -2672,6 +2703,9 @@ function App() {
   useEffect(() => {
     if (isLoggedIn && (activeTab === 'email_finder' || activeTab === 'mobile_finder' || activeTab === 'saved_leads')) {
       fetchSavedLeads();
+    }
+    if (isLoggedIn && activeTab === 'website_templates') {
+      fetchWebsiteReferences();
     }
   }, [isLoggedIn, activeTab]);
 
@@ -3909,6 +3943,68 @@ function App() {
     } catch (e) { }
   };
 
+  const fetchWebsiteReferences = async () => {
+    try {
+      const res = await axios.get('/api/website-references');
+      setWebsiteReferences(res.data);
+    } catch (err) {
+      console.error("Failed to fetch website references", err);
+    }
+  };
+
+  const handleSaveWebsiteReference = async (e) => {
+    e.preventDefault();
+    if (!refForm.title || !refForm.url || !refForm.category) {
+      showToast("Title, URL, and Category are required", "error");
+      return;
+    }
+    setRefSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append('title', refForm.title);
+      formData.append('url', refForm.url);
+      formData.append('category', refForm.category);
+      formData.append('description', refForm.description);
+      if (refThumbnailFile) {
+        formData.append('thumbnail', refThumbnailFile);
+      } else {
+        formData.append('thumbnailUrl', refForm.thumbnailUrl);
+      }
+
+      if (refEditTarget) {
+        await axios.patch(`/api/website-references/${refEditTarget._id}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        showToast("Website template updated!");
+      } else {
+        await axios.post('/api/website-references', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        showToast("Website template added!");
+      }
+      setRefDialogOpen(false);
+      setRefForm({ title: '', url: '', category: 'E-commerce', description: '', thumbnailUrl: '' });
+      setRefThumbnailFile(null);
+      setRefEditTarget(null);
+      fetchWebsiteReferences();
+    } catch (err) {
+      showToast(err.response?.data?.error || "Failed to save website template", "error");
+    } finally {
+      setRefSaving(false);
+    }
+  };
+
+  const handleDeleteWebsiteReference = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this template reference?")) return;
+    try {
+      await axios.delete(`/api/website-references/${id}`);
+      showToast("Template reference deleted");
+      fetchWebsiteReferences();
+    } catch (err) {
+      showToast("Failed to delete template reference", "error");
+    }
+  };
+
   const fetchSavedLeads = async () => {
     setIsLoadingSavedLeads(true);
     try {
@@ -4230,10 +4326,14 @@ function App() {
             { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
             { id: 'tasks', icon: ClipboardList, label: 'Tasks' },
             { id: 'deals', icon: Briefcase, label: 'Projects & Deals' },
-            { id: 'website_pricing', icon: Globe, label: 'Website Pricing' },
             { id: 'calling_scripts', icon: PhoneCall, label: 'Call Scripts' },
             { id: 'campaign', icon: Rocket, label: 'New Campaign' },
             { id: 'logs', icon: Activity, label: 'Delivery Logs' },
+          ])}
+
+          {renderSidebarSection('Website Reference', [
+            { id: 'website_templates', icon: Layers, label: 'Website Templates' },
+            { id: 'website_pricing', icon: Globe, label: 'Website Pricing' },
           ])}
 
           {renderSidebarSection('Lead Generation', [
@@ -5841,6 +5941,427 @@ function App() {
             </div>
           )}
 
+          {activeTab === 'website_templates' && (
+            <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-10">
+              {/* Header section */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-3">
+                  <Badge variant="outline" className="w-fit rounded-full px-4 py-1.5 border-primary/20 bg-primary/5 text-primary uppercase tracking-[0.3em] text-[10px] font-black">
+                    Live Demonstrations
+                  </Badge>
+                  <div>
+                    <h2 className="text-3xl md:text-5xl font-black tracking-tight text-foreground">
+                      Client Reference Templates
+                    </h2>
+                    <p className="text-muted-foreground mt-2 text-sm md:text-base max-w-2xl leading-relaxed">
+                      Client ko dikhane ke liye category-wise ready-made reference websites aur design templates.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Button 
+                    onClick={() => {
+                      setRefEditTarget(null);
+                      setRefForm({ title: '', url: '', category: 'E-commerce', description: '', thumbnailUrl: '' });
+                      setRefThumbnailFile(null);
+                      setRefDialogOpen(true);
+                    }}
+                    className="h-11 px-6 font-bold shadow-glow-primary bg-primary hover:bg-primary/90 text-white transition-all rounded-xl"
+                  >
+                    <Plus size={18} className="mr-2" /> Add Template
+                  </Button>
+                </div>
+              </div>
+
+              {/* Statistics Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: 'Total Templates', value: websiteReferences.length, icon: Layers, color: 'text-primary bg-primary/10' },
+                  { label: 'Categories', value: new Set(websiteReferences.map(r => r.category)).size, icon: Folder, color: 'text-emerald-500 bg-emerald-500/10' },
+                  { label: 'E-commerce', value: websiteReferences.filter(r => r.category === 'E-commerce').length, icon: Globe, color: 'text-sky-500 bg-sky-500/10' },
+                  { label: 'Services & Local', value: websiteReferences.filter(r => ['Restaurant & Cafe', 'Hotel & Resort', 'Gym & Salon', 'Medical & Clinic'].includes(r.category)).length, icon: MapPin, color: 'text-violet-500 bg-violet-500/10' },
+                ].map((stat, i) => {
+                  const Icon = stat.icon;
+                  return (
+                    <Card key={i} className="border-border/40 bg-card/40 backdrop-blur-md rounded-2xl shadow-sm hover:border-primary/20 transition-all">
+                      <CardContent className="p-5 flex items-center justify-between">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{stat.label}</p>
+                          <p className="text-2xl font-black text-foreground">{stat.value}</p>
+                        </div>
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${stat.color}`}>
+                          <Icon size={20} />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Filter and Search Bar */}
+              <Card className="border-border/40 bg-card/40 backdrop-blur-md rounded-3xl">
+                <CardContent className="p-5 flex flex-col md:flex-row gap-4 items-center justify-between">
+                  {/* Category Pills */}
+                  <div className="flex flex-wrap gap-1.5 w-full md:w-auto">
+                    {REF_CATEGORIES.map(cat => {
+                      const count = cat === 'All' 
+                        ? websiteReferences.length 
+                        : websiteReferences.filter(r => r.category === cat).length;
+                      
+                      const isSelected = refCategoryFilter === cat;
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setRefCategoryFilter(cat)}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                            isSelected 
+                              ? 'bg-primary text-white shadow-md' 
+                              : 'bg-muted/40 hover:bg-muted/70 text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          {cat}
+                          <Badge variant="outline" className={`h-4 min-w-[16px] px-1 border-none text-[9px] ${isSelected ? 'bg-white/20 text-white' : 'bg-muted-foreground/10 text-muted-foreground'}`}>
+                            {count}
+                          </Badge>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Search Input */}
+                  <div className="relative w-full md:w-72">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                    <Input
+                      type="text"
+                      placeholder="Search templates..."
+                      value={refSearchQuery}
+                      onChange={e => setRefSearchQuery(e.target.value)}
+                      className="pl-10 h-10 bg-muted/40 border-border/40 rounded-xl text-sm"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Grid of Templates */}
+              {(() => {
+                const filteredRefs = websiteReferences.filter(ref => {
+                  const matchesCat = refCategoryFilter === 'All' || ref.category === refCategoryFilter;
+                  const matchesSearch = ref.title.toLowerCase().includes(refSearchQuery.toLowerCase()) ||
+                    (ref.description || '').toLowerCase().includes(refSearchQuery.toLowerCase()) ||
+                    ref.category.toLowerCase().includes(refSearchQuery.toLowerCase());
+                  return matchesCat && matchesSearch;
+                });
+
+                if (filteredRefs.length === 0) {
+                  return (
+                    <div className="py-16 text-center border border-dashed border-border/60 rounded-3xl bg-card/10 space-y-3">
+                      <div className="w-16 h-16 rounded-full bg-muted/40 flex items-center justify-center mx-auto text-muted-foreground/60">
+                        <Layers size={32} />
+                      </div>
+                      <h3 className="text-lg font-bold text-foreground">No templates found</h3>
+                      <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                        Search query adjust karein ya naya template add karein.
+                      </p>
+                    </div>
+                  );
+                }
+
+                // Render beautiful cards grouped by Category (if Category filter is "All")
+                const grouped = refCategoryFilter === 'All';
+                
+                const renderCard = (ref) => {
+                  // Fallback banners based on category
+                  const renderBanner = () => {
+                    if (ref.thumbnail) {
+                      return (
+                        <div className="relative aspect-video w-full overflow-hidden bg-muted">
+                          <img 
+                            src={ref.thumbnail} 
+                            alt={ref.title} 
+                            className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+                            onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
+                          />
+                        </div>
+                      );
+                    }
+                    
+                    // Fallback icons & gradients based on category
+                    const categoryThemes = {
+                      'E-commerce': { bg: 'from-pink-500 to-rose-600', icon: '🛒' },
+                      'Restaurant & Cafe': { bg: 'from-orange-400 to-amber-600', icon: '🍽️' },
+                      'Hotel & Resort': { bg: 'from-blue-500 to-cyan-600', icon: '🏨' },
+                      'Gym & Salon': { bg: 'from-emerald-500 to-teal-600', icon: '💅' },
+                      'Medical & Clinic': { bg: 'from-sky-400 to-indigo-600', icon: '🏥' },
+                      'Real Estate': { bg: 'from-violet-500 to-purple-600', icon: '🏠' },
+                      'Corporate & Agency': { bg: 'from-indigo-500 to-blue-600', icon: '🏢' },
+                      'Portfolio & Personal': { bg: 'from-fuchsia-500 to-pink-600', icon: '👤' },
+                      'Other': { bg: 'from-gray-500 to-slate-700', icon: '🌐' }
+                    };
+                    const theme = categoryThemes[ref.category] || categoryThemes['Other'];
+                    return (
+                      <div className={`aspect-video w-full bg-gradient-to-tr ${theme.bg} flex flex-col items-center justify-center p-4 relative overflow-hidden`}>
+                        <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                        <span className="text-4xl filter drop-shadow-md mb-2">{theme.icon}</span>
+                        <span className="text-xs font-black tracking-widest text-white/95 uppercase bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
+                          {ref.category}
+                        </span>
+                      </div>
+                    );
+                  };
+
+                  return (
+                    <Card key={ref._id} className="group border-border/40 bg-card/40 backdrop-blur-md rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:border-primary/30 transition-all duration-300 flex flex-col">
+                      {renderBanner()}
+                      <CardContent className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black tracking-wider text-primary uppercase bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">
+                              {ref.category}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground font-medium">
+                              {new Date(ref.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          
+                          <h3 className="font-extrabold text-lg text-foreground tracking-tight line-clamp-1 group-hover:text-primary transition-colors">
+                            {ref.title}
+                          </h3>
+                          
+                          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3 min-h-[48px]">
+                            {ref.description || "No description provided for this template."}
+                          </p>
+                        </div>
+
+                        <div className="space-y-2.5 pt-2">
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="default"
+                              size="sm"
+                              className="flex-1 font-bold text-xs bg-primary hover:bg-primary/90 text-white rounded-xl h-9"
+                              asChild
+                            >
+                              <a href={ref.url} target="_blank" rel="noopener noreferrer">
+                                <Eye size={14} className="mr-1.5" /> View Demo
+                              </a>
+                            </Button>
+
+                            <Button 
+                              variant="outline"
+                              size="sm"
+                              className="font-bold text-xs border-border/40 hover:bg-muted/50 rounded-xl h-9 px-3"
+                              onClick={() => {
+                                navigator.clipboard.writeText(ref.url);
+                                showToast("Link copied to clipboard!");
+                              }}
+                              title="Copy Demo URL"
+                            >
+                              <Copy size={14} />
+                            </Button>
+                          </div>
+
+                          {/* Quick Admin/Member Controls */}
+                          <div className="flex justify-between items-center border-t border-border/20 pt-2.5">
+                            <span className="text-[9px] text-muted-foreground font-semibold truncate max-w-[60%]">
+                              🔗 {ref.url.replace(/^https?:\/\//, '')}
+                            </span>
+                            
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => {
+                                  setRefEditTarget(ref);
+                                  setRefForm({
+                                    title: ref.title,
+                                    url: ref.url,
+                                    category: ref.category,
+                                    description: ref.description || '',
+                                    thumbnailUrl: ref.thumbnail || ''
+                                  });
+                                  setRefThumbnailFile(null);
+                                  setRefDialogOpen(true);
+                                }}
+                                className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors"
+                                title="Edit"
+                              >
+                                <Edit size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteWebsiteReference(ref._id)}
+                                className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                };
+
+                if (grouped) {
+                  // Group references by category for a beautiful structural layout
+                  const categories = [...new Set(filteredRefs.map(r => r.category))].sort();
+                  return (
+                    <div className="space-y-10">
+                      {categories.map(cat => {
+                        const catRefs = filteredRefs.filter(r => r.category === cat);
+                        return (
+                          <div key={cat} className="space-y-4">
+                            <div className="flex items-center gap-3 border-b border-border/30 pb-2">
+                              <h3 className="text-lg md:text-xl font-extrabold text-foreground tracking-tight">
+                                {cat}
+                              </h3>
+                              <Badge variant="outline" className="rounded-full px-2.5 py-0.5 bg-muted/40 text-[10px] font-bold border-none text-muted-foreground">
+                                {catRefs.length} templates
+                              </Badge>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                              {catRefs.map(ref => renderCard(ref))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                } else {
+                  // Plain grid
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {filteredRefs.map(ref => renderCard(ref))}
+                    </div>
+                  );
+                }
+              })()}
+
+              {/* Add/Edit Dialog */}
+              <Dialog open={refDialogOpen} onOpenChange={setRefDialogOpen}>
+                <DialogContent className="max-w-md bg-card border-border/50 rounded-3xl p-6 shadow-2xl">
+                  <DialogHeader className="pb-3 border-b border-border/30">
+                    <DialogTitle className="text-xl font-extrabold text-foreground">
+                      {refEditTarget ? 'Edit Demo Template' : 'Add Ready Template'}
+                    </DialogTitle>
+                  </DialogHeader>
+
+                  <form onSubmit={handleSaveWebsiteReference} className="space-y-4 pt-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="ref-title" className="text-xs font-bold text-muted-foreground uppercase">Template Name / Title</Label>
+                      <Input
+                        id="ref-title"
+                        type="text"
+                        value={refForm.title}
+                        onChange={e => setRefForm({ ...refForm, title: e.target.value })}
+                        placeholder="e.g. SpiceGarden Restaurant Menu"
+                        className="bg-muted/40 border-border/40 rounded-xl"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="ref-url" className="text-xs font-bold text-muted-foreground uppercase">Live Demo Link / URL</Label>
+                      <Input
+                        id="ref-url"
+                        type="url"
+                        value={refForm.url}
+                        onChange={e => setRefForm({ ...refForm, url: e.target.value })}
+                        placeholder="e.g. https://spicegarden.demo.site"
+                        className="bg-muted/40 border-border/40 rounded-xl"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="ref-cat" className="text-xs font-bold text-muted-foreground uppercase">Category</Label>
+                      <Select
+                        value={refForm.category}
+                        onValueChange={val => setRefForm({ ...refForm, category: val })}
+                      >
+                        <SelectTrigger id="ref-cat" className="bg-muted/40 border-border/40 rounded-xl">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border/40 rounded-xl">
+                          {REF_CATEGORIES.filter(c => c !== 'All').map(c => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="ref-desc" className="text-xs font-bold text-muted-foreground uppercase">Description / Selling Point</Label>
+                      <Textarea
+                        id="ref-desc"
+                        value={refForm.description}
+                        onChange={e => setRefForm({ ...refForm, description: e.target.value })}
+                        placeholder="Client ko pitch karne ke liye details..."
+                        className="bg-muted/40 border-border/40 rounded-xl min-h-[80px] resize-none"
+                      />
+                    </div>
+
+                    <div className="space-y-2 border-t border-border/20 pt-3">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase">Template Thumbnail (Optional)</Label>
+                      
+                      <div className="flex flex-col gap-2">
+                        {/* File Upload Input */}
+                        <div className="flex items-center justify-between gap-3 p-3 border border-dashed border-border/50 rounded-xl bg-muted/20">
+                          <span className="text-xs text-muted-foreground truncate">
+                            {refThumbnailFile ? refThumbnailFile.name : 'Choose local image...'}
+                          </span>
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={e => setRefThumbnailFile(e.target.files[0] || null)}
+                            className="hidden"
+                            id="thumbnail-upload-input"
+                          />
+                          <Label 
+                            htmlFor="thumbnail-upload-input"
+                            className="h-8 px-3 rounded-lg border border-border/40 bg-background hover:bg-muted/50 flex items-center justify-center text-xs font-bold cursor-pointer transition-colors"
+                          >
+                            Browse
+                          </Label>
+                        </div>
+
+                        {/* Image URL fallback */}
+                        {!refThumbnailFile && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-muted-foreground font-semibold">Or enter online image URL:</span>
+                            <Input
+                              type="text"
+                              value={refForm.thumbnailUrl}
+                              onChange={e => setRefForm({ ...refForm, thumbnailUrl: e.target.value })}
+                              placeholder="https://example.com/image.jpg"
+                              className="bg-muted/40 border-border/40 rounded-xl h-8 text-xs"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3 justify-end pt-3 border-t border-border/20">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="font-bold rounded-xl"
+                        onClick={() => setRefDialogOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={refSaving}
+                        className="font-bold bg-primary hover:bg-primary/90 text-white rounded-xl shadow-glow-primary"
+                      >
+                        {refSaving ? 'Saving...' : 'Save Template'}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
 
           {activeTab === 'campaign' && (
             <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">

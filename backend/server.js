@@ -197,6 +197,17 @@ const dealSchema = new mongoose.Schema({
 });
 const Deal = mongoose.models.Deal || mongoose.model('Deal', dealSchema);
 
+const websiteReferenceSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  url: { type: String, required: true },
+  category: { type: String, required: true },
+  description: { type: String, default: '' },
+  thumbnail: { type: String, default: '' },
+  createdAt: { type: Date, default: Date.now }
+});
+const WebsiteReference = mongoose.models.WebsiteReference || mongoose.model('WebsiteReference', websiteReferenceSchema);
+
+
 const AUTH_SECRET = process.env.AUTH_SECRET || 'leadpulse-auth-secret';
 const AUTH_TOKEN_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const MEMBER_ACCESS_KEYS = [
@@ -218,9 +229,10 @@ const MEMBER_ACCESS_KEYS = [
   'custom_templates',
   'variables',
   'calling_scripts',
-  'tasks'
+  'tasks',
+  'website_templates'
 ];
-const REQUIRED_MEMBER_ACCESS = new Set(['dashboard', 'calling_scripts']);
+const REQUIRED_MEMBER_ACCESS = new Set(['dashboard', 'calling_scripts', 'website_templates']);
 const MEMBER_DEFAULT_ACCESS = MEMBER_ACCESS_KEYS.reduce((acc, key) => {
   acc[key] = REQUIRED_MEMBER_ACCESS.has(key);
   return acc;
@@ -440,6 +452,63 @@ mongoose.connect(process.env.MONGO_URI)
     }
 
     await seedDefaultAdmin();
+
+    // Seed default Website References if none exist
+    const refCount = await WebsiteReference.countDocuments();
+    if (refCount === 0) {
+      const defaultReferences = [
+        {
+          title: "BrandStore E-commerce",
+          url: "https://websitedemos.net/brandstore-02/",
+          category: "E-commerce",
+          description: "Premium clothing and apparel store featuring interactive product catalog, shopping cart, and sleek sales banner designs."
+        },
+        {
+          title: "Italian Delicacy Cafe",
+          url: "https://websitedemos.net/italian-restaurant-04/",
+          category: "Restaurant & Cafe",
+          description: "Stunning fine dining layout with full interactive menu, table booking form, chef profiles, and review cards."
+        },
+        {
+          title: "Mountain Retreat Hotel",
+          url: "https://websitedemos.net/outdoor-adventure-02/",
+          category: "Hotel & Resort",
+          description: "Immersive nature and vacation resort homepage showing outdoor activity packages, luxury rooms, booking CTA, and gallery."
+        },
+        {
+          title: "Elite Fitness Studio",
+          url: "https://websitedemos.net/fitness-trainer-04/",
+          category: "Gym & Salon",
+          description: "Professional gym and personal trainer theme presenting workout classes, pricing schedules, trainers, and contact form."
+        },
+        {
+          title: "Family Dental Clinic",
+          url: "https://websitedemos.net/dentist-clinic-04/",
+          category: "Medical & Clinic",
+          description: "Clean and welcoming clinic template highlighting specialized doctors, opening hours, treatment lists, and appointment booking."
+        },
+        {
+          title: "Skyline Real Estate",
+          url: "https://websitedemos.net/real-estate-04/",
+          category: "Real Estate",
+          description: "Premium property showcase with custom search filters, active listings, high-resolution house galleries, and agent contact details."
+        },
+        {
+          title: "Apex Consulting Agency",
+          url: "https://websitedemos.net/business-consulting-04/",
+          category: "Corporate & Agency",
+          description: "Stunning corporate layout containing service grids, customer testimonials, case studies, team profiles, and quick inquiry forms."
+        },
+        {
+          title: "Creative Designer Portfolio",
+          url: "https://websitedemos.net/personal-portfolio-02/",
+          category: "Portfolio & Personal",
+          description: "Modern developer and graphic designer portfolio featuring interactive skill bars, work showcase, resume download, and contact info."
+        }
+      ];
+      await WebsiteReference.insertMany(defaultReferences);
+      console.log("[WebsiteReference] Seeded default reference website templates!");
+    }
 
     console.log("Credentials Synced & Core Variables Initialized!");
   })
@@ -4664,6 +4733,79 @@ app.delete('/api/deals/:id', requireAdmin, async (req, res) => {
     const deal = await Deal.findByIdAndDelete(req.params.id);
     if (!deal) return res.status(404).json({ error: 'Deal not found' });
     res.json({ success: true, message: 'Deal deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Website Reference Templates API ---
+
+app.get('/api/website-references', async (req, res) => {
+  try {
+    const refs = await WebsiteReference.find().sort({ category: 1, title: 1 });
+    res.json(refs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/website-references', upload.single('thumbnail'), async (req, res) => {
+  try {
+    const { title, url, category, description } = req.body;
+    if (!title || !url || !category) {
+      return res.status(400).json({ error: 'Title, URL, and Category are required' });
+    }
+
+    let thumbnail = '';
+    if (req.file) {
+      thumbnail = `/uploads/${req.file.filename}`;
+    } else if (req.body.thumbnailUrl) {
+      thumbnail = req.body.thumbnailUrl;
+    }
+
+    const ref = await WebsiteReference.create({
+      title: title.trim(),
+      url: url.trim(),
+      category: category.trim(),
+      description: (description || '').trim(),
+      thumbnail
+    });
+
+    res.status(201).json(ref);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/website-references/:id', upload.single('thumbnail'), async (req, res) => {
+  try {
+    const { title, url, category, description } = req.body;
+    const ref = await WebsiteReference.findById(req.params.id);
+    if (!ref) return res.status(404).json({ error: 'Website template not found' });
+
+    if (title) ref.title = title.trim();
+    if (url) ref.url = url.trim();
+    if (category) ref.category = category.trim();
+    if (description !== undefined) ref.description = description.trim();
+
+    if (req.file) {
+      ref.thumbnail = `/uploads/${req.file.filename}`;
+    } else if (req.body.thumbnailUrl !== undefined) {
+      ref.thumbnail = req.body.thumbnailUrl;
+    }
+
+    await ref.save();
+    res.json(ref);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/website-references/:id', async (req, res) => {
+  try {
+    const ref = await WebsiteReference.findByIdAndDelete(req.params.id);
+    if (!ref) return res.status(404).json({ error: 'Website template not found' });
+    res.json({ success: true, message: 'Website template deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
