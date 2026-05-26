@@ -1788,10 +1788,23 @@ const getMapLeadDisplayName = (lead = {}) => {
 const getMapLeadDisplaySubtitle = (lead = {}) => {
   const phone = String(lead.phone || '').trim();
   if (phone && phone !== 'N/A') return phone;
+  const website = String(lead.website || '').trim();
+  if (website) return website.replace(/^https?:\/\//i, '');
   const address = String(lead.address || '').trim();
   if (address && address !== 'N/A') return address;
   const fallback = String(lead.keyword || lead.category || lead.city || '').trim();
   return fallback || 'Address not found';
+};
+
+const normalizeWebsiteHref = (value = '') => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  try {
+    return new URL(raw, window.location.href).href;
+  } catch {
+    return raw;
+  }
 };
 
 const MapBusinessFinder = ({
@@ -2199,6 +2212,16 @@ const MapBusinessFinder = ({
                   <div className="flex flex-col truncate pr-2">
                     <strong className="text-foreground truncate">{getMapLeadDisplayName(lead)}</strong>
                     <span className="text-xs text-muted-foreground truncate">{getMapLeadDisplaySubtitle(lead)}</span>
+                    {lead.website && (
+                      <a
+                        href={normalizeWebsiteHref(lead.website)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-sky-400 hover:text-sky-300 truncate max-w-[180px] underline underline-offset-4 decoration-sky-400/30"
+                      >
+                        {String(lead.website).replace(/^https?:\/\//i, '')}
+                      </a>
+                    )}
                   </div>
                   {lead.mapsLink && <Button variant="secondary" size="sm" className="h-6 text-[10px] uppercase font-bold shrink-0 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary" asChild><a href={lead.mapsLink} target="_blank" rel="noreferrer">Map</a></Button>}
                 </div>
@@ -9345,6 +9368,17 @@ function App() {
                                             {(lead.emailFound || lead.email) && (
                                               <a href={`mailto:${lead.email}`} className="text-primary text-xs font-medium flex items-center gap-1.5 hover:underline decoration-primary/30 underline-offset-4 w-fit">
                                                 <Mail size={12} /> <span className="truncate max-w-[150px]">{lead.email}</span>
+                                              </a>
+                                            )}
+                                            {lead.website && (
+                                              <a
+                                                href={normalizeWebsiteHref(lead.website)}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-sky-400 text-xs font-medium flex items-center gap-1.5 hover:underline decoration-sky-400/30 underline-offset-4 w-fit"
+                                                title={lead.website}
+                                              >
+                                                <Globe size={12} /> <span className="truncate max-w-[150px]">{String(lead.website).replace(/^https?:\/\//i, '')}</span>
                                               </a>
                                             )}
                                           </div>

@@ -2891,8 +2891,21 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
         name = fallbackName || 'Business';
       }
 
-      // --- WEBSITE FILTER ---
+      // --- WEBSITE ---
       const websiteBtn = document.querySelector('[data-item-id="authority"], a[data-item-id="authority"], [aria-label*="website" i]');
+      let website = '';
+      if (websiteBtn) {
+        const rawWebsite = websiteBtn.href || websiteBtn.getAttribute('href') || websiteBtn.getAttribute('data-url') || '';
+        website = String(rawWebsite || '').trim();
+        if (!website || !/\./.test(website)) website = '';
+        if (website && !/^https?:\/\//i.test(website)) {
+          try {
+            website = new URL(website, window.location.href).href;
+          } catch {
+            // Keep the raw value if URL normalization fails.
+          }
+        }
+      }
       if (skipWebsites && websiteBtn) return null;
 
       // --- PHONE: multiple fallback selectors ---
@@ -2929,7 +2942,7 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
       }
       if (address !== 'N/A') address = address.replace(/^Address:\s*/i, '').trim();
 
-      return { name, phone, address, pageUrl: window.location.href };
+      return { name, phone, address, website, pageUrl: window.location.href };
     }, noWebsiteOnly, fallbackName);
   } catch (evalErr) {
     console.log(`[extractGMaps] Evaluate error (detached?): ${evalErr.message.slice(0, 60)}`);
@@ -2961,6 +2974,7 @@ const extractGoogleMapsLead = async (workerPage, link, options = {}) => {
     rawName: details.name,
     phone: details.phone,
     address: details.address,
+    website: details.website || '',
     latitude: coords.latitude,
     longitude: coords.longitude,
     distanceKm: distance
