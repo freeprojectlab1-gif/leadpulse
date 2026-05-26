@@ -41,6 +41,16 @@ const cloudinaryStorage = new CloudinaryStorage({
 });
 const cloudUpload = multer({ storage: cloudinaryStorage });
 
+const websiteReferenceStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'leadpulse_website_references',
+    allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'gif', 'avif'],
+    transformation: [{ width: 1400, crop: 'limit' }]
+  },
+});
+const websiteReferenceUpload = multer({ storage: websiteReferenceStorage });
+
 const { simpleParser } = require('mailparser');
 
 // --- Schemas & Models ---
@@ -203,6 +213,7 @@ const websiteReferenceSchema = new mongoose.Schema({
   category: { type: String, required: true },
   description: { type: String, default: '' },
   thumbnail: { type: String, default: '' },
+  thumbnailPublicId: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
 });
 const WebsiteReference = mongoose.models.WebsiteReference || mongoose.model('WebsiteReference', websiteReferenceSchema);
@@ -4763,7 +4774,16 @@ app.get('/api/website-references', async (req, res) => {
   }
 });
 
-app.post('/api/website-references', upload.single('thumbnail'), async (req, res) => {
+const destroyWebsiteReferenceThumbnail = async (publicId) => {
+  if (!publicId) return;
+  try {
+    await cloudinary.uploader.destroy(publicId);
+  } catch (err) {
+    console.warn(`[WebsiteReference] Failed to delete Cloudinary asset ${publicId}: ${err.message}`);
+  }
+};
+
+app.post('/api/website-references', websiteReferenceUpload.single('thumbnail'), async (req, res) => {
   try {
     const { title, url, category, description } = req.body;
     if (!title || !url || !category) {
@@ -4771,8 +4791,10 @@ app.post('/api/website-references', upload.single('thumbnail'), async (req, res)
     }
 
     let thumbnail = '';
+    let thumbnailPublicId = '';
     if (req.file) {
-      thumbnail = `/uploads/${req.file.filename}`;
+      thumbnail = req.file.path;
+      thumbnailPublicId = req.file.filename || req.file.public_id || '';
     } else if (req.body.thumbnailUrl) {
       thumbnail = req.body.thumbnailUrl;
     }
@@ -4782,7 +4804,8 @@ app.post('/api/website-references', upload.single('thumbnail'), async (req, res)
       url: url.trim(),
       category: category.trim(),
       description: (description || '').trim(),
-      thumbnail
+      thumbnail,
+      thumbnailPublicId
     });
 
     res.status(201).json(ref);
@@ -4791,7 +4814,7 @@ app.post('/api/website-references', upload.single('thumbnail'), async (req, res)
   }
 });
 
-app.patch('/api/website-references/:id', upload.single('thumbnail'), async (req, res) => {
+app.patch('/api/website-references/:id', websiteReferenceUpload.single('thumbnail'), async (req, res) => {
   try {
     const { title, url, category, description } = req.body;
     const ref = await WebsiteReference.findById(req.params.id);
@@ -4803,9 +4826,24 @@ app.patch('/api/website-references/:id', upload.single('thumbnail'), async (req,
     if (description !== undefined) ref.description = description.trim();
 
     if (req.file) {
-      ref.thumbnail = `/uploads/${req.file.filename}`;
+      await destroyWebsiteReferenceThumbnail(ref.thumbnailPublicId);
+      ref.thumbnail = req.file.path;
+      ref.thumbnailPublicId = req.file.filename || req.file.public_id || '';
     } else if (req.body.thumbnailUrl !== undefined) {
-      ref.thumbnail = req.body.thumbnailUrl;
+      const nextThumbnail = String(req.body.thumbnailUrl || '').trim();
+      if (nextThumbnail) {
+        if (ref.thumbnailPublicId && ref.thumbnail !== nextThumbnail) {
+          await destroyWebsiteReferenceThumbnail(ref.thumbnailPublicId);
+        }
+        ref.thumbnail = nextThumbnail;
+        ref.thumbnailPublicId = '';
+      } else {
+        if (ref.thumbnailPublicId) {
+          await destroyWebsiteReferenceThumbnail(ref.thumbnailPublicId);
+        }
+        ref.thumbnail = '';
+        ref.thumbnailPublicId = '';
+      }
     }
 
     await ref.save();
@@ -4819,6 +4857,7 @@ app.delete('/api/website-references/:id', async (req, res) => {
   try {
     const ref = await WebsiteReference.findByIdAndDelete(req.params.id);
     if (!ref) return res.status(404).json({ error: 'Website template not found' });
+    await destroyWebsiteReferenceThumbnail(ref.thumbnailPublicId);
     res.json({ success: true, message: 'Website template deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
